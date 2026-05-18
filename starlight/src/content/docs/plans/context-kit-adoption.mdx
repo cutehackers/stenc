@@ -1,0 +1,126 @@
+---
+title: Rail ContextKit Adoption Plan
+description: Example ContextKit plan for adopting ContextKit in Rail docs.
+docType: plan
+status: draft
+owner: rail-docs
+relatedSpec: docs/SPEC.md
+appliesTo:
+  - docs/
+  - AGENTS.md
+  - skills/rail/
+agentEntryPoints:
+  - docs/SPEC.md
+  - docs/ARCHITECTURE.md
+  - docs/CONVENTIONS.md
+validationCommands:
+  - node skill/context-kit/scripts/validate-context-kit-doc.js docs
+lastUpdated: 2026-05-18
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Rail ContextKit Adoption Plan
+
+<Aside type="caution" title="Plan Status">
+This example demonstrates a ContextKit plan shape. It is not an active Rail migration plan.
+</Aside>
+
+## Human Summary
+
+Adopt ContextKit by converting a small set of canonical Rail docs first, then
+expand only after the template works for real runtime contracts.
+
+## Agent Summary
+
+Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy
+and add ContextKit validation before broad migration.
+
+## Source Of Truth
+
+Rail's existing `docs/SPEC.md`, `docs/ARCHITECTURE.md`, and
+`docs/CONVENTIONS.md` remain authoritative during adoption.
+
+## Goal
+
+Make Rail specs and plans easier for humans to scan while keeping them
+structured enough for AI coding agents to follow.
+
+## Scope
+
+### In
+
+- One canonical spec example
+- One implementation plan example
+- Thin AGENTS.md linkage if adopted in Rail
+
+### Out
+
+- Full docs migration
+- Runtime behavior changes
+
+## Non-Goals
+
+- Do not make Starlight rendering the source of truth.
+- Do not change Rail's product contract as part of template adoption.
+
+## Current State
+
+Rail docs are plain Markdown with strong contracts but limited visual scanning
+support.
+
+## Target State
+
+Rail docs preserve explicit contracts while using ContextKit structure and
+Starlight-compatible MDX where useful.
+
+## Implementation Slices
+
+| Slice | Files Or Surfaces | Done When |
+| --- | --- | --- |
+| 1 | ContextKit templates | Templates validate |
+| 2 | Rail examples | Examples preserve source-of-truth links |
+| 3 | Rail AGENTS.md | Agents know when to invoke ContextKit |
+
+## Execution Order
+
+1. Validate ContextKit templates.
+2. Convert one Rail spec example.
+3. Convert one Rail plan example.
+4. Decide whether Rail should add a thin AGENTS.md rule.
+
+## Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| Docs become visual but less precise | Keep meaning in headings, tables, and frontmatter |
+| Agents treat examples as product truth | Label examples clearly |
+
+## Validation
+
+<Tabs>
+  <TabItem label="Focused">
+
+```bash
+node skill/context-kit/scripts/validate-context-kit-doc.js examples
+```
+
+  </TabItem>
+  <TabItem label="Full">
+
+```bash
+./scripts/validate.sh
+```
+
+  </TabItem>
+</Tabs>
+
+## Agent Instructions
+
+- Treat this as an adoption plan shape, not a Rail migration command.
+- Keep active Rail specs authoritative over ContextKit examples.
+- Do not edit Rail runtime code while adopting docs templates.
+
+## Open Questions
+
+- TBD
