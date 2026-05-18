@@ -42,6 +42,17 @@ surface that describes start, resume, retry, status, or result behavior.
 The canonical source of truth remains the Rail product spec. This example is a
 ContextKit style sample, not active Rail product authority.
 
+## Goal
+
+Show how a durable runtime contract can name its identity rules, owned
+surfaces, validation, and agent instructions in one plain MDX document.
+
+## Architecture
+
+Rail separates request drafting, artifact persistence, supervision, and result
+projection. Artifact identity belongs to the persisted artifact layer, while
+supervision and result projection consume validated handles.
+
 ## Problem
 
 Artifact identity rules are easy to blur when plans mention request files,
@@ -65,6 +76,14 @@ resume or projection authority.
 
 - This example does not replace Rail's canonical docs.
 - This example does not define new runtime behavior.
+
+## File Or Surface Map
+
+| Surface | Role | Owner |
+| --- | --- | --- |
+| `docs/SPEC.md` | Canonical product contract | rail-runtime |
+| `src/rail/artifacts/` | Artifact persistence and identity | rail-runtime |
+| `src/rail/supervisor/` | Supervision over artifact handles | rail-runtime |
 
 ## Vocabulary
 
@@ -97,6 +116,11 @@ rail.result(handle)
 - Supervisor
 - Evaluator gate
 
+## Evidence
+
+- Existing Rail docs distinguish product spec, architecture, and conventions.
+- Runtime API examples expose `start_task`, `supervise`, and `result` around durable handles.
+
 ## Invariants
 
 <CardGrid>
@@ -121,6 +145,12 @@ uv run --python 3.12 mypy src/rail
 - Read Rail's canonical spec before editing runtime behavior.
 - Keep skill-facing workflow text aligned with the Python API.
 - Do not infer terminal success from provider output.
+
+## Review Checklist
+
+- Artifact handle rules are stated as contract bullets, not only prose.
+- Public and internal surfaces both identify the owner of identity behavior.
+- Validation commands cover runtime tests, lint, and type checks.
 
 ## Open Questions
 

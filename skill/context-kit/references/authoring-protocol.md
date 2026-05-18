@@ -8,12 +8,39 @@ ContextKit documents must support two readers at once:
 ## Workflow
 
 1. Classify the document as `spec`, `plan`, `decision`, or `agent-context`.
-2. Start from the matching template.
-3. Fill frontmatter before body prose.
-4. Preserve required headings.
-5. Put normative behavior in explicit sections, lists, and tables.
-6. Put unknowns under `Open Questions`.
-7. Run the validator before considering the document ready.
+2. Read `templates/base-template.mdx` to understand the shared shape.
+3. Start from the matching type-specific template.
+4. Fill frontmatter before body prose.
+5. Preserve required headings.
+6. Put normative behavior in explicit sections, lists, and tables.
+7. Put unknowns under `Open Questions`.
+8. Run the validator before considering the document ready.
+
+## Base Structure
+
+Every ContextKit document extends the base template. The base structure borrows
+the useful discipline of Superpowers plans: visible goal, architecture, owned
+surfaces, evidence, validation, and review checks. ContextKit keeps that shape
+plain-Markdown friendly so the document remains useful outside Starlight.
+
+Required base headings:
+
+- `Human Summary`
+- `Agent Summary`
+- `Source Of Truth`
+- `Goal`
+- `Architecture`
+- `Scope`
+- `Non-Goals`
+- `File Or Surface Map`
+- `Evidence`
+- `Validation`
+- `Agent Instructions`
+- `Review Checklist`
+- `Open Questions`
+
+Type-specific templates add their own contract, sequencing, rationale, or
+working-rule sections on top of this base.
 
 ## Document Types
 
@@ -46,4 +73,3 @@ connected to source-of-truth docs.
   artifact, or validation evidence.
 - Keep commands copy-pasteable.
 - Use `TBD` only when genuinely unresolved, and list it under `Open Questions`.
-

@@ -25,6 +25,9 @@ supersedes: Path or URL to older page
 reviewCadence: When this page should be reviewed
 ```
 
+`docType: base` is reserved for `templates/base-template.mdx`. Do not use it
+for project documents.
+
 ## Status Semantics
 
 - `draft`: not yet accepted
@@ -32,4 +35,3 @@ reviewCadence: When this page should be reviewed
 - `approved`: accepted plan or decision
 - `canonical`: source of truth
 - `superseded`: preserved for history, no longer active guidance
-

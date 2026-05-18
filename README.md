@@ -45,6 +45,11 @@ The installed skill lives at:
 ~/.codex/skills/context-kit/
 ```
 
+ContextKit templates share a base structure inspired by Superpowers plan
+discipline: goal, architecture, owned surfaces, evidence, validation, and review
+checks stay explicit before each document type adds its own contract or
+execution sections.
+
 ## Validate
 
 Validate the templates, examples, and Starlight build:
@@ -64,7 +69,8 @@ node skill/context-kit/scripts/validate-context-kit-doc.js path/to/doc.mdx
 ```text
 context-kit/
   skill/context-kit/       # installable Codex skill
-  examples/rail/           # sample ContextKit documents
+  skill/context-kit/templates/base-template.mdx
+  examples/                # sample ContextKit documents
   scripts/install.sh       # local skill installer
   scripts/setup-starlight.sh # required Starlight workspace setup
   scripts/validate.sh

@@ -16,7 +16,8 @@ rendering layer, but the source contract is the Markdown or MDX structure.
    - `plan`: implementation, migration, launch, or cleanup plan
    - `decision`: ADR-style decision record
    - `agent-context`: entry context for AI coding agents
-2. Copy the matching file from `templates/`.
+2. Read `templates/base-template.mdx` for the shared ContextKit shape, then
+   copy the matching document-type file from `templates/`.
 3. Fill required frontmatter and preserve required headings.
 4. Keep product meaning in headings, lists, tables, and frontmatter. Do not make
    custom visual components the only source of truth.
@@ -29,8 +30,9 @@ node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc
 ## Required Authoring Rules
 
 - Start with `Human Summary` and `Agent Summary`.
-- Include `Source Of Truth`, `Scope`, `Non-Goals`, `Validation`, and
-  `Agent Instructions` unless the template says otherwise.
+- Include the base structure: `Source Of Truth`, `Goal`, `Architecture`,
+  `Scope`, `Non-Goals`, `File Or Surface Map`, `Evidence`, `Validation`,
+  `Agent Instructions`, `Review Checklist`, and `Open Questions`.
 - Mark unknowns as `TBD` and list them under `Open Questions`.
 - If a spec changes user workflow, include the skill, API, or docs surfaces
   that must stay aligned.
@@ -41,6 +43,7 @@ node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc
 
 ## Templates
 
+- `templates/base-template.mdx`
 - `templates/spec.mdx`
 - `templates/plan.mdx`
 - `templates/decision.mdx`

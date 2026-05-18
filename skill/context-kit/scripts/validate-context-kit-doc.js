@@ -15,63 +15,51 @@ const REQUIRED_FIELDS = [
   "lastUpdated",
 ];
 
+const BASE_HEADINGS = [
+  "Human Summary",
+  "Agent Summary",
+  "Source Of Truth",
+  "Goal",
+  "Architecture",
+  "Scope",
+  "Non-Goals",
+  "File Or Surface Map",
+  "Evidence",
+  "Validation",
+  "Agent Instructions",
+  "Review Checklist",
+  "Open Questions",
+];
+
 const REQUIRED_HEADINGS = {
+  base: BASE_HEADINGS,
   spec: [
-    "Human Summary",
-    "Agent Summary",
-    "Source Of Truth",
+    ...BASE_HEADINGS,
     "Problem",
-    "Scope",
-    "Non-Goals",
     "Vocabulary",
     "Contract",
     "Interfaces",
-    "Validation",
-    "Agent Instructions",
-    "Open Questions",
   ],
   plan: [
-    "Human Summary",
-    "Agent Summary",
-    "Source Of Truth",
-    "Goal",
-    "Scope",
-    "Non-Goals",
+    ...BASE_HEADINGS,
     "Current State",
     "Target State",
     "Implementation Slices",
     "Execution Order",
     "Risks",
-    "Validation",
-    "Agent Instructions",
-    "Open Questions",
   ],
   decision: [
-    "Human Summary",
-    "Agent Summary",
-    "Source Of Truth",
+    ...BASE_HEADINGS,
     "Context",
     "Decision",
     "Options Considered",
-    "Scope",
-    "Non-Goals",
     "Consequences",
-    "Validation",
-    "Agent Instructions",
-    "Open Questions",
   ],
   "agent-context": [
-    "Human Summary",
-    "Agent Summary",
-    "Source Of Truth",
+    ...BASE_HEADINGS,
     "When To Use",
     "Required Reading",
-    "Scope",
-    "Non-Goals",
     "Working Rules",
-    "Validation",
-    "Agent Instructions",
-    "Open Questions",
   ],
 };
 
@@ -168,6 +156,11 @@ function validateFile(filePath) {
   if (!docType || !REQUIRED_HEADINGS[docType]) {
     errors.push(`invalid docType: ${docType || "<missing>"}`);
     return errors;
+  }
+
+  const normalizedPath = filePath.split(path.sep).join("/");
+  if (docType === "base" && !normalizedPath.endsWith("/templates/base-template.mdx")) {
+    errors.push("docType base is reserved for templates/base-template.mdx");
   }
 
   const headings = bodyHeadings(text);

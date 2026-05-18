@@ -46,6 +46,12 @@ Rail's existing `docs/SPEC.md`, `docs/ARCHITECTURE.md`, and
 Make Rail specs and plans easier for humans to scan while keeping them
 structured enough for AI coding agents to follow.
 
+## Architecture
+
+Adoption starts with examples that mirror existing Rail authority instead of
+rewriting that authority. The ContextKit validator checks structure, while
+Starlight renders the same MDX for local browsing.
+
 ## Scope
 
 ### In
@@ -63,6 +69,14 @@ structured enough for AI coding agents to follow.
 
 - Do not make Starlight rendering the source of truth.
 - Do not change Rail's product contract as part of template adoption.
+
+## File Or Surface Map
+
+| Surface | Role | Owner |
+| --- | --- | --- |
+| `skill/context-kit/templates/` | Source templates for new documents | context-kit |
+| `examples/` | Renderable examples copied into Starlight | context-kit |
+| `starlight/src/content/docs/` | Local documentation view | context-kit |
 
 ## Current State
 
@@ -96,6 +110,11 @@ Starlight-compatible MDX where useful.
 | Docs become visual but less precise | Keep meaning in headings, tables, and frontmatter |
 | Agents treat examples as product truth | Label examples clearly |
 
+## Evidence
+
+- ContextKit templates and examples are validated by `./scripts/validate.sh`.
+- `scripts/setup-starlight.sh` copies example docs into the Starlight workspace.
+
 ## Validation
 
 <Tabs>
@@ -120,6 +139,12 @@ node skill/context-kit/scripts/validate-context-kit-doc.js examples
 - Treat this as an adoption plan shape, not a Rail migration command.
 - Keep active Rail specs authoritative over ContextKit examples.
 - Do not edit Rail runtime code while adopting docs templates.
+
+## Review Checklist
+
+- The plan distinguishes examples from active Rail authority.
+- Each implementation slice has a visible surface and done condition.
+- Focused and full validation commands are both present.
 
 ## Open Questions
 
