@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Example Runtime Contract · ContextKit</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="/">ContextKit</a>
+        <nav aria-label="Document collections"><a class="nav-link" href="/specs/">Specs</a><a class="nav-link" href="/plans/">Plans</a><a class="nav-link" href="/decisions/">Decisions</a><a class="nav-link" href="/agent-context/">Agent Context</a></nav>
+      </aside>
+      <main><article class="document task-first">
+    <header class="document-header">
+      <div class="kicker">Specs · task-first</div>
+      <h1>Example Runtime Contract</h1>
+      <p class="description">Example fixed-format ContextKit spec.</p>
+      <div class="meta">
+        <span class="badge">Status: draft</span>
+        <span class="badge">Owner: context-kit</span>
+        <span class="badge">Updated: 2026-05-19</span>
+      </div>
+    </header>
+    <section class="grid">
+      <div class="panel"><h3>Human Summary</h3><p>A person reads this single spec as a styled web page with stable sections.</p></div>
+      <div class="panel"><h3>Agent Summary</h3><p>An AI coding agent reads this JSON artifact directly and follows exact fields.</p></div>
+    </section>
+<h2>Source Of Truth</h2><ul class="list"><li><code>content/specs/example-runtime.spec.json</code></li></ul>
+<h2>Goal</h2><p>Show the required shape for one ContextKit spec document.</p>
+<h2>Architecture</h2><p>Structured JSON stores the document contract; the fixed ContextKit page derives indexes and renders a selected style template.</p><ul class="list"><li>Author one JSON file</li><li>Validate the artifact</li><li>Render one web page</li></ul>
+<h2>Scope</h2><div class="grid"><div class="panel"><h3>In</h3><ul class="list"><li>Single spec fields</li><li>Validation commands</li><li>Agent instructions</li></ul></div><div class="panel"><h3>Out</h3><ul class="list"><li>Markdown authoring</li><li>MDX component authoring</li><li>Collection data inside one document</li></ul></div></div>
+<h2>Problem</h2><p>Free-form documents drift in structure and visual treatment.</p>
+<h2>Contracts</h2><div class="stack"><section class="panel"><h3>Single document source</h3><ul class="list"><li>Specs are JSON source files.</li><li>Pages render with the shared ContextKit layout.</li></ul></section></div>
+<h2>File Or Surface Map</h2><table class="table"><thead><tr><th>Path</th><th>Role</th><th>Owner</th></tr></thead><tbody><tr><td><code>content/specs/*.spec.json</code></td><td>Spec source artifact</td><td>context-kit</td></tr></tbody></table>
+<h2>Validation</h2><table class="table"><thead><tr><th>Command</th><th>Purpose</th></tr></thead><tbody><tr><td><code class="command">node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content</code></td><td>Generated docs content validates.</td></tr></tbody></table>
+<h2>Agent Instructions</h2><ul class="list"><li>Read this JSON before changing the related implementation.</li></ul>
+<h2>Review Checklist</h2><ul class="list"><li>The document describes exactly one spec.</li><li>Validation commands are current.</li></ul>
+<h2>Open Questions</h2><p>No open questions.</p></article></main>
+    </div>
+  </body>
+</html>

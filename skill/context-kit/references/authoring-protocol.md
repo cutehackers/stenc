@@ -13,14 +13,20 @@ JSON. There is no Markdown source and no MDX component layer.
 1. Classify the single document as `spec`, `plan`, `decision`, or
    `agent-context`.
 2. Start from the matching JSON template in `templates/`.
-3. Fill top-level metadata: `schemaVersion`, `docType`, `id`, `slug`,
+3. Set the fixed layout template:
+   - Add `page.styleTemplate` with one of:
+     - `task-first`
+     - `operator-console`
+     - `evidence-led`
+   - For this repository, always pick one of these three for `spec` and `plan`.
+4. Fill top-level metadata: `schemaVersion`, `docType`, `id`, `slug`,
    `status`, `title`, `description`, `owner`, `createdAt`, and `updatedAt`.
-4. Fill `links`, `page`, and the type-specific `body`.
-5. Keep normative behavior in explicit arrays and objects, not prose-only
+5. Fill `links`, `page`, and the type-specific `body`.
+6. Keep normative behavior in explicit arrays and objects, not prose-only
    paragraphs.
-6. Put unknowns in `openQuestions`.
-7. Run the validator before considering the document ready.
-8. Run the docs app build when changing page rendering or generated app files.
+7. Put unknowns in `openQuestions`.
+8. Run the validator before considering the document ready.
+9. Run the docs app build when changing page rendering or generated app files.
 
 ## Common Structure
 

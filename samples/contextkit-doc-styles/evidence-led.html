@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evidence-led Contract Sample</title>
+    <link rel="stylesheet" href="./styles.css?v=method-badge-1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html">ContextKit</a>
+      <nav aria-label="Sample pages">
+        <a href="./task-first.html">Task-first Guide</a>
+        <a href="./operator-console.html">Operator Console</a>
+        <a aria-current="page" href="./evidence-led.html">Evidence-led Contract</a>
+      </nav>
+    </header>
+
+    <main class="evidence-page">
+      <aside class="outline" aria-label="Page outline">
+        <p class="eyebrow">Style 3</p>
+        <h2>Evidence-led Contract</h2>
+        <nav>
+          <a href="#summary">Summary</a>
+          <a href="#plan-header">Header</a>
+          <a href="#contract">Summaries</a>
+          <a href="#scope">Scope</a>
+          <a href="#tasks">Tasks</a>
+          <a href="#reference">Reference</a>
+          <a href="#decision">Decision</a>
+          <a href="#surfaces">Surfaces</a>
+          <a href="#agent">Agent rules</a>
+          <a href="#questions">Questions</a>
+        </nav>
+      </aside>
+
+      <article class="contract-body">
+        <header id="summary" class="contract-header">
+          <p class="eyebrow">Recommended default</p>
+          <h1>ContextKit Authoring Contract</h1>
+          <p class="lead">
+            ContextKit documents are readable web pages backed by one structured
+            JSON source. The page makes human summary, source of truth, file
+            surfaces, validation, and agent instructions equally visible while
+            keeping the Superpowers section order intact.
+          </p>
+          <div class="badge-row">
+            <span>Status: Draft</span>
+            <span>Owner: ContextKit</span>
+            <span>Updated: 2026-05-19</span>
+          </div>
+        </header>
+
+        <section id="plan-header" class="content-block contextkit-header">
+          <h2>Superpowers template header</h2>
+          <div class="agent-banner">
+            <strong>For agentic workers</strong>
+            <p>
+              Use this document as the source of truth before implementation.
+              Follow tasks in order and prove each change with validation.
+            </p>
+          </div>
+          <dl>
+            <div><dt>Goal</dt><dd>Define a fixed ContextKit document style based on Superpowers specs and plans.</dd></div>
+            <div><dt>Architecture</dt><dd>Render one structured JSON document into stable sections: summary, goal, architecture, scope, tasks, surfaces, validation, handoff.</dd></div>
+            <div><dt>Tech Stack</dt><dd>ContextKit JSON, generated static HTML, plain CSS, Node validation scripts.</dd></div>
+          </dl>
+        </section>
+
+        <section id="contract" class="content-block">
+          <h2>Human and agent summaries</h2>
+          <div class="split">
+            <div>
+              <h3>Human summary</h3>
+              <p>Use this page to decide whether a document is safe to read, review, and execute.</p>
+            </div>
+            <div>
+              <h3>Agent summary</h3>
+              <p>Preserve the JSON source contract and update templates, examples, validator, and renderer together.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="scope" class="content-block">
+          <h2>Scope</h2>
+          <div class="scope-grid">
+            <div>
+              <h3>In</h3>
+              <ul>
+                <li>Superpowers-style document header.</li>
+                <li>Stable task, validation, and handoff sections.</li>
+                <li>API-style reference components only where useful.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Out</h3>
+              <ul>
+                <li>Markdown or MDX as source documents.</li>
+                <li>Per-document visual components.</li>
+                <li>Renderer behavior that depends on a docs framework.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="tasks" class="content-block">
+          <h2>Implementation tasks</h2>
+          <div class="task-slice-grid">
+            <article>
+              <span class="pill ok">task 1</span>
+              <h3>Align the JSON contract</h3>
+              <p>Keep required fields identical across templates, references, examples, and validator.</p>
+              <ul class="task-list compact">
+                <li><span></span> Update templates.</li>
+                <li><span></span> Update examples.</li>
+                <li><span></span> Run validation.</li>
+              </ul>
+            </article>
+            <article>
+              <span class="pill">task 2</span>
+              <h3>Render fixed sections</h3>
+              <p>Render sections in the same order on desktop and mobile.</p>
+              <ul class="task-list compact">
+                <li><span></span> Render header and scope.</li>
+                <li><span></span> Render tasks and validation.</li>
+                <li><span></span> Verify responsive order.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="reference" class="content-block api-reference">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">API-inspired component</p>
+              <h2>Document reference</h2>
+            </div>
+            <span class="version-pill">schema v1</span>
+          </div>
+          <div class="endpoint-card">
+            <div class="endpoint-line">
+              <span class="method get">GET</span>
+              <code>/context-kit/{collection}/{slug}</code>
+            </div>
+            <p>
+              This does not turn ContextKit into an API reference. It borrows
+              the useful API-doc pattern of putting operation, inputs, outputs,
+              and errors in stable positions.
+            </p>
+          </div>
+          <div class="api-grid">
+            <div>
+              <h3>Parameters</h3>
+              <table class="param-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>collection</code></td><td>string</td><td>Yes</td><td>Document family such as specs or plans.</td></tr>
+                  <tr><td><code>slug</code></td><td>string</td><td>Yes</td><td>Stable document route identifier.</td></tr>
+                  <tr><td><code>source</code></td><td>path</td><td>Yes</td><td>JSON file that owns the contract.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h3>Example output</h3>
+              <pre><code>{
+  "status": "valid",
+  "route": "/specs/example-runtime/",
+  "sourceOfTruth": ["content/specs/example-runtime.json"]
+}</code></pre>
+            </div>
+          </div>
+          <div class="callout-row">
+            <div class="mini-callout">
+              <span>Permission</span>
+              <strong>local repository access</strong>
+            </div>
+            <div class="mini-callout">
+              <span>Error shape</span>
+              <strong>field, reason, fix</strong>
+            </div>
+          </div>
+        </section>
+
+        <section id="decision" class="content-block">
+          <h2>Decision record</h2>
+          <div class="decision-summary">
+            <div>
+              <span class="pill ok">accepted</span>
+              <h3>Use a fixed renderer</h3>
+              <p>
+                Authors provide structured JSON. The generated page decides the
+                visual structure so every document is predictable.
+              </p>
+            </div>
+            <div>
+              <span class="pill warn">constraint</span>
+              <h3>Keep install light</h3>
+              <p>
+                The renderer must not depend on a docs framework, MDX, frontmatter, or
+                per-document visual components.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="surfaces" class="content-block">
+          <h2>File or surface map</h2>
+          <table>
+            <thead><tr><th>Path</th><th>Role</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td><code>links.sourceOfTruth</code></td><td>Canonical inputs</td><td>Document</td></tr>
+              <tr><td><code>body.validation</code></td><td>Proof commands</td><td>Document</td></tr>
+              <tr><td><code>body.agentInstructions</code></td><td>Execution guardrails</td><td>Document</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="agent" class="content-block">
+          <h2>Agent instructions</h2>
+          <ul class="check-list">
+            <li>Do not introduce Markdown, MDX, or per-document components as document sources.</li>
+            <li>Keep required field changes synchronized across templates and validation.</li>
+            <li>Run the full validation command before claiming the page contract is safe.</li>
+          </ul>
+        </section>
+
+        <section class="content-block">
+          <h2>Term map</h2>
+          <dl class="term-grid">
+            <div>
+              <dt>Source of truth</dt>
+              <dd>The file or field that owns contract meaning.</dd>
+            </div>
+            <div>
+              <dt>Validation</dt>
+              <dd>The command that proves a document and renderer still agree.</dd>
+            </div>
+            <div>
+              <dt>Agent instruction</dt>
+              <dd>A rule the coding agent must follow before changing code.</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section id="questions" class="content-block">
+          <h2>Open questions</h2>
+          <div class="empty-state">
+            <strong>No open questions</strong>
+            <p>
+              If a requirement is unresolved, list it here instead of burying it
+              in prose. Agents should stop and resolve these before execution.
+            </p>
+          </div>
+        </section>
+      </article>
+
+      <aside class="proof-rail" aria-label="Verification evidence">
+        <h2>Verification</h2>
+        <div class="proof-card">
+          <span>Source of truth</span>
+          <code>content/specs/*.json</code>
+        </div>
+        <div class="proof-card">
+          <span>Required command</span>
+          <code>./scripts/validate.sh</code>
+        </div>
+        <div class="proof-card">
+          <span>Install principle</span>
+          <strong>No docs framework dependency</strong>
+        </div>
+        <div class="proof-card">
+          <span>Review checklist</span>
+          <ul class="mini-list">
+            <li>Fields named exactly</li>
+            <li>Commands copyable</li>
+            <li>Open questions visible</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

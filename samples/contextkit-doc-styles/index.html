@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ContextKit Documentation Style Samples</title>
+    <link rel="stylesheet" href="./styles.css?v=method-badge-1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html">ContextKit</a>
+      <nav aria-label="Sample pages">
+        <a href="./task-first.html">Task-first Guide</a>
+        <a href="./operator-console.html">Operator Console</a>
+        <a href="./evidence-led.html">Evidence-led Contract</a>
+      </nav>
+    </header>
+
+    <main class="home">
+      <section class="hero">
+        <p class="eyebrow">Zero dependency style study</p>
+        <h1>Three documentation page structures for ContextKit</h1>
+        <p>
+          These samples avoid framework-specific patterns and use plain HTML and
+          CSS. The goal is to choose a fixed ContextKit document style that is
+          easy to install, easy to scan, and still precise enough for agents.
+          The section model follows Superpowers-style specs and plans.
+        </p>
+      </section>
+
+      <section class="recommendation">
+        <div>
+          <h2>Recommendation</h2>
+          <p>
+            Use <strong>Evidence-led Contract</strong> as the default ContextKit
+            document page. It keeps the Superpowers-style sequence of goal,
+            architecture, scope, tasks, validation, and agent handoff visible as
+            first-class content.
+          </p>
+        </div>
+        <a class="button" href="./evidence-led.html">Open recommended sample</a>
+      </section>
+
+      <section class="sample-grid" aria-label="Three recommended structures">
+        <article class="sample-card">
+          <p class="eyebrow">Style 1</p>
+          <h2>Task-first Guide</h2>
+          <p>
+            A calm two-column documentation page inspired by government service
+            pages: short line length, clear headings, and a compact fact rail.
+          </p>
+          <dl>
+            <div><dt>Best for</dt><dd>First-time readers</dd></div>
+            <div><dt>Tradeoff</dt><dd>Less dense for repeated review</dd></div>
+          </dl>
+          <a href="./task-first.html">Open sample</a>
+        </article>
+
+        <article class="sample-card">
+          <p class="eyebrow">Style 2</p>
+          <h2>Operator Console</h2>
+          <p>
+            A dense maintainer view with status, surfaces, commands, and risk
+            tables arranged for quick operational checks.
+          </p>
+          <dl>
+            <div><dt>Best for</dt><dd>Owners and maintainers</dd></div>
+            <div><dt>Tradeoff</dt><dd>Can feel too busy for new users</dd></div>
+          </dl>
+          <a href="./operator-console.html">Open sample</a>
+        </article>
+
+        <article class="sample-card recommended">
+          <p class="eyebrow">Style 3</p>
+          <h2>Evidence-led Contract</h2>
+          <p>
+            A balanced page with a sticky outline, readable main content, and a
+            verification rail for source paths, commands, and agent guardrails.
+          </p>
+          <dl>
+            <div><dt>Best for</dt><dd>ContextKit default</dd></div>
+            <div><dt>Tradeoff</dt><dd>Requires disciplined section order</dd></div>
+          </dl>
+          <a href="./evidence-led.html">Open sample</a>
+        </article>
+      </section>
+
+      <section class="sources">
+        <h2>Reference principles used</h2>
+        <ul>
+          <li>Small-screen-first layouts and constrained line length.</li>
+          <li>Consistent type scale and vertical rhythm.</li>
+          <li>Grid structure for repeatable dense information layouts.</li>
+          <li>Accessibility and readable typography over visual novelty.</li>
+        </ul>
+      </section>
+
+      <section class="component-inventory" aria-label="Component patterns">
+        <h2>Component patterns added to the samples</h2>
+        <div class="inventory-grid">
+          <article>
+            <h3>Human reading aids</h3>
+            <p>Callouts, scope boxes, key terms, examples, and review checklists.</p>
+          </article>
+          <article>
+            <h3>Agent execution aids</h3>
+            <p>Plan headers, task checkboxes, source paths, validation commands, and handoff blocks.</p>
+          </article>
+          <article>
+            <h3>Shared evidence</h3>
+            <p>Decision records, surface maps, risk tables, and open question lists.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

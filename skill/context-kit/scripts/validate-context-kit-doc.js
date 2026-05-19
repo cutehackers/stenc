@@ -4,6 +4,11 @@ const fs = require("fs");
 const path = require("path");
 
 const VALID_TYPES = new Set(["spec", "plan", "decision", "agent-context"]);
+const VALID_STYLE_TEMPLATES = new Set([
+  "task-first",
+  "operator-console",
+  "evidence-led",
+]);
 const VALID_STATUSES = new Set([
   "draft",
   "proposed",
@@ -186,6 +191,15 @@ function validatePage(doc, errors) {
   }
   requireString(doc.page, "humanSummary", errors, "page.");
   requireString(doc.page, "agentSummary", errors, "page.");
+  requireString(doc.page, "styleTemplate", errors, "page.");
+  if (
+    isNonEmptyString(doc.page.styleTemplate) &&
+    !VALID_STYLE_TEMPLATES.has(doc.page.styleTemplate)
+  ) {
+    errors.push(
+      "page.styleTemplate must be one of: task-first, operator-console, evidence-led",
+    );
+  }
 }
 
 function validateScope(scope, errors, prefix = "body.scope.") {

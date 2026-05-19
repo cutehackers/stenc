@@ -14,8 +14,8 @@ documents.
 - Keep authoring rules under `skill/context-kit/references/`.
 - Keep scripts deterministic and dependency-light.
 - Target project setup is part of installation. The current documents must be
-  viewable through the generated ContextKit Astro workspace after install.
-- Do not make Astro rendering the source of truth. Each document source is one
+  viewable through the generated ContextKit static workspace after install.
+- Do not make rendering the source of truth. Each document source is one
   structured JSON file with top-level metadata fields plus `links`, `page`, and
   `body` sections.
 - Do not reintroduce Markdown, MDX, frontmatter, or per-document visual
@@ -35,5 +35,5 @@ When checking the generated examples app directly, run:
 
 ```bash
 ./scripts/setup-examples-app.sh
-cd starlight && npm run build
+./scripts/open-docs.sh --docs-dir examples-app
 ```

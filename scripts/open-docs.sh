@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
 DOCS_DIR="docs/context-kit"
 PORT=""
 DRY_RUN=0
 
+if [[ -f "${SCRIPT_DIR}/${DOCS_DIR}/index.html" ]]; then
+  PROJECT_ROOT="${SCRIPT_DIR}"
+fi
+
 usage() {
   cat <<'EOF'
-Usage: ./scripts/open-docs.sh [options]
+Usage: ./open-docs.sh [options]
 
-Open a ContextKit docs app and stop it with Enter.
+Open a target project's ContextKit static docs and stop it with Enter.
 
 Options:
   --project-root <path>  Target repository root. Defaults to the current directory.
@@ -75,15 +80,15 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   exit 0
 fi
 
-if [[ ! -f "${DOCS_PATH}/package.json" ]]; then
-  echo "ContextKit docs app not found: ${DOCS_PATH}" >&2
+if [[ ! -f "${DOCS_PATH}/index.html" ]]; then
+  echo "ContextKit static docs not found: ${DOCS_PATH}" >&2
   echo "Run setup first, for example:" >&2
-  echo "  ./scripts/install.sh --project-root ${PROJECT_ROOT} --docs-dir ${DOCS_DIR}" >&2
+  echo "  context-kit install --docs-dir ${DOCS_DIR}" >&2
   exit 1
 fi
 
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm is required to open the ContextKit docs app." >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required to open the ContextKit static docs." >&2
   exit 1
 fi
 
@@ -120,7 +125,7 @@ LOG_FILE="${TMPDIR:-/tmp}/context-kit-open-docs-${PORT}.log"
 
 (
   cd "${DOCS_PATH}"
-  npm run dev -- --host 127.0.0.1 --port "${PORT}" >"${LOG_FILE}" 2>&1
+  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=process.cwd();const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let file=path.join(root,decodeURIComponent(url.pathname));if(!file.startsWith(root)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "${PORT}" >"${LOG_FILE}" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -135,7 +140,7 @@ trap cleanup EXIT INT TERM
 
 for _ in $(seq 1 80); do
   if ! kill -0 "${SERVER_PID}" >/dev/null 2>&1; then
-    echo "ContextKit docs server failed to start. Log: ${LOG_FILE}" >&2
+    echo "ContextKit static server failed to start. Log: ${LOG_FILE}" >&2
     exit 1
   fi
   if curl -fsS "${URL}" >/dev/null 2>&1; then
@@ -145,7 +150,7 @@ for _ in $(seq 1 80); do
 done
 
 if ! curl -fsS "${URL}" >/dev/null 2>&1; then
-  echo "ContextKit docs server did not become ready. Log: ${LOG_FILE}" >&2
+  echo "ContextKit static server did not become ready. Log: ${LOG_FILE}" >&2
   exit 1
 fi
 

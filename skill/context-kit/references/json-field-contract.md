@@ -24,7 +24,8 @@ All document types use the same top-level shape:
   },
   "page": {
     "humanSummary": "Short page-scanning summary",
-    "agentSummary": "Short agent-action summary"
+    "agentSummary": "Short agent-action summary",
+    "styleTemplate": "task-first | operator-console | evidence-led"
   },
   "body": {}
 }

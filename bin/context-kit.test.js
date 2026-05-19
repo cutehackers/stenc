@@ -7,25 +7,23 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
-const REPO_ROOT = path.resolve(__dirname, "..");
-const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
+const CLI_PATH = path.join(__dirname, "context-kit.js");
 
-test("install can prepare the target project's ContextKit docs app once", () => {
+test("install defaults to the current target project", () => {
   const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-install-project-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-cli-project-"));
 
   const result = spawnSync(
-    "bash",
+    process.execPath,
     [
-      INSTALL_SCRIPT,
-      "--project-root",
-      projectRoot,
+      CLI_PATH,
+      "install",
       "--title",
-      "Rail Docs",
+      "Target Docs",
       "--skip-project-install",
     ],
     {
-      cwd: REPO_ROOT,
+      cwd: projectRoot,
       encoding: "utf8",
       env: { ...process.env, CODEX_SKILLS_DIR: skillsRoot },
     },
@@ -36,34 +34,34 @@ test("install can prepare the target project's ContextKit docs app once", () => 
     fs.existsSync(path.join(skillsRoot, "context-kit", "SKILL.md")),
     true,
   );
-  assert.equal(
-    fs.existsSync(
-      path.join(
-        projectRoot,
-        "docs",
-        "context-kit",
-        "content",
-        "specs",
-        "example-runtime.spec.json",
-      ),
+
+  const siteJson = JSON.parse(
+    fs.readFileSync(
+      path.join(projectRoot, "docs", "context-kit", "content", "site.json"),
+      "utf8",
     ),
-    true,
   );
+  assert.equal(siteJson.title, "Target Docs");
 });
 
-test("install can prepare a target project with default project install", () => {
+test("install still accepts an explicit project root", () => {
   const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-install-default-"));
+  const commandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-command-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-explicit-project-"));
 
   const result = spawnSync(
-    "bash",
+    process.execPath,
     [
-      INSTALL_SCRIPT,
+      CLI_PATH,
+      "install",
       "--project-root",
       projectRoot,
+      "--docs-dir",
+      "docs/ck",
+      "--skip-project-install",
     ],
     {
-      cwd: REPO_ROOT,
+      cwd: commandRoot,
       encoding: "utf8",
       env: { ...process.env, CODEX_SKILLS_DIR: skillsRoot },
     },
@@ -71,9 +69,7 @@ test("install can prepare a target project with default project install", () => 
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(
-    fs.existsSync(
-      path.join(projectRoot, "docs", "context-kit", "index.html"),
-    ),
+    fs.existsSync(path.join(projectRoot, "docs", "ck", "content", "site.json")),
     true,
   );
 });

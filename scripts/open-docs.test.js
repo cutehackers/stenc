@@ -14,7 +14,7 @@ test("open-docs defaults to the current project and docs/context-kit", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-open-docs-"));
   const docsRoot = path.join(projectRoot, "docs", "context-kit");
   fs.mkdirSync(docsRoot, { recursive: true });
-  fs.writeFileSync(path.join(docsRoot, "package.json"), "{}\n");
+  fs.writeFileSync(path.join(docsRoot, "index.html"), "<!doctype html>\n");
 
   const result = spawnSync("bash", [SCRIPT_PATH, "--dry-run"], {
     cwd: projectRoot,
@@ -24,4 +24,23 @@ test("open-docs defaults to the current project and docs/context-kit", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.includes(`projectRoot=${fs.realpathSync(projectRoot)}`), true);
   assert.equal(result.stdout.includes(`docsPath=${fs.realpathSync(docsRoot)}`), true);
+});
+
+test("open-docs can run from a target project root script path", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-open-docs-script-"));
+  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+  const projectScript = path.join(projectRoot, "open-docs.sh");
+  fs.mkdirSync(docsRoot, { recursive: true });
+  fs.writeFileSync(path.join(docsRoot, "index.html"), "<!doctype html>\n");
+  fs.copyFileSync(SCRIPT_PATH, projectScript);
+  fs.chmodSync(projectScript, 0o755);
+
+  const result = spawnSync("bash", [projectScript, "--dry-run"], {
+    cwd: os.tmpdir(),
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.stdout.includes(`projectRoot=${path.resolve(projectRoot)}`), true);
+  assert.equal(result.stdout.includes(`docsPath=${path.resolve(docsRoot)}`), true);
 });

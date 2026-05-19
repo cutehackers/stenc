@@ -3,20 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "description": "Installable Codex skill for agent-readable spec, plan, decision, and context documents.",
+  "bin": {
+    "context-kit": "./bin/context-kit.js"
+  },
   "scripts": {
     "setup:examples": "./scripts/setup-examples-app.sh",
     "setup:project": "./scripts/setup-project.sh",
-    "setup:starlight": "./scripts/setup-starlight.sh",
     "open:docs": "./scripts/open-docs.sh",
     "validate": "./scripts/validate.sh",
     "test": "./scripts/validate.sh"
   },
-  "dependencies": {
-    "astro": "^6.3.3"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.3"
-  },
+  "dependencies": {},
+  "devDependencies": {},
   "engines": {
     "node": ">=20"
   }

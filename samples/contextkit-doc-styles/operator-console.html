@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator Console Sample</title>
+    <link rel="stylesheet" href="./styles.css?v=method-badge-1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html">ContextKit</a>
+      <nav aria-label="Sample pages">
+        <a href="./task-first.html">Task-first Guide</a>
+        <a aria-current="page" href="./operator-console.html">Operator Console</a>
+        <a href="./evidence-led.html">Evidence-led Contract</a>
+      </nav>
+    </header>
+
+    <main class="console-page">
+      <section class="console-hero">
+        <div>
+          <p class="eyebrow">Style 2 / Operator Console</p>
+          <h1>Install Flow Verification</h1>
+          <p>
+            A Superpowers-plan view for owners who need status, files, task
+            slices, risks, and commands in one screen before shipping a docs
+            installer change.
+          </p>
+        </div>
+        <div class="status-stack" aria-label="Document status">
+          <span>Active</span>
+          <span>4 slices</span>
+          <span>2 risks</span>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Quick status">
+        <div><span>Source files</span><strong>7</strong></div>
+        <div><span>Generated routes</span><strong>8</strong></div>
+        <div><span>Required commands</span><strong>3</strong></div>
+        <div><span>Open questions</span><strong>0</strong></div>
+      </section>
+
+      <section class="api-strip" aria-label="API reference summary">
+        <div class="endpoint-line">
+          <span class="method get">GET</span>
+          <code>/docs/{collection}/{slug}</code>
+        </div>
+        <div><span>Version</span><strong>schema v1</strong></div>
+        <div><span>Access</span><strong>local docs app</strong></div>
+        <div><span>Output</span><strong>fixed HTML</strong></div>
+      </section>
+
+      <section class="console-grid">
+        <article class="panel full">
+          <h2>Plan header</h2>
+          <div class="plan-header-grid">
+            <div><span>Goal</span><p>Ship a fixed ContextKit documentation style without framework dependency.</p></div>
+            <div><span>Architecture</span><p>Generate predictable pages from JSON source sections.</p></div>
+            <div><span>Tech Stack</span><p>Plain HTML/CSS sample, ContextKit JSON contract, validation scripts.</p></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Execution order</h2>
+          <ol class="timeline">
+            <li><strong>01</strong><span>Validate JSON source contracts.</span></li>
+            <li><strong>02</strong><span>Generate the static docs workspace.</span></li>
+            <li><strong>03</strong><span>Build and inspect rendered routes.</span></li>
+            <li><strong>04</strong><span>Publish only after examples match templates.</span></li>
+          </ol>
+        </article>
+
+        <article class="panel">
+          <h2>Surface map</h2>
+          <table>
+            <thead><tr><th>Path</th><th>Role</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td><code>templates/spec.json</code></td><td>Source shape</td><td>Skill</td></tr>
+              <tr><td><code>setup-project.js</code></td><td>Generated app</td><td>Installer</td></tr>
+              <tr><td><code>validate-context-kit-doc.js</code></td><td>Schema guardrail</td><td>Scripts</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="panel">
+          <h2>Decision status</h2>
+          <div class="decision-list">
+            <div>
+              <span class="pill ok">accepted</span>
+              <p>Document source remains structured JSON.</p>
+            </div>
+            <div>
+              <span class="pill">pending</span>
+              <p>Final visual density for default renderer.</p>
+            </div>
+            <div>
+              <span class="pill warn">watch</span>
+              <p>Any new dependency in the install path.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Validation commands</h2>
+          <pre><code>./scripts/validate.sh</code></pre>
+          <pre><code>node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content</code></pre>
+        </article>
+
+        <article class="panel">
+          <h2>Response contract</h2>
+          <div class="response-card">
+            <div><span>200</span><p>Document is valid and route can render.</p></div>
+            <div><span>422</span><p>Document shape does not match its collection contract.</p></div>
+            <div><span>500</span><p>Generated renderer and source contract are out of sync.</p></div>
+          </div>
+        </article>
+
+        <article class="panel full">
+          <h2>Task slices</h2>
+          <div class="task-slice-grid">
+            <article>
+              <span class="pill ok">task 1</span>
+              <h3>Lock source contract</h3>
+              <p>Confirm templates, references, examples, and validator name the same required fields.</p>
+              <ul class="task-list compact">
+                <li><span></span> Read JSON field contract.</li>
+                <li><span></span> Update examples with exact fields.</li>
+              </ul>
+            </article>
+            <article>
+              <span class="pill">task 2</span>
+              <h3>Render fixed sections</h3>
+              <p>Render Superpowers-style sections in the same order for every document type.</p>
+              <ul class="task-list compact">
+                <li><span></span> Implement section layout.</li>
+                <li><span></span> Verify mobile order.</li>
+              </ul>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Risks</h2>
+          <table class="compact-table">
+            <tbody>
+              <tr><th>Drift</th><td>Renderer diverges from validator.</td></tr>
+              <tr><th>Install</th><td>Flow adds avoidable dependencies.</td></tr>
+              <tr><th>Review</th><td>Agent instructions are hidden in prose.</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="panel full">
+          <h2>Agent execution packet</h2>
+          <div class="packet-grid">
+            <div><span>Read first</span><code>skill/context-kit/SKILL.md</code></div>
+            <div><span>Change with</span><code>templates/*</code> and <code>validator</code></div>
+            <div><span>Do not add</span><code>mdx</code>, <code>frontmatter</code>, or per-doc UI</div>
+            <div><span>Proof</span><code>./scripts/validate.sh</code></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

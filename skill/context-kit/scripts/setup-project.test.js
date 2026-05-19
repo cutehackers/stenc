@@ -29,11 +29,9 @@ test("prepares a fixed ContextKit web app backed by JSON documents", () => {
 
   const docsRoot = path.join(projectRoot, "docs", "context-kit");
   const packageJson = JSON.parse(
-    fs.readFileSync(path.join(docsRoot, "package.json"), "utf8"),
+    fs.readFileSync(path.join(docsRoot, "content", "site.json"), "utf8"),
   );
-  assert.equal(packageJson.dependencies.astro, "^6.3.3");
-  assert.equal(packageJson.devDependencies.typescript, "^5.9.3");
-  assert.equal(packageJson.dependencies["@astrojs/starlight"], undefined);
+  assert.equal(packageJson.title, "Rail: Docs");
 
   const siteJson = JSON.parse(
     fs.readFileSync(path.join(docsRoot, "content", "site.json"), "utf8"),
@@ -53,19 +51,41 @@ test("prepares a fixed ContextKit web app backed by JSON documents", () => {
   assert.equal(Array.isArray(spec.body.contracts), true);
   assert.equal(Array.isArray(spec.links.sourceOfTruth), true);
   assert.equal(typeof spec.page.humanSummary, "string");
+  assert.equal(spec.page.styleTemplate, "task-first");
 
   assert.equal(
-    fs.existsSync(path.join(docsRoot, "src", "pages", "specs", "[slug].astro")),
+    fs.existsSync(path.join(docsRoot, "index.html")),
     true,
   );
   assert.equal(
-    fs.existsSync(path.join(docsRoot, "src", "layouts", "ContextKitLayout.astro")),
+    fs.existsSync(path.join(docsRoot, "specs", "example-runtime", "index.html")),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(projectRoot, "open-docs.sh")),
+    true,
+  );
+
+  const openDocsResult = spawnSync(
+    "bash",
+    [path.join(projectRoot, "open-docs.sh"), "--dry-run"],
+    {
+      cwd: os.tmpdir(),
+      encoding: "utf8",
+    },
+  );
+  assert.equal(openDocsResult.status, 0, openDocsResult.stderr || openDocsResult.stdout);
+  assert.equal(
+    openDocsResult.stdout.includes(`projectRoot=${path.resolve(projectRoot)}`),
+    true,
+  );
+  assert.equal(
+    openDocsResult.stdout.includes(`docsPath=${path.resolve(docsRoot)}`),
     true,
   );
 
   const gitignore = fs.readFileSync(path.join(docsRoot, ".gitignore"), "utf8");
-  assert.match(gitignore, /node_modules/);
-  assert.match(gitignore, /dist/);
+  assert.match(gitignore, /generated static pages/);
 });
 
 test("uses Docs as the default site title", () => {
@@ -86,6 +106,25 @@ test("uses Docs as the default site title", () => {
     ),
   );
   assert.equal(siteJson.title, "Docs");
+});
+
+test("can skip writing the target project open-docs script", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-no-open-"));
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(fs.existsSync(path.join(projectRoot, "open-docs.sh")), false);
 });
 
 test("replaces the old generated example spec shape during setup", () => {
@@ -132,6 +171,7 @@ test("replaces the old generated example spec shape during setup", () => {
   assert.equal(spec.schemaVersion, 1);
   assert.equal(spec.id, "spec:example-runtime");
   assert.equal(typeof spec.page.humanSummary, "string");
+  assert.equal(spec.page.styleTemplate, "task-first");
   assert.equal(Array.isArray(spec.body.contracts), true);
   assert.equal(spec.lastUpdated, undefined);
 });

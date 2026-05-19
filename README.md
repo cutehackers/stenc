@@ -4,15 +4,38 @@ ContextKit is an installable Codex skill for creating fixed-format spec, plan,
 decision, and agent-context pages.
 
 ContextKit no longer uses Markdown or MDX as the document source. Each document
-is structured JSON. Humans read the generated Astro web app, while AI coding
+is structured JSON. Humans read the generated fixed web pages, while AI coding
 agents read the same JSON files directly.
 
 ## Install
 
-Use the single installer script for all setup flows:
+From the target project root, run one command:
 
-Install the skill into the default Codex skills directory and prepare the local
-ContextKit examples app:
+```bash
+npx /path/to/context-kit install --title "Project Docs"
+```
+
+This installs the ContextKit Codex skill into `~/.codex/skills/context-kit` and
+creates the target project's `docs/context-kit` app. If `--title` is omitted,
+the generated app uses `Docs`.
+
+For repeat local use, link this repository once:
+
+```bash
+cd /path/to/context-kit
+npm link
+```
+
+Then any target project can be prepared from its own root:
+
+```bash
+cd /path/to/target-repo
+context-kit install --title "Project Docs"
+```
+
+Advanced flows can still call the installer script directly. Install only the
+skill into the default Codex skills directory and prepare the local ContextKit
+examples app:
 
 ```bash
 ./scripts/install.sh
@@ -33,21 +56,19 @@ Install the skill and prepare a target project's ContextKit docs app in one pass
   --title "Project Docs"
 ```
 
-If `--title` is omitted, the generated app uses `Docs`.
-
-For any refresh of local or target docs setup, rerun `./scripts/install.sh` with
-the desired options:
+For any refresh of local or target docs setup, rerun the same install command
+with the desired options.
 
 Then open the docs app:
 
 ```bash
 cd /path/to/project
-/path/to/context-kit/scripts/open-docs.sh
+./open-docs.sh
 ```
 
-`open-docs.sh` defaults to the current directory as the project root and
-`docs/context-kit` as the docs app path. It starts the local Astro server, opens
-the browser, and stops the server when you press Enter.
+The generated `open-docs.sh` lives in the target project root and opens that
+project's `docs/context-kit` app. It starts the local docs server, opens the
+browser, and stops the server when you press Enter.
 
 ## Document Model
 
@@ -89,7 +110,8 @@ Each JSON file is one document:
   },
   "page": {
     "humanSummary": "What a person should understand first.",
-    "agentSummary": "What an AI coding agent must preserve."
+    "agentSummary": "What an AI coding agent must preserve.",
+    "styleTemplate": "task-first"
   },
   "body": {}
 }
@@ -140,10 +162,21 @@ context-kit/
   scripts/setup-examples-app.sh # local examples app setup
   scripts/setup-project.sh    # target project docs app setup
   scripts/validate.sh
-  starlight/                  # local fixed web examples app
+  examples-app/               # local fixed web examples app
 ```
 
 ## Design Rule
 
 Keep the contract in JSON fields. The fixed web app may improve visual scanning,
 but it must render from the same structured data that AI coding agents read.
+
+### Fixed Page Style Profiles
+
+Use one of these 3 document render styles for all planned documentation work:
+
+- `task-first`
+- `operator-console`
+- `evidence-led`
+
+Choose one in `page.styleTemplate` when creating each `spec` or `plan`
+document.

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task-first Guide Sample</title>
+    <link rel="stylesheet" href="./styles.css?v=method-badge-1" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html">ContextKit</a>
+      <nav aria-label="Sample pages">
+        <a aria-current="page" href="./task-first.html">Task-first Guide</a>
+        <a href="./operator-console.html">Operator Console</a>
+        <a href="./evidence-led.html">Evidence-led Contract</a>
+      </nav>
+    </header>
+
+    <main class="document guide-layout">
+      <article class="guide-main">
+        <p class="eyebrow">Style 1 / Task-first Guide</p>
+        <h1>Provider Batch Contract</h1>
+        <p class="lead">
+          This document explains how one provider request can carry multiple
+          independent parse jobs while the parser still owns message semantics,
+          schema validation, and review decisions.
+        </p>
+
+        <section class="contextkit-header">
+          <h2>Superpowers spec header</h2>
+          <dl>
+            <div><dt>Goal</dt><dd>Define the provider batch behavior without creating a second parser contract.</dd></div>
+            <div><dt>Architecture</dt><dd>One generated page renders structured JSON sections in a fixed order.</dd></div>
+            <div><dt>Tech Stack</dt><dd>ContextKit JSON, dependency-light renderer, repository validation scripts.</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Use this structure when</h2>
+          <div class="notice">
+            <strong>Reading path</strong>
+            <p>
+              Start with the summary, confirm the scope, then read the contract
+              rules. This page favors explanation over density.
+            </p>
+          </div>
+          <p>
+            The reader is learning the system for the first time or needs a
+            reliable explanation before touching code. The page should feel
+            like a service manual: direct, linear, and hard to misread.
+          </p>
+        </section>
+
+        <section>
+          <h2>Scope</h2>
+          <div class="scope-grid">
+            <div>
+              <h3>In</h3>
+              <ul>
+                <li>Batch request envelope and item correlation.</li>
+                <li>Provider failure recording.</li>
+                <li>Human review handoff fields.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Out</h3>
+              <ul>
+                <li>Provider pricing decisions.</li>
+                <li>Prompt tuning experiments.</li>
+                <li>UI styling outside generated docs.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Architecture flow</h2>
+          <ol class="timeline">
+            <li><strong>01</strong><span>Read source JSON metadata and links.</span></li>
+            <li><strong>02</strong><span>Render human and agent summaries first.</span></li>
+            <li><strong>03</strong><span>Render scope, contracts, surfaces, validation, and handoff.</span></li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Contract rules</h2>
+          <ol class="check-list">
+            <li>Every request item keeps a stable correlation key.</li>
+            <li>Provider failures are recorded without discarding valid siblings.</li>
+            <li>Human review sees the exact source message and parse result.</li>
+            <li>Generated operation rows never hide review-only parser output.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>Example record</h2>
+          <div class="record-card">
+            <dl>
+              <div><dt>messageId</dt><dd><code>spaces/AAA/messages/BBB</code></dd></div>
+              <div><dt>itemIndex</dt><dd><code>3</code></dd></div>
+              <div><dt>providerAttemptId</dt><dd><code>attempt-20260519-001</code></dd></div>
+              <div><dt>reviewState</dt><dd><span class="pill warn">needs review</span></dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section>
+          <h2>API-style reference</h2>
+          <div class="endpoint-card">
+            <div class="endpoint-line">
+              <span class="method post">POST</span>
+              <code>/context-kit/documents/validate</code>
+            </div>
+            <p>
+              Use this compact reference when the contract needs an operation,
+              accepted fields, or output shape to be understood without reading
+              implementation code.
+            </p>
+            <table class="param-table">
+              <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>docType</code></td><td>Yes</td><td>Collection type such as spec or plan.</td></tr>
+                <tr><td><code>sourcePath</code></td><td>Yes</td><td>JSON document file to validate.</td></tr>
+                <tr><td><code>strict</code></td><td>No</td><td>Fail on deprecated field names.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2>Validation</h2>
+          <p>
+            Run the repository validator before changing templates, generated
+            examples, or renderer behavior.
+          </p>
+          <pre><code>./scripts/validate.sh</code></pre>
+        </section>
+
+        <section>
+          <h2>Review checklist</h2>
+          <ul class="task-list">
+            <li><span></span> Can a human identify the source message?</li>
+            <li><span></span> Can an agent find the exact validation command?</li>
+            <li><span></span> Is every required field named explicitly?</li>
+          </ul>
+        </section>
+      </article>
+
+      <aside class="fact-rail" aria-label="Document facts">
+        <h2>Document facts</h2>
+        <dl>
+          <div><dt>Status</dt><dd>Draft</dd></div>
+          <div><dt>Owner</dt><dd>ContextKit</dd></div>
+          <div><dt>Updated</dt><dd>2026-05-19</dd></div>
+          <div><dt>Source</dt><dd><code>content/specs/provider-batch.json</code></dd></div>
+        </dl>
+        <div class="agent-note">
+          <h3>Agent handoff</h3>
+          <p>
+            Preserve field names exactly. If behavior changes, update fixtures,
+            validator, and rendered examples in the same change.
+          </p>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

@@ -15,7 +15,8 @@
   },
   "page": {
     "humanSummary": "TBD",
-    "agentSummary": "TBD"
+    "agentSummary": "TBD",
+    "styleTemplate": "operator-console"
   },
   "body": {
     "goal": "TBD",

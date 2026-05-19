@@ -34,6 +34,7 @@ function validSingleSpec() {
     page: {
       humanSummary: "Humans read the rendered web page.",
       agentSummary: "Agents read this JSON artifact directly.",
+      styleTemplate: "task-first",
     },
     body: {
       goal: "Define one spec in one JSON document.",
@@ -61,8 +62,8 @@ function validSingleSpec() {
       ],
       validation: [
         {
-          command: "npm run build",
-          purpose: "Generated app builds.",
+          command: "node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content",
+          purpose: "Generated content validates.",
         },
       ],
       agentInstructions: ["Read the JSON artifact before editing related code."],
@@ -91,6 +92,7 @@ function validSinglePlan() {
     page: {
       humanSummary: "Humans read the rendered plan page.",
       agentSummary: "Agents follow the execution slices in this JSON artifact.",
+      styleTemplate: "operator-console",
     },
     body: {
       goal: "Implement the runner runtime spec.",
@@ -186,6 +188,30 @@ test("rejects markdown and mdx files as document sources", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /unsupported document source file: legacy\.mdx/);
   assert.match(result.stderr, /unsupported document source file: legacy\.md/);
+});
+
+test("rejects documents without a fixed page style template", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-style-missing-"));
+  const spec = validSingleSpec();
+  delete spec.page.styleTemplate;
+  writeJson(path.join(dir, "runner.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /page\.styleTemplate must be a non-empty string/);
+});
+
+test("rejects unknown fixed page style templates", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-style-invalid-"));
+  const spec = validSingleSpec();
+  spec.page.styleTemplate = "custom";
+  writeJson(path.join(dir, "runner.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /page\.styleTemplate must be one of/);
 });
 
 test("rejects documents whose collection path does not match docType", () => {

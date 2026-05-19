@@ -21,7 +21,7 @@ Options:
   --docs-dir <path>           Docs app path inside --project-root. Defaults to
                               docs/context-kit.
   --title <text>              Target docs app title. Defaults to "Docs".
-  --skip-project-install      Write target app files without npm install.
+  --skip-project-install      Deprecated compatibility flag.
 EOF
       exit 0
       ;;
@@ -41,7 +41,7 @@ EOF
       fi
       shift 2
       ;;
-    --docs-source|--starlight-dir)
+    --docs-source)
       echo "$1 was removed; use --docs-dir for the ContextKit web app" >&2
       exit 2
       ;;
@@ -91,7 +91,9 @@ if [[ -n "${PROJECT_ROOT}" ]]; then
   if [[ -n "${SITE_TITLE}" ]]; then
     SETUP_ARGS+=("--title" "${SITE_TITLE}")
   fi
-  SETUP_ARGS+=("${PROJECT_INSTALL_ARGS[@]}")
+  if [[ "${#PROJECT_INSTALL_ARGS[@]}" -gt 0 ]]; then
+    SETUP_ARGS+=("${PROJECT_INSTALL_ARGS[@]}")
+  fi
 
   node "${TARGET_DIR}/scripts/setup-project.js" "${SETUP_ARGS[@]}"
 fi

@@ -8,9 +8,9 @@ description: Create fixed-format ContextKit spec, plan, decision, and agent-cont
 ContextKit is an authoring protocol for documents that humans can scan in a
 fixed web interface and AI coding agents can follow without guessing.
 
-The source contract is structured JSON. The generated Astro app renders that
-JSON as consistent web pages. Do not author ContextKit documents as Markdown or
-MDX.
+The source contract is structured JSON. The generated fixed web interface
+renders that JSON as consistent pages. Do not author ContextKit documents as
+Markdown or MDX.
 
 ## Quick Start
 
@@ -19,12 +19,16 @@ MDX.
    - `plan`: implementation, migration, launch, or cleanup plan
    - `decision`: ADR-style decision record
    - `agent-context`: entry context for AI coding agents
-2. Copy the matching JSON file from `templates/`.
-3. Create one JSON file for one document. Do not include collection data or
+2. Pick one fixed page style in `page.styleTemplate`:
+   - `task-first`
+   - `operator-console`
+   - `evidence-led`
+3. Copy the matching JSON file from `templates/`.
+4. Create one JSON file for one document. Do not include collection data or
    other documents inside it.
-4. Fill `links`, `page`, and the type-specific `body`. Keep arrays and object
+5. Fill `links`, `page`, and the type-specific `body`. Keep arrays and object
    shapes intact.
-5. Validate the document:
+6. Validate the document:
 
 ```bash
 node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc.json
@@ -33,16 +37,28 @@ node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc
 ## Target Project Setup
 
 When installing ContextKit for a repository that should render ContextKit docs,
-prepare the target repository in the same one-time install:
+run the installer from the target project root:
+
+```bash
+cd /absolute/path/to/project
+npx /path/to/context-kit install --title "Project Docs"
+```
+
+This installs the Codex skill and creates `docs/context-kit` in one pass. If
+`--title` is omitted, the generated app uses `Docs`.
+
+For repeat local use, link the ContextKit repository once:
 
 ```bash
 cd /path/to/context-kit
-./scripts/install.sh \
-  --project-root /absolute/path/to/project \
-  --docs-dir docs/context-kit
+npm link
 ```
 
-If `--title` is omitted, the generated app uses `Docs`.
+Then run this from any target project:
+
+```bash
+context-kit install --title "Project Docs"
+```
 
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:
@@ -57,7 +73,7 @@ The generated app lives at `<project>/docs/context-kit` by default. From the
 target project root, run:
 
 ```bash
-/path/to/context-kit/scripts/open-docs.sh
+./open-docs.sh
 ```
 
 ## Required Authoring Rules

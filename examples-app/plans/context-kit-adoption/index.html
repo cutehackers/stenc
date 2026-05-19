@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rail ContextKit Adoption Plan · ContextKit</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="/">ContextKit</a>
+        <nav aria-label="Document collections"><a class="nav-link" href="/specs/">Specs</a><a class="nav-link" href="/plans/">Plans</a><a class="nav-link" href="/decisions/">Decisions</a><a class="nav-link" href="/agent-context/">Agent Context</a></nav>
+      </aside>
+      <main><article class="document operator-console">
+    <header class="document-header">
+      <div class="kicker">Plans · operator-console</div>
+      <h1>Rail ContextKit Adoption Plan</h1>
+      <p class="description">Example single-document ContextKit plan for adopting ContextKit in Rail docs.</p>
+      <div class="meta">
+        <span class="badge">Status: draft</span>
+        <span class="badge">Owner: rail-docs</span>
+        <span class="badge">Updated: 2026-05-19</span>
+      </div>
+    </header>
+    <section class="grid">
+      <div class="panel"><h3>Human Summary</h3><p>Adopt ContextKit by converting a small set of canonical Rail docs first, then expand only after the template works for real runtime contracts.</p></div>
+      <div class="panel"><h3>Agent Summary</h3><p>Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy and add ContextKit validation before broad migration.</p></div>
+    </section>
+<h2>Source Of Truth</h2><ul class="list"><li><code>docs/SPEC.md</code></li><li><code>docs/ARCHITECTURE.md</code></li><li><code>docs/CONVENTIONS.md</code></li></ul>
+<h2>Related Spec</h2><p><code>spec:artifact-identity</code></p>
+<h2>Goal</h2><p>Make Rail specs and plans easier for humans to scan while keeping them structured enough for AI coding agents to follow.</p>
+<h2>Scope</h2><div class="grid"><div class="panel"><h3>In</h3><ul class="list"><li>One canonical spec example</li><li>One implementation plan example</li><li>Thin AGENTS.md linkage if adopted in Rail</li></ul></div><div class="panel"><h3>Out</h3><ul class="list"><li>Full docs migration</li><li>Runtime behavior changes</li></ul></div></div>
+<h2>Current State</h2><p>Rail docs are plain Markdown with strong contracts but limited visual scanning support.</p>
+<h2>Target State</h2><p>Rail docs use one JSON file per spec or plan and a fixed web page for human reading.</p>
+<h2>Implementation Slices</h2><div class="stack"><section class="panel"><div class="meta"><span class="badge">slice-1</span><span class="badge">todo</span></div><h3>ContextKit templates</h3><h4>Surfaces</h4><ul class="list"><li><code>skill/context-kit/templates/*.json</code></li></ul><h4>Steps</h4><ul class="list"><li>Convert each template to metadata, links, page, and body sections.</li><li>Run the ContextKit validator.</li></ul><h4>Done When</h4><ul class="list"><li>Templates validate as single-document JSON artifacts.</li></ul></section><section class="panel"><div class="meta"><span class="badge">slice-2</span><span class="badge">todo</span></div><h3>Web app renderer</h3><h4>Surfaces</h4><ul class="list"><li><code>docs/context-kit/src/</code></li></ul><h4>Steps</h4><ul class="list"><li>Render spec and plan pages from nested body fields.</li><li>Build the generated docs app.</li></ul><h4>Done When</h4><ul class="list"><li>Spec and plan pages build from JSON.</li></ul></section></div>
+<h2>Execution Order</h2><ul class="list"><li>slice-1</li><li>slice-2</li></ul>
+<h2>Risks</h2><table class="table"><thead><tr><th>Risk</th><th>Mitigation</th></tr></thead><tbody><tr><td>JSON becomes verbose for humans to author.</td><td>Keep each document scoped to one artifact and optimize rendering, not source looseness.</td></tr></tbody></table>
+<h2>Validation</h2><table class="table"><thead><tr><th>Command</th><th>Purpose</th></tr></thead><tbody><tr><td><code class="command">node skill/context-kit/scripts/validate-context-kit-doc.js examples</code></td><td>Example document contract validation</td></tr><tr><td><code class="command">./scripts/validate.sh</code></td><td>Full ContextKit validation</td></tr></tbody></table>
+<h2>Agent Instructions</h2><ul class="list"><li>Treat this as an adoption plan shape, not a Rail migration command.</li><li>Do not edit Rail runtime code while adopting docs templates.</li></ul>
+<h2>Open Questions</h2><p>No open questions.</p></article></main>
+    </div>
+  </body>
+</html>
