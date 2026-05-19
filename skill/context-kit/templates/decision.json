@@ -1,0 +1,42 @@
+{
+  "slug": "tbd-decision",
+  "docType": "decision",
+  "status": "proposed",
+  "title": "TBD",
+  "description": "TBD",
+  "owner": "TBD",
+  "relatedSpec": "TBD",
+  "lastUpdated": "YYYY-MM-DD",
+  "humanSummary": "TBD",
+  "agentSummary": "TBD",
+  "sourceOfTruth": ["TBD"],
+  "goal": "TBD",
+  "architecture": "TBD",
+  "scope": {
+    "in": ["TBD"],
+    "out": ["TBD"]
+  },
+  "nonGoals": ["TBD"],
+  "surfaces": [
+    {
+      "surface": "TBD",
+      "role": "TBD",
+      "owner": "TBD"
+    }
+  ],
+  "context": "TBD",
+  "decision": "TBD",
+  "optionsConsidered": [
+    {
+      "option": "TBD",
+      "pros": ["TBD"],
+      "cons": ["TBD"]
+    }
+  ],
+  "consequences": ["TBD"],
+  "evidence": ["TBD"],
+  "validationCommands": ["TBD"],
+  "agentInstructions": ["Treat this as rationale, not the implementation contract."],
+  "reviewChecklist": ["The chosen option and rejected options are distinguishable."],
+  "openQuestions": ["TBD"]
+}

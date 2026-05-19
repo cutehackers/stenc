@@ -4,178 +4,173 @@ const fs = require("fs");
 const path = require("path");
 
 const REQUIRED_FIELDS = [
-  "title",
-  "description",
+  "slug",
   "docType",
   "status",
+  "title",
+  "description",
   "owner",
-  "appliesTo",
-  "agentEntryPoints",
-  "validationCommands",
   "lastUpdated",
+  "humanSummary",
+  "agentSummary",
+  "sourceOfTruth",
+  "goal",
+  "architecture",
+  "scope",
+  "nonGoals",
+  "surfaces",
+  "evidence",
+  "validationCommands",
+  "agentInstructions",
+  "reviewChecklist",
+  "openQuestions",
 ];
 
-const BASE_HEADINGS = [
-  "Human Summary",
-  "Agent Summary",
-  "Source Of Truth",
-  "Goal",
-  "Architecture",
-  "Scope",
-  "Non-Goals",
-  "File Or Surface Map",
-  "Evidence",
-  "Validation",
-  "Agent Instructions",
-  "Review Checklist",
-  "Open Questions",
-];
-
-const REQUIRED_HEADINGS = {
-  base: BASE_HEADINGS,
-  spec: [
-    ...BASE_HEADINGS,
-    "Problem",
-    "Vocabulary",
-    "Contract",
-    "Interfaces",
-  ],
+const TYPE_FIELDS = {
+  spec: ["problem", "vocabulary", "contract", "interfaces", "invariants"],
   plan: [
-    ...BASE_HEADINGS,
-    "Current State",
-    "Target State",
-    "Implementation Slices",
-    "Execution Order",
-    "Risks",
+    "relatedSpec",
+    "currentState",
+    "targetState",
+    "implementationSlices",
+    "executionOrder",
+    "risks",
   ],
-  decision: [
-    ...BASE_HEADINGS,
-    "Context",
-    "Decision",
-    "Options Considered",
-    "Consequences",
-  ],
-  "agent-context": [
-    ...BASE_HEADINGS,
-    "When To Use",
-    "Required Reading",
-    "Working Rules",
-  ],
+  decision: ["relatedSpec", "context", "decision", "optionsConsidered", "consequences"],
+  "agent-context": ["whenToUse", "requiredReading", "workingRules"],
 };
 
-const STARLIGHT_COMPONENT_IMPORT =
-  /import\s+\{([^}]+)\}\s+from\s+['"]@astrojs\/starlight\/components['"]/g;
-
-const ALLOWED_STARLIGHT_COMPONENTS = new Set([
-  "Aside",
-  "Badge",
-  "Card",
-  "CardGrid",
-  "Code",
-  "FileTree",
-  "Icon",
-  "LinkButton",
-  "LinkCard",
-  "Steps",
-  "TabItem",
-  "Tabs",
-]);
+const VALID_TYPES = new Set(Object.keys(TYPE_FIELDS));
+const VALID_STATUSES = new Set(["draft", "proposed", "approved", "canonical", "superseded"]);
 
 function listFiles(inputPath) {
   const stat = fs.statSync(inputPath);
-  if (stat.isFile()) return [inputPath];
+  if (stat.isFile()) return /\.json$/.test(inputPath) ? [inputPath] : [];
   return fs.readdirSync(inputPath, { withFileTypes: true }).flatMap((entry) => {
     const child = path.join(inputPath, entry.name);
     if (entry.isDirectory()) return listFiles(child);
-    if (/\.(md|mdx)$/.test(entry.name)) return [child];
-    return [];
+    return /\.json$/.test(entry.name) ? [child] : [];
   });
 }
 
-function parseFrontmatter(text) {
-  const match = text.match(/^---\n([\s\S]*?)\n---\n/);
-  if (!match) return null;
-  return match[1];
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (error) {
+    return { __parseError: error.message };
+  }
 }
 
-function hasFrontmatterField(frontmatter, field) {
-  return new RegExp(`^${field}:`, "m").test(frontmatter);
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
-function frontmatterValue(frontmatter, field) {
-  const match = frontmatter.match(new RegExp(`^${field}:\\s*(.+)$`, "m"));
-  return match ? match[1].trim().replace(/^["']|["']$/g, "") : null;
+function isStringArray(value) {
+  return Array.isArray(value) && value.every(isNonEmptyString);
 }
 
-function bodyHeadings(text) {
-  return new Set(
-    text
-      .split("\n")
-      .map((line) => line.match(/^##\s+(.+?)\s*$/))
-      .filter(Boolean)
-      .map((match) => match[1].trim()),
-  );
-}
+function validateCommonShape(doc, errors) {
+  for (const field of REQUIRED_FIELDS) {
+    if (!(field in doc)) errors.push(`missing field: ${field}`);
+  }
 
-function validateStarlightComponentImports(text) {
-  const errors = [];
-  for (const match of text.matchAll(STARLIGHT_COMPONENT_IMPORT)) {
-    const names = match[1]
-      .split(",")
-      .map((name) => name.trim().replace(/\s+as\s+.+$/, ""))
-      .filter(Boolean);
+  if (!VALID_TYPES.has(doc.docType)) errors.push(`invalid docType: ${doc.docType}`);
+  if (!VALID_STATUSES.has(doc.status)) errors.push(`invalid status: ${doc.status}`);
+  for (const field of [
+    "slug",
+    "title",
+    "description",
+    "owner",
+    "lastUpdated",
+    "humanSummary",
+    "agentSummary",
+    "goal",
+    "architecture",
+  ]) {
+    if (field in doc && !isNonEmptyString(doc[field])) {
+      errors.push(`field must be a non-empty string: ${field}`);
+    }
+  }
 
-    for (const name of names) {
-      if (!ALLOWED_STARLIGHT_COMPONENTS.has(name)) {
-        errors.push(`unsupported Starlight component import: ${name}`);
+  for (const field of [
+    "sourceOfTruth",
+    "nonGoals",
+    "evidence",
+    "validationCommands",
+    "agentInstructions",
+    "reviewChecklist",
+    "openQuestions",
+  ]) {
+    if (field in doc && !isStringArray(doc[field])) {
+      errors.push(`field must be an array of strings: ${field}`);
+    }
+  }
+
+  if (doc.scope) {
+    if (!isStringArray(doc.scope.in)) errors.push("scope.in must be an array of strings");
+    if (!isStringArray(doc.scope.out)) errors.push("scope.out must be an array of strings");
+  }
+
+  if (doc.surfaces) {
+    if (!Array.isArray(doc.surfaces)) {
+      errors.push("surfaces must be an array");
+    } else {
+      for (const [index, surface] of doc.surfaces.entries()) {
+        for (const field of ["surface", "role", "owner"]) {
+          if (!isNonEmptyString(surface[field])) {
+            errors.push(`surfaces[${index}].${field} must be a non-empty string`);
+          }
+        }
       }
     }
   }
-  return errors;
+}
+
+function validateTypeShape(doc, errors) {
+  if (!VALID_TYPES.has(doc.docType)) return;
+  for (const field of TYPE_FIELDS[doc.docType]) {
+    if (!(field in doc)) errors.push(`missing ${doc.docType} field: ${field}`);
+  }
+
+  if (doc.docType === "spec") {
+    if (!isStringArray(doc.contract)) errors.push("contract must be an array of strings");
+    if (!isStringArray(doc.invariants)) errors.push("invariants must be an array of strings");
+    if (!Array.isArray(doc.vocabulary)) errors.push("vocabulary must be an array");
+  }
+
+  if (doc.docType === "plan") {
+    if (!Array.isArray(doc.implementationSlices)) {
+      errors.push("implementationSlices must be an array");
+    }
+    if (!isStringArray(doc.executionOrder)) errors.push("executionOrder must be an array of strings");
+    if (!Array.isArray(doc.risks)) errors.push("risks must be an array");
+  }
+
+  if (doc.docType === "decision") {
+    if (!Array.isArray(doc.optionsConsidered)) errors.push("optionsConsidered must be an array");
+    if (!isStringArray(doc.consequences)) errors.push("consequences must be an array of strings");
+  }
+
+  if (doc.docType === "agent-context") {
+    if (!isStringArray(doc.whenToUse)) errors.push("whenToUse must be an array of strings");
+    if (!isStringArray(doc.requiredReading)) errors.push("requiredReading must be an array of strings");
+    if (!isStringArray(doc.workingRules)) errors.push("workingRules must be an array of strings");
+  }
 }
 
 function validateFile(filePath) {
-  const text = fs.readFileSync(filePath, "utf8");
   const errors = [];
-  const frontmatter = parseFrontmatter(text);
-
-  errors.push(...validateStarlightComponentImports(text));
-
-  if (!frontmatter) {
-    errors.push("missing YAML frontmatter");
-    return errors;
-  }
-
-  for (const field of REQUIRED_FIELDS) {
-    if (!hasFrontmatterField(frontmatter, field)) {
-      errors.push(`missing frontmatter field: ${field}`);
-    }
-  }
-
-  const docType = frontmatterValue(frontmatter, "docType");
-  if (!docType || !REQUIRED_HEADINGS[docType]) {
-    errors.push(`invalid docType: ${docType || "<missing>"}`);
-    return errors;
-  }
-
-  const normalizedPath = filePath.split(path.sep).join("/");
-  if (docType === "base" && !normalizedPath.endsWith("/templates/base-template.mdx")) {
-    errors.push("docType base is reserved for templates/base-template.mdx");
-  }
-
-  const headings = bodyHeadings(text);
-  for (const heading of REQUIRED_HEADINGS[docType]) {
-    if (!headings.has(heading)) {
-      errors.push(`missing required heading: ${heading}`);
-    }
-  }
-
+  const doc = readJson(filePath);
+  if (doc.__parseError) return [`invalid JSON: ${doc.__parseError}`];
+  if (path.basename(filePath) === "site.json") return [];
+  validateCommonShape(doc, errors);
+  validateTypeShape(doc, errors);
   return errors;
 }
 
 const targets = process.argv.slice(2);
 if (targets.length === 0) {
-  console.error("Usage: validate-context-kit-doc.js <file-or-directory> [...]");
+  console.error("Usage: validate-context-kit-doc.js <json-file-or-directory> [...]");
   process.exit(2);
 }
 

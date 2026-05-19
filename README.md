@@ -1,17 +1,16 @@
 # ContextKit
 
-ContextKit is an installable Codex skill for writing spec, plan, decision, and
-agent-context documents that are readable by humans and reliable for AI coding
-agents.
+ContextKit is an installable Codex skill for creating fixed-format spec, plan,
+decision, and agent-context pages.
 
-Astro Starlight is the required rendering layer for the local documentation
-view. ContextKit's primary authoring contract is still the source structure:
-frontmatter, headings, explicit scope, validation, and agent instructions.
+ContextKit no longer uses Markdown or MDX as the document source. Each document
+is structured JSON. Humans read the generated Astro web app, while AI coding
+agents read the same JSON files directly.
 
 ## Install
 
 Install the skill into the default Codex skills directory and prepare the local
-Astro Starlight docs workspace:
+ContextKit examples app:
 
 ```bash
 ./scripts/install.sh
@@ -23,11 +22,58 @@ Install from another location:
 CODEX_SKILLS_DIR=/absolute/path/to/skills ./scripts/install.sh
 ```
 
-Repair or refresh only the Starlight workspace:
+Install the skill and prepare a target project's ContextKit docs app in the
+same one-time setup:
 
 ```bash
-./scripts/setup-starlight.sh
+./scripts/install.sh \
+  --project-root /Users/junhyounglee/workspace/rail \
+  --docs-dir docs/context-kit \
+  --title "Rail Docs"
 ```
+
+Repair or refresh this repository's examples app:
+
+```bash
+./scripts/setup-examples-app.sh
+```
+
+Repair or refresh another repository's ContextKit docs app:
+
+```bash
+./scripts/setup-project.sh \
+  --project-root /Users/junhyounglee/workspace/rail \
+  --docs-dir docs/context-kit \
+  --title "Rail Docs"
+```
+
+Then run:
+
+```bash
+cd /Users/junhyounglee/workspace/rail/docs/context-kit
+npm run dev
+```
+
+## Document Model
+
+ContextKit documents live as JSON:
+
+```text
+docs/context-kit/
+  content/
+    specs/*.spec.json
+    plans/*.plan.json
+    decisions/*.decision.json
+    agent-context/*.json
+  src/
+    pages/
+    layouts/
+    components/
+```
+
+The JSON is the source of truth. The web app is the human-readable page. There
+is no Markdown projection, no MDX component import, and no separate rendered
+copy to keep in sync.
 
 ## Use
 
@@ -37,7 +83,7 @@ Ask Codex to use the `context-kit` skill when creating or updating:
 - implementation plans
 - decision records
 - agent-facing context docs
-- Astro Starlight documentation pages derived from those documents
+- fixed ContextKit web documentation pages derived from JSON
 
 The installed skill lives at:
 
@@ -45,40 +91,35 @@ The installed skill lives at:
 ~/.codex/skills/context-kit/
 ```
 
-ContextKit templates share a base structure inspired by Superpowers plan
-discipline: goal, architecture, owned surfaces, evidence, validation, and review
-checks stay explicit before each document type adds its own contract or
-execution sections.
-
 ## Validate
 
-Validate the templates, examples, and Starlight build:
+Validate the JSON templates, examples, and examples app build:
 
 ```bash
 ./scripts/validate.sh
 ```
 
-Validate any ContextKit document:
+Validate any ContextKit JSON document:
 
 ```bash
-node skill/context-kit/scripts/validate-context-kit-doc.js path/to/doc.mdx
+node skill/context-kit/scripts/validate-context-kit-doc.js path/to/doc.json
 ```
 
 ## Repository Layout
 
 ```text
 context-kit/
-  skill/context-kit/       # installable Codex skill
-  skill/context-kit/templates/base-template.mdx
-  examples/                # sample ContextKit documents
-  scripts/install.sh       # local skill installer
-  scripts/setup-starlight.sh # required Starlight workspace setup
+  skill/context-kit/          # installable Codex skill
+  skill/context-kit/templates # JSON templates
+  examples/                   # sample JSON documents
+  scripts/install.sh          # local skill installer
+  scripts/setup-examples-app.sh # local examples app setup
+  scripts/setup-project.sh    # target project docs app setup
   scripts/validate.sh
-  starlight/               # local docs workspace
+  starlight/                  # local fixed web examples app
 ```
 
 ## Design Rule
 
-Keep semantic meaning in Markdown structure. Starlight components may improve
-scanability, but they must not be the only place where a contract, decision,
-validation command, or agent instruction exists.
+Keep the contract in JSON fields. The fixed web app may improve visual scanning,
+but it must render from the same structured data that AI coding agents read.

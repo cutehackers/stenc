@@ -1,0 +1,93 @@
+---
+import { DOC_TYPE_LABELS, normalizeList } from '../lib/documents.js';
+const { doc, collection } = Astro.props;
+const typeLabel = DOC_TYPE_LABELS[collection] || doc.docType;
+const scope = doc.scope || {};
+const interfaces = doc.interfaces || {};
+---
+<article>
+  <header class="document-header">
+    <div class="kicker">{typeLabel}</div>
+    <h1>{doc.title}</h1>
+    <p class="description">{doc.description}</p>
+    <div class="meta">
+      <span class="badge">Status: {doc.status}</span>
+      <span class="badge">Owner: {doc.owner}</span>
+      <span class="badge">Updated: {doc.lastUpdated}</span>
+    </div>
+  </header>
+
+  <section class="grid">
+    <div class="panel">
+      <h3>Human Summary</h3>
+      <p>{doc.humanSummary}</p>
+    </div>
+    <div class="panel">
+      <h3>Agent Summary</h3>
+      <p>{doc.agentSummary}</p>
+    </div>
+  </section>
+
+  <h2>Source Of Truth</h2>
+  <ul class="list">{normalizeList(doc.sourceOfTruth).map((item) => <li><code>{item}</code></li>)}</ul>
+
+  <h2>Goal</h2>
+  <p>{doc.goal}</p>
+
+  <h2>Architecture</h2>
+  <p>{doc.architecture}</p>
+
+  <h2>Scope</h2>
+  <div class="grid">
+    <div class="panel">
+      <h3>In</h3>
+      <ul class="list">{normalizeList(scope.in).map((item) => <li>{item}</li>)}</ul>
+    </div>
+    <div class="panel">
+      <h3>Out</h3>
+      <ul class="list">{normalizeList(scope.out).map((item) => <li>{item}</li>)}</ul>
+    </div>
+  </div>
+
+  {doc.problem && <><h2>Problem</h2><p>{doc.problem}</p></>}
+  {doc.currentState && <><h2>Current State</h2><p>{doc.currentState}</p></>}
+  {doc.targetState && <><h2>Target State</h2><p>{doc.targetState}</p></>}
+  {doc.decision && <><h2>Decision</h2><p>{doc.decision}</p></>}
+
+  {normalizeList(doc.contract).length > 0 && (
+    <>
+      <h2>Contract</h2>
+      <ul class="list">{normalizeList(doc.contract).map((item) => <li>{item}</li>)}</ul>
+    </>
+  )}
+
+  {normalizeList(doc.surfaces).length > 0 && (
+    <>
+      <h2>File Or Surface Map</h2>
+      <table class="table">
+        <thead><tr><th>Surface</th><th>Role</th><th>Owner</th></tr></thead>
+        <tbody>{doc.surfaces.map((row) => <tr><td><code>{row.surface}</code></td><td>{row.role}</td><td>{row.owner}</td></tr>)}</tbody>
+      </table>
+    </>
+  )}
+
+  {normalizeList(doc.validationCommands).length > 0 && (
+    <>
+      <h2>Validation</h2>
+      {doc.validationCommands.map((command) => <code class="command">{command}</code>)}
+    </>
+  )}
+
+  <h2>Agent Instructions</h2>
+  <ul class="list">{normalizeList(doc.agentInstructions).map((item) => <li>{item}</li>)}</ul>
+
+  <h2>Review Checklist</h2>
+  <ul class="list">{normalizeList(doc.reviewChecklist).map((item) => <li>{item}</li>)}</ul>
+
+  <h2>Open Questions</h2>
+  {normalizeList(doc.openQuestions).length > 0 ? (
+    <ul class="list">{normalizeList(doc.openQuestions).map((item) => <li>{item}</li>)}</ul>
+  ) : (
+    <p>No open questions.</p>
+  )}
+</article>

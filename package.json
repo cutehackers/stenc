@@ -4,12 +4,13 @@
   "private": true,
   "description": "Installable Codex skill for agent-readable spec, plan, decision, and context documents.",
   "scripts": {
+    "setup:examples": "./scripts/setup-examples-app.sh",
+    "setup:project": "./scripts/setup-project.sh",
     "setup:starlight": "./scripts/setup-starlight.sh",
     "validate": "./scripts/validate.sh",
     "test": "./scripts/validate.sh"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.39.2",
     "astro": "^6.3.3"
   },
   "devDependencies": {

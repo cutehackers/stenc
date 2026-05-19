@@ -3,4 +3,4 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-"${REPO_ROOT}/scripts/setup-examples-app.sh"
+node "${REPO_ROOT}/skill/context-kit/scripts/setup-project.js" "$@"

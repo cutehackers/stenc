@@ -1,13 +1,16 @@
 ---
 name: context-kit
-description: Write agent-readable, human-friendly spec, plan, decision, and agent-context documents using ContextKit templates. Use when creating or updating specs, plans, ADRs, Starlight docs, or AI coding-agent guidance.
+description: Create fixed-format ContextKit spec, plan, decision, and agent-context web documents backed by structured JSON.
 ---
 
 # ContextKit
 
-ContextKit is an authoring protocol for documents that humans can scan and AI
-coding agents can follow without guessing. Astro Starlight is the recommended
-rendering layer, but the source contract is the Markdown or MDX structure.
+ContextKit is an authoring protocol for documents that humans can scan in a
+fixed web interface and AI coding agents can follow without guessing.
+
+The source contract is structured JSON. The generated Astro app renders that
+JSON as consistent web pages. Do not author ContextKit documents as Markdown or
+MDX.
 
 ## Quick Start
 
@@ -16,41 +19,63 @@ rendering layer, but the source contract is the Markdown or MDX structure.
    - `plan`: implementation, migration, launch, or cleanup plan
    - `decision`: ADR-style decision record
    - `agent-context`: entry context for AI coding agents
-2. Read `templates/base-template.mdx` for the shared ContextKit shape, then
-   copy the matching document-type file from `templates/`.
-3. Fill required frontmatter and preserve required headings.
-4. Keep product meaning in headings, lists, tables, and frontmatter. Do not make
-   custom visual components the only source of truth.
-5. Validate the result:
+2. Copy the matching JSON file from `templates/`.
+3. Fill required fields. Keep arrays and object shapes intact.
+4. Validate the document:
 
 ```bash
-node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc.mdx
+node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc.json
+```
+
+## Target Project Setup
+
+When installing ContextKit for a repository that should render ContextKit docs,
+prepare the target repository in the same one-time install:
+
+```bash
+cd /path/to/context-kit
+./scripts/install.sh \
+  --project-root /absolute/path/to/project \
+  --docs-dir docs/context-kit \
+  --title "Project Docs"
+```
+
+If the skill is already installed and only the docs app needs repair, run the
+installed setup script directly:
+
+```bash
+node ~/.codex/skills/context-kit/scripts/setup-project.js \
+  --project-root /absolute/path/to/project \
+  --docs-dir docs/context-kit \
+  --title "Project Docs"
+```
+
+The generated app lives at `<project>/docs/context-kit` by default. Run:
+
+```bash
+cd <project>/docs/context-kit
+npm run dev
 ```
 
 ## Required Authoring Rules
 
-- Start with `Human Summary` and `Agent Summary`.
-- Include the base structure: `Source Of Truth`, `Goal`, `Architecture`,
-  `Scope`, `Non-Goals`, `File Or Surface Map`, `Evidence`, `Validation`,
-  `Agent Instructions`, `Review Checklist`, and `Open Questions`.
-- Mark unknowns as `TBD` and list them under `Open Questions`.
-- If a spec changes user workflow, include the skill, API, or docs surfaces
-  that must stay aligned.
-- If a plan changes behavior, include concrete validation commands.
-- If rendered with Starlight, use components for scanning and navigation. The
-  semantic contract must remain visible in headings, tables, lists,
-  frontmatter, or code blocks.
+- Treat JSON as the source of truth.
+- Keep `humanSummary` short and useful for page scanning.
+- Keep `agentSummary`, `sourceOfTruth`, `surfaces`, `validationCommands`, and
+  `agentInstructions` exact enough for an AI coding agent to act safely.
+- Put unresolved work in `openQuestions`.
+- Do not hide contract meaning in rendered-only UI.
+- Do not add Markdown, MDX imports, or per-document visual components.
 
 ## Templates
 
-- `templates/base-template.mdx`
-- `templates/spec.mdx`
-- `templates/plan.mdx`
-- `templates/decision.mdx`
-- `templates/agent-context.mdx`
+- `templates/spec.json`
+- `templates/plan.json`
+- `templates/decision.json`
+- `templates/agent-context.json`
 
 ## References
 
 - See `references/authoring-protocol.md` for the full writing workflow.
-- See `references/starlight-style.md` for Starlight component usage.
-- See `references/frontmatter-schema.md` for required metadata.
+- See `references/json-field-contract.md` for the JSON field contract.
+- See `references/fixed-page-style.md` for fixed page rendering guidance.

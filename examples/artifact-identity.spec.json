@@ -1,0 +1,58 @@
+{
+  "slug": "artifact-identity",
+  "docType": "spec",
+  "status": "draft",
+  "title": "Rail Artifact Identity Contract",
+  "description": "Example fixed-format ContextKit spec for Rail artifact identity and projection authority.",
+  "owner": "rail-runtime",
+  "lastUpdated": "2026-05-19",
+  "humanSummary": "Rail work is identified by artifact handles, not request files or inferred task names. Users should be able to resume or inspect work through durable artifacts.",
+  "agentSummary": "When changing artifact identity, update runtime contracts, tests, and any skill surface that describes start, resume, retry, status, or result behavior.",
+  "sourceOfTruth": ["docs/SPEC.md", "docs/ARCHITECTURE.md"],
+  "goal": "Show how a durable runtime contract can name identity rules, owned surfaces, validation, and agent instructions in one structured JSON document.",
+  "architecture": "Rail separates request drafting, artifact persistence, supervision, and result projection. Artifact identity belongs to the persisted artifact layer, while supervision and result projection consume validated handles.",
+  "scope": {
+    "in": ["Artifact handle identity", "Resume and retry semantics", "Result projection authority"],
+    "out": ["Downstream application behavior", "Provider-specific event formats"]
+  },
+  "nonGoals": ["This example does not replace Rail's canonical docs.", "This example does not define new runtime behavior."],
+  "surfaces": [
+    {
+      "surface": "docs/SPEC.md",
+      "role": "Canonical product contract",
+      "owner": "rail-runtime"
+    },
+    {
+      "surface": "src/rail/artifacts/",
+      "role": "Artifact persistence and identity",
+      "owner": "rail-runtime"
+    },
+    {
+      "surface": "src/rail/supervisor/",
+      "role": "Supervision over artifact handles",
+      "owner": "rail-runtime"
+    }
+  ],
+  "evidence": ["Existing Rail docs distinguish product spec, architecture, and conventions.", "Runtime API examples expose start_task, supervise, and result around durable handles."],
+  "validationCommands": ["uv run --python 3.12 pytest -q", "uv run --python 3.12 ruff check src tests", "uv run --python 3.12 mypy src/rail"],
+  "agentInstructions": ["Read this spec before changing artifact identity.", "Update linked skills and tests when public artifact behavior changes."],
+  "reviewChecklist": ["The source of truth is explicit and current.", "Contract rules are testable or tied to validation evidence."],
+  "openQuestions": [],
+  "problem": "Artifact identity rules are easy to blur when plans mention request files, target-local state, or generated output. That can make agents infer the wrong resume or projection authority.",
+  "vocabulary": [
+    {
+      "term": "Artifact handle",
+      "meaning": "Durable identity returned by Rail for task or goal work."
+    },
+    {
+      "term": "Projection",
+      "meaning": "Status or result read from persisted artifacts."
+    }
+  ],
+  "contract": ["Fresh work creates a fresh artifact handle.", "Existing work resumes only from a validated handle.", "Result projection reads artifacts only."],
+  "interfaces": {
+    "public": ["rail.start_task(draft)", "rail.supervise(handle)", "rail.result(handle)"],
+    "internal": ["Artifact store", "Supervisor", "Evaluator gate"]
+  },
+  "invariants": ["Request files are not durable run identity.", "Terminal success comes from gated artifacts."]
+}

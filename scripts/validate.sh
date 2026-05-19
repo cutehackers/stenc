@@ -8,8 +8,11 @@ node "${VALIDATOR}" \
   "${REPO_ROOT}/skill/context-kit/templates" \
   "${REPO_ROOT}/examples"
 
+node "${REPO_ROOT}/skill/context-kit/scripts/setup-project.test.js"
+node "${REPO_ROOT}/scripts/install.test.js"
+
 if [[ ! -f "${REPO_ROOT}/starlight/package.json" || ! -d "${REPO_ROOT}/starlight/node_modules" ]]; then
-  "${REPO_ROOT}/scripts/setup-starlight.sh"
+  "${REPO_ROOT}/scripts/setup-examples-app.sh"
 fi
 
 (

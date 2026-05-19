@@ -1,0 +1,48 @@
+{
+  "slug": "tbd-plan",
+  "docType": "plan",
+  "status": "draft",
+  "title": "TBD",
+  "description": "TBD",
+  "owner": "TBD",
+  "relatedSpec": "TBD",
+  "lastUpdated": "YYYY-MM-DD",
+  "humanSummary": "TBD",
+  "agentSummary": "TBD",
+  "sourceOfTruth": ["TBD"],
+  "goal": "TBD",
+  "architecture": "TBD",
+  "scope": {
+    "in": ["TBD"],
+    "out": ["TBD"]
+  },
+  "nonGoals": ["TBD"],
+  "surfaces": [
+    {
+      "surface": "TBD",
+      "role": "TBD",
+      "owner": "TBD"
+    }
+  ],
+  "currentState": "TBD",
+  "targetState": "TBD",
+  "implementationSlices": [
+    {
+      "slice": "TBD",
+      "surfaces": ["TBD"],
+      "doneWhen": "TBD"
+    }
+  ],
+  "executionOrder": ["TBD"],
+  "risks": [
+    {
+      "risk": "TBD",
+      "mitigation": "TBD"
+    }
+  ],
+  "evidence": ["TBD"],
+  "validationCommands": ["TBD"],
+  "agentInstructions": ["Follow the execution order unless new evidence invalidates it."],
+  "reviewChecklist": ["Every slice has a clear file or surface owner."],
+  "openQuestions": ["TBD"]
+}

@@ -1,46 +1,45 @@
 # ContextKit Authoring Protocol
 
-ContextKit documents must support two readers at once:
+ContextKit documents support two readers at once:
 
-- humans scanning for status, scope, and decisions
+- humans scanning fixed web pages
 - AI coding agents extracting stable contracts, constraints, and validation
+
+The source document is JSON. The web page is a deterministic render of that
+JSON. There is no Markdown source and no MDX component layer.
 
 ## Workflow
 
 1. Classify the document as `spec`, `plan`, `decision`, or `agent-context`.
-2. Read `templates/base-template.mdx` to understand the shared shape.
-3. Start from the matching type-specific template.
-4. Fill frontmatter before body prose.
-5. Preserve required headings.
-6. Put normative behavior in explicit sections, lists, and tables.
-7. Put unknowns under `Open Questions`.
-8. Run the validator before considering the document ready.
+2. Start from the matching JSON template in `templates/`.
+3. Fill all required common fields.
+4. Fill all type-specific fields.
+5. Keep normative behavior in explicit arrays and objects, not prose-only
+   paragraphs.
+6. Put unknowns in `openQuestions`.
+7. Run the validator before considering the document ready.
+8. Run the docs app build when changing page rendering or generated app files.
 
-## Base Structure
+## Common Structure
 
-Every ContextKit document extends the base template. The base structure borrows
-the useful discipline of Superpowers plans: visible goal, architecture, owned
-surfaces, evidence, validation, and review checks. ContextKit keeps that shape
-plain-Markdown friendly so the document remains useful outside Starlight.
+Every ContextKit document includes:
 
-Required base headings:
+- `humanSummary`
+- `agentSummary`
+- `sourceOfTruth`
+- `goal`
+- `architecture`
+- `scope`
+- `nonGoals`
+- `surfaces`
+- `evidence`
+- `validationCommands`
+- `agentInstructions`
+- `reviewChecklist`
+- `openQuestions`
 
-- `Human Summary`
-- `Agent Summary`
-- `Source Of Truth`
-- `Goal`
-- `Architecture`
-- `Scope`
-- `Non-Goals`
-- `File Or Surface Map`
-- `Evidence`
-- `Validation`
-- `Agent Instructions`
-- `Review Checklist`
-- `Open Questions`
-
-Type-specific templates add their own contract, sequencing, rationale, or
-working-rule sections on top of this base.
+Type-specific templates add contract, sequencing, rationale, or working-rule
+fields on top of this common structure.
 
 ## Document Types
 
@@ -68,8 +67,8 @@ connected to source-of-truth docs.
 ## Writing Rules
 
 - Prefer concrete nouns over broad terms like "stuff", "logic", or "flow".
-- Avoid hiding important meaning in prose-only paragraphs.
+- Avoid hiding important meaning in prose-only strings.
 - Avoid saying "should be handled carefully" without naming the owner, command,
   artifact, or validation evidence.
 - Keep commands copy-pasteable.
-- Use `TBD` only when genuinely unresolved, and list it under `Open Questions`.
+- Use `TBD` only when genuinely unresolved, and list it in `openQuestions`.

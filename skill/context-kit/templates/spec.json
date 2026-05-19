@@ -1,0 +1,44 @@
+{
+  "slug": "tbd-spec",
+  "docType": "spec",
+  "status": "draft",
+  "title": "TBD",
+  "description": "TBD",
+  "owner": "TBD",
+  "lastUpdated": "YYYY-MM-DD",
+  "humanSummary": "TBD",
+  "agentSummary": "TBD",
+  "sourceOfTruth": ["TBD"],
+  "goal": "TBD",
+  "architecture": "TBD",
+  "scope": {
+    "in": ["TBD"],
+    "out": ["TBD"]
+  },
+  "nonGoals": ["TBD"],
+  "surfaces": [
+    {
+      "surface": "TBD",
+      "role": "TBD",
+      "owner": "TBD"
+    }
+  ],
+  "evidence": ["TBD"],
+  "validationCommands": ["TBD"],
+  "agentInstructions": ["Read this spec before changing the related implementation."],
+  "reviewChecklist": ["The source of truth is explicit and current."],
+  "openQuestions": ["TBD"],
+  "problem": "TBD",
+  "vocabulary": [
+    {
+      "term": "TBD",
+      "meaning": "TBD"
+    }
+  ],
+  "contract": ["TBD"],
+  "interfaces": {
+    "public": ["TBD"],
+    "internal": ["TBD"]
+  },
+  "invariants": ["TBD"]
+}

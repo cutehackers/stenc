@@ -1,5 +1,5 @@
 {
-  "name": "context-kit-starlight",
+  "name": "context-kit-docs",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,10 +9,9 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/starlight": "latest",
-    "astro": "latest"
+    "astro": "^6.3.3"
   },
   "devDependencies": {
-    "typescript": "latest"
+    "typescript": "^5.9.3"
   }
 }

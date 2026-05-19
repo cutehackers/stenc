@@ -1,0 +1,34 @@
+{
+  "slug": "tbd-agent-context",
+  "docType": "agent-context",
+  "status": "draft",
+  "title": "TBD",
+  "description": "TBD",
+  "owner": "TBD",
+  "lastUpdated": "YYYY-MM-DD",
+  "humanSummary": "TBD",
+  "agentSummary": "TBD",
+  "sourceOfTruth": ["TBD"],
+  "goal": "TBD",
+  "architecture": "TBD",
+  "scope": {
+    "in": ["TBD"],
+    "out": ["TBD"]
+  },
+  "nonGoals": ["TBD"],
+  "surfaces": [
+    {
+      "surface": "TBD",
+      "role": "TBD",
+      "owner": "TBD"
+    }
+  ],
+  "whenToUse": ["TBD"],
+  "requiredReading": ["TBD"],
+  "workingRules": ["TBD"],
+  "evidence": ["TBD"],
+  "validationCommands": ["TBD"],
+  "agentInstructions": ["Load this context before changing files in the listed scope."],
+  "reviewChecklist": ["The context is short enough to load before work starts."],
+  "openQuestions": ["TBD"]
+}

@@ -1,0 +1,26 @@
+---
+import Layout from '../../layouts/ContextKitLayout.astro';
+import { DOC_TYPE_LABELS, sortDocuments } from '../../lib/documents.js';
+import site from '../../../content/site.json';
+const modules = import.meta.glob('../../../content/agent-context/*.json', { eager: true });
+const documents = sortDocuments(Object.values(modules).map((module) => module.default));
+---
+<Layout site={site} title={DOC_TYPE_LABELS['agent-context']}>
+  <header class="document-header">
+    <div class="kicker">ContextKit</div>
+    <h1>{DOC_TYPE_LABELS['agent-context']}</h1>
+    <p class="description">Fixed-format documents rendered from structured JSON.</p>
+  </header>
+  <section class="grid">
+    {documents.map((doc) => (
+      <a class="panel" href={`/agent-context/${doc.slug}/`}>
+        <h3>{doc.title}</h3>
+        <p>{doc.description}</p>
+        <div class="meta">
+          <span class="badge">{doc.status}</span>
+          <span class="badge">{doc.owner}</span>
+        </div>
+      </a>
+    ))}
+  </section>
+</Layout>
