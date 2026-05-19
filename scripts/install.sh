@@ -20,7 +20,7 @@ Options:
                               web documentation app.
   --docs-dir <path>           Docs app path inside --project-root. Defaults to
                               docs/context-kit.
-  --title <text>              Target docs app title.
+  --title <text>              Target docs app title. Defaults to "Docs".
   --skip-project-install      Write target app files without npm install.
 EOF
       exit 0

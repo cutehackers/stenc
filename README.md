@@ -9,6 +9,8 @@ agents read the same JSON files directly.
 
 ## Install
 
+Use the single installer script for all setup flows:
+
 Install the skill into the default Codex skills directory and prepare the local
 ContextKit examples app:
 
@@ -22,37 +24,30 @@ Install from another location:
 CODEX_SKILLS_DIR=/absolute/path/to/skills ./scripts/install.sh
 ```
 
-Install the skill and prepare a target project's ContextKit docs app in the
-same one-time setup:
+Install the skill and prepare a target project's ContextKit docs app in one pass:
 
 ```bash
 ./scripts/install.sh \
-  --project-root /Users/junhyounglee/workspace/rail \
+  --project-root /path/to/target-repo \
   --docs-dir docs/context-kit \
-  --title "Rail Docs"
+  --title "Project Docs"
 ```
 
-Repair or refresh this repository's examples app:
+If `--title` is omitted, the generated app uses `Docs`.
+
+For any refresh of local or target docs setup, rerun `./scripts/install.sh` with
+the desired options:
+
+Then open the docs app:
 
 ```bash
-./scripts/setup-examples-app.sh
+cd /path/to/project
+/path/to/context-kit/scripts/open-docs.sh
 ```
 
-Repair or refresh another repository's ContextKit docs app:
-
-```bash
-./scripts/setup-project.sh \
-  --project-root /Users/junhyounglee/workspace/rail \
-  --docs-dir docs/context-kit \
-  --title "Rail Docs"
-```
-
-Then run:
-
-```bash
-cd /Users/junhyounglee/workspace/rail/docs/context-kit
-npm run dev
-```
+`open-docs.sh` defaults to the current directory as the project root and
+`docs/context-kit` as the docs app path. It starts the local Astro server, opens
+the browser, and stops the server when you press Enter.
 
 ## Document Model
 
@@ -64,7 +59,7 @@ docs/context-kit/
     specs/*.spec.json
     plans/*.plan.json
     decisions/*.decision.json
-    agent-context/*.json
+    agent-context/*.agent-context.json
   src/
     pages/
     layouts/
@@ -141,6 +136,7 @@ context-kit/
   skill/context-kit/templates # JSON templates
   examples/                   # sample JSON documents
   scripts/install.sh          # local skill installer
+  scripts/open-docs.sh        # open docs app and stop it with Enter
   scripts/setup-examples-app.sh # local examples app setup
   scripts/setup-project.sh    # target project docs app setup
   scripts/validate.sh

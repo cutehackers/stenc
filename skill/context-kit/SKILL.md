@@ -39,9 +39,10 @@ prepare the target repository in the same one-time install:
 cd /path/to/context-kit
 ./scripts/install.sh \
   --project-root /absolute/path/to/project \
-  --docs-dir docs/context-kit \
-  --title "Project Docs"
+  --docs-dir docs/context-kit
 ```
+
+If `--title` is omitted, the generated app uses `Docs`.
 
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:
@@ -49,15 +50,14 @@ installed setup script directly:
 ```bash
 node ~/.codex/skills/context-kit/scripts/setup-project.js \
   --project-root /absolute/path/to/project \
-  --docs-dir docs/context-kit \
-  --title "Project Docs"
+  --docs-dir docs/context-kit
 ```
 
-The generated app lives at `<project>/docs/context-kit` by default. Run:
+The generated app lives at `<project>/docs/context-kit` by default. From the
+target project root, run:
 
 ```bash
-cd <project>/docs/context-kit
-npm run dev
+/path/to/context-kit/scripts/open-docs.sh
 ```
 
 ## Required Authoring Rules

@@ -72,13 +72,20 @@ const REQUIRED_BODY_FIELDS = {
   ],
 };
 
+const COLLECTION_CONTRACTS = {
+  specs: { docType: "spec", suffix: ".spec.json" },
+  plans: { docType: "plan", suffix: ".plan.json" },
+  decisions: { docType: "decision", suffix: ".decision.json" },
+  "agent-context": { docType: "agent-context", suffix: ".agent-context.json" },
+};
+
 function listFiles(inputPath) {
   const stat = fs.statSync(inputPath);
-  if (stat.isFile()) return /\.json$/.test(inputPath) ? [inputPath] : [];
+  if (stat.isFile()) return [inputPath];
   return fs.readdirSync(inputPath, { withFileTypes: true }).flatMap((entry) => {
     const child = path.join(inputPath, entry.name);
     if (entry.isDirectory()) return listFiles(child);
-    return /\.json$/.test(entry.name) ? [child] : [];
+    return [child];
   });
 }
 
@@ -319,8 +326,35 @@ function validateBody(doc, errors) {
   if (doc.docType === "agent-context") validateAgentContextBody(doc.body, errors);
 }
 
+function collectionContractFor(filePath) {
+  const segments = filePath.split(path.sep);
+  for (const [collection, contract] of Object.entries(COLLECTION_CONTRACTS)) {
+    if (segments.includes(collection)) return { collection, ...contract };
+  }
+  return null;
+}
+
+function validateCollectionContract(filePath, doc, errors) {
+  const contract = collectionContractFor(filePath);
+  if (!contract || path.basename(filePath) === "site.json") return;
+
+  if (doc.docType !== contract.docType) {
+    errors.push(`content/${contract.collection} requires docType ${contract.docType}`);
+  }
+  if (!filePath.endsWith(contract.suffix)) {
+    errors.push(`${contract.docType} files must end with ${contract.suffix}`);
+  }
+}
+
 function validateFile(filePath) {
   const errors = [];
+  if (!/\.json$/.test(filePath)) {
+    if (/\.(md|mdx)$/.test(filePath)) {
+      return [`unsupported document source file: ${path.basename(filePath)}`];
+    }
+    return [];
+  }
+
   const doc = readJson(filePath);
   if (doc.__parseError) return [`invalid JSON: ${doc.__parseError}`];
   if (path.basename(filePath) === "site.json") return [];
@@ -328,6 +362,7 @@ function validateFile(filePath) {
   validateLinks(doc, errors);
   validatePage(doc, errors);
   validateBody(doc, errors);
+  validateCollectionContract(filePath, doc, errors);
   return errors;
 }
 

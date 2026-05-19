@@ -19,7 +19,7 @@ Prepare a target repository ContextKit web documentation app.
 Options:
   --project-root <path>  Target repository root. Defaults to the current directory.
   --docs-dir <path>      ContextKit web app path. Defaults to docs/context-kit.
-  --title <text>         Site title. Defaults to "<project-name> Docs".
+  --title <text>         Site title. Defaults to "Docs".
   --skip-install         Write app files without running npm install.
   -h, --help             Show this help.
 `);
@@ -64,8 +64,7 @@ function parseArgs(argv) {
 
   options.projectRoot = path.resolve(options.projectRoot);
   options.docsDir = path.resolve(options.projectRoot, options.docsDir);
-  options.title =
-    options.title || `${path.basename(options.projectRoot) || "Project"} Docs`;
+  options.title = options.title || "Docs";
   return options;
 }
 
@@ -80,6 +79,86 @@ function writeFile(filePath, text) {
 
 function writeJson(filePath, value) {
   writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function exampleRuntimeSpec() {
+  return {
+    schemaVersion: 1,
+    slug: "example-runtime",
+    docType: "spec",
+    id: "spec:example-runtime",
+    status: "draft",
+    title: "Example Runtime Contract",
+    description: "Example fixed-format ContextKit spec.",
+    owner: "context-kit",
+    createdAt: "2026-05-19",
+    updatedAt: "2026-05-19",
+    links: {
+      sourceOfTruth: ["content/specs/example-runtime.spec.json"],
+      relatedPlans: [],
+      relatedDecisions: [],
+    },
+    page: {
+      humanSummary: "A person reads this single spec as a styled web page with stable sections.",
+      agentSummary: "An AI coding agent reads this JSON artifact directly and follows exact fields.",
+    },
+    body: {
+      goal: "Show the required shape for one ContextKit spec document.",
+      problem: "Free-form documents drift in structure and visual treatment.",
+      scope: {
+        in: ["Single spec fields", "Validation commands", "Agent instructions"],
+        out: ["Markdown authoring", "MDX component authoring", "Collection data inside one document"],
+      },
+      architecture: {
+        summary: "Structured JSON stores the document contract; Astro renders the fixed page and derives indexes.",
+        flow: ["Author one JSON file", "Validate the artifact", "Render one web page"],
+      },
+      contracts: [
+        {
+          name: "Single document source",
+          rules: ["Specs are JSON source files.", "Pages render with the shared ContextKit layout."],
+        },
+      ],
+      surfaces: [
+        {
+          path: "content/specs/*.spec.json",
+          role: "Spec source artifact",
+          owner: "context-kit",
+        },
+      ],
+      validation: [
+        {
+          command: "npm run build",
+          purpose: "Generated docs app builds.",
+        },
+      ],
+      agentInstructions: ["Read this JSON before changing the related implementation."],
+      reviewChecklist: ["The document describes exactly one spec.", "Validation commands are current."],
+      openQuestions: [],
+    },
+  };
+}
+
+function readJsonIfPresent(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function hasCurrentDocumentShape(doc) {
+  return Boolean(
+    doc &&
+      doc.schemaVersion === 1 &&
+      doc.id &&
+      doc.createdAt &&
+      doc.updatedAt &&
+      doc.links &&
+      doc.page &&
+      doc.body,
+  );
 }
 
 function readPackageJson(filePath) {
@@ -169,62 +248,9 @@ function writeAppData(docsDir, title) {
   }
 
   const exampleSpec = path.join(docsDir, "content", "specs", "example-runtime.spec.json");
-  if (!fs.existsSync(exampleSpec)) {
-    writeJson(exampleSpec, {
-      schemaVersion: 1,
-      slug: "example-runtime",
-      docType: "spec",
-      id: "spec:example-runtime",
-      status: "draft",
-      title: "Example Runtime Contract",
-      description: "Example fixed-format ContextKit spec.",
-      owner: "context-kit",
-      createdAt: "2026-05-19",
-      updatedAt: "2026-05-19",
-      links: {
-        sourceOfTruth: ["content/specs/example-runtime.spec.json"],
-        relatedPlans: [],
-        relatedDecisions: [],
-      },
-      page: {
-        humanSummary: "A person reads this single spec as a styled web page with stable sections.",
-        agentSummary: "An AI coding agent reads this JSON artifact directly and follows exact fields.",
-      },
-      body: {
-        goal: "Show the required shape for one ContextKit spec document.",
-        problem: "Free-form documents drift in structure and visual treatment.",
-        scope: {
-          in: ["Single spec fields", "Validation commands", "Agent instructions"],
-          out: ["Markdown authoring", "MDX component authoring", "Collection data inside one document"],
-        },
-        architecture: {
-          summary: "Structured JSON stores the document contract; Astro renders the fixed page and derives indexes.",
-          flow: ["Author one JSON file", "Validate the artifact", "Render one web page"],
-        },
-        contracts: [
-          {
-            name: "Single document source",
-            rules: ["Specs are JSON source files.", "Pages render with the shared ContextKit layout."],
-          },
-        ],
-        surfaces: [
-          {
-            path: "content/specs/*.spec.json",
-            role: "Spec source artifact",
-            owner: "context-kit",
-          },
-        ],
-        validation: [
-          {
-            command: "npm run build",
-            purpose: "Generated docs app builds.",
-          },
-        ],
-        agentInstructions: ["Read this JSON before changing the related implementation."],
-        reviewChecklist: ["The document describes exactly one spec.", "Validation commands are current."],
-        openQuestions: [],
-      },
-    });
+  const existingExample = readJsonIfPresent(exampleSpec);
+  if (!hasCurrentDocumentShape(existingExample)) {
+    writeJson(exampleSpec, exampleRuntimeSpec());
   }
 }
 

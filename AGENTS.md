@@ -16,7 +16,8 @@ documents.
 - Target project setup is part of installation. The current documents must be
   viewable through the generated ContextKit Astro workspace after install.
 - Do not make Astro rendering the source of truth. Each document source is one
-  structured JSON file with `metadata`, `links`, `page`, and `body` sections.
+  structured JSON file with top-level metadata fields plus `links`, `page`, and
+  `body` sections.
 - Do not reintroduce Markdown, MDX, frontmatter, or per-document visual
   components as the document source.
 - If required JSON fields change, update templates, references, examples,
