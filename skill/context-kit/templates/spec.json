@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "docType": "spec",
   "id": "spec:yyyy-mm-dd-topic",
   "slug": "yyyy-mm-dd-topic",
@@ -30,6 +30,36 @@
       "summary": "TBD",
       "flow": ["TBD"]
     },
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "title": "TBD",
+        "detail": "TBD",
+        "acceptanceCriteria": ["TBD"]
+      }
+    ],
+    "approaches": [
+      {
+        "name": "TBD",
+        "tradeoffs": ["TBD"],
+        "recommendation": "TBD"
+      }
+    ],
+    "components": [
+      {
+        "name": "TBD",
+        "responsibility": "TBD",
+        "interfaces": ["TBD"],
+        "dependencies": ["TBD"]
+      }
+    ],
+    "dataFlow": ["TBD"],
+    "errorHandling": [
+      {
+        "case": "TBD",
+        "behavior": "TBD"
+      }
+    ],
     "contracts": [
       {
         "name": "TBD",
@@ -43,6 +73,12 @@
         "owner": "TBD"
       }
     ],
+    "testingStrategy": [
+      {
+        "command": "TBD",
+        "expected": "TBD"
+      }
+    ],
     "validation": [
       {
         "command": "TBD",
@@ -51,6 +87,25 @@
     ],
     "agentInstructions": ["Read this JSON document before changing related implementation."],
     "reviewChecklist": ["The document describes exactly one spec artifact."],
+    "selfReviewChecks": [
+      {
+        "name": "Completeness",
+        "purpose": "Confirm requirements, architecture, components, data flow, error handling, and testing are represented."
+      }
+    ],
+    "implementationHandoff": {
+      "planLocation": "docs/superpowers/plans/YYYY-MM-DD-topic.md",
+      "requiredSkill": "superpowers:writing-plans",
+      "notes": ["Create the plan only after the spec review gate is complete."]
+    },
+    "supportingSections": [
+      {
+        "heading": "TBD",
+        "content": "TBD",
+        "items": ["TBD"],
+        "codeBlocks": []
+      }
+    ],
     "openQuestions": []
   }
 }

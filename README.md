@@ -95,7 +95,7 @@ Each JSON file is one document:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "docType": "spec",
   "id": "spec:yyyy-mm-dd-topic",
   "slug": "yyyy-mm-dd-topic",
@@ -117,8 +117,26 @@ Each JSON file is one document:
 }
 ```
 
+`schemaVersion: 1` nested JSON documents remain accepted for existing ContextKit
+content. New templates use `schemaVersion: 2` so specs and plans can preserve
+the official Superpowers output structure.
+
 List pages and navigation are derived from `content/<collection>/*.json`; a
 document file must not contain other documents.
+
+Specs and plans can represent Superpowers output without dropping source
+sections:
+
+- specs carry requirements, approaches, components, data flow, error handling,
+  testing strategy, self-review checks, implementation handoff, and supporting
+  sections as structured JSON fields
+- plans carry architecture, tech stack, worker instructions, scope check, file
+  structure, task files, structured steps, code blocks, commands, expected
+  output, no-placeholder guidance, self-review checks, and execution handoff as
+  structured JSON fields
+
+Do not collapse those sections into a single prose summary when converting
+from `docs/superpowers/specs/*.md` or `docs/superpowers/plans/*.md`.
 
 ## Use
 

@@ -28,6 +28,14 @@ Markdown or MDX.
    other documents inside it.
 5. Fill `links`, `page`, and the type-specific `body`. Keep arrays and object
    shapes intact.
+   - For Superpowers-derived specs, preserve requirements, approaches,
+     components, data flow, error handling, testing strategy, self-review
+     checks, handoff, and supporting sections in the matching fields.
+   - For Superpowers-derived plans, preserve the agentic-worker header,
+     checkbox tracking syntax, scope check, file structure, task files,
+     structured steps, code blocks, commands, expected output, no-placeholder
+     guidance, self-review checks, and execution handoff in the matching
+     fields.
 6. Validate the document:
 
 ```bash
@@ -83,6 +91,10 @@ target project root, run:
 - Keep `page.agentSummary`, `links.sourceOfTruth`, `body.surfaces`,
   `body.validation`, and `body.agentInstructions` exact enough for an AI coding
   agent to act safely.
+- Do not flatten Superpowers spec or plan output into prose when the source
+  has structured requirements, alternatives, task files, code blocks, commands,
+  expected output, review gates, worker instructions, scope checks, or
+  execution handoff.
 - Put unresolved work in `body.openQuestions`.
 - Let the renderer derive indexes from `content/<collection>/*.json`.
 - Do not hide contract meaning in rendered-only UI.

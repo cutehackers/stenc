@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "docType": "spec",
   "id": "spec:artifact-identity",
   "slug": "artifact-identity",
@@ -30,6 +30,42 @@
       "summary": "Rail separates request drafting, artifact persistence, supervision, and result projection. Artifact identity belongs to the persisted artifact layer, while supervision and result projection consume validated handles.",
       "flow": ["Draft request", "Create artifact handle", "Supervise handle", "Project result from artifacts"]
     },
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "title": "Durable artifact identity",
+        "detail": "Rail work must be identified by a persisted artifact handle rather than by request file paths or inferred task names.",
+        "acceptanceCriteria": ["Fresh work creates a fresh artifact handle.", "Resume and retry flows require a validated existing handle."]
+      }
+    ],
+    "approaches": [
+      {
+        "name": "Artifact-handle contract",
+        "tradeoffs": ["Requires explicit handle validation", "Prevents agents from guessing resume authority from nearby files"],
+        "recommendation": "Keep artifact handles as the only resume and result-projection authority."
+      }
+    ],
+    "components": [
+      {
+        "name": "Artifact persistence",
+        "responsibility": "Own durable handles and persisted run artifacts.",
+        "interfaces": ["src/rail/artifacts/"],
+        "dependencies": ["docs/SPEC.md"]
+      },
+      {
+        "name": "Supervisor",
+        "responsibility": "Operate on validated artifact handles.",
+        "interfaces": ["src/rail/supervisor/"],
+        "dependencies": ["Artifact persistence"]
+      }
+    ],
+    "dataFlow": ["Draft request", "Create artifact handle", "Supervise handle", "Project result from artifacts"],
+    "errorHandling": [
+      {
+        "case": "Missing or invalid artifact handle",
+        "behavior": "Stop resume or retry work and report the missing validated handle instead of inferring identity."
+      }
+    ],
     "contracts": [
       {
         "name": "Artifact identity",
@@ -53,6 +89,16 @@
         "owner": "rail-runtime"
       }
     ],
+    "testingStrategy": [
+      {
+        "command": "uv run --python 3.12 pytest -q",
+        "expected": "Artifact identity, resume, retry, and projection tests pass."
+      },
+      {
+        "command": "uv run --python 3.12 ruff check src tests",
+        "expected": "Static lint validation passes."
+      }
+    ],
     "validation": [
       {
         "command": "uv run --python 3.12 pytest -q",
@@ -65,6 +111,29 @@
     ],
     "agentInstructions": ["Read this spec before changing artifact identity.", "Update linked skills and tests when public artifact behavior changes."],
     "reviewChecklist": ["The source of truth is explicit and current.", "Contract rules are testable or tied to validation evidence."],
+    "selfReviewChecks": [
+      {
+        "name": "Completeness",
+        "purpose": "Confirm identity, resume, retry, and result projection are all represented."
+      },
+      {
+        "name": "Ambiguity check",
+        "purpose": "Confirm no text allows agents to infer identity from request files."
+      }
+    ],
+    "implementationHandoff": {
+      "planLocation": "docs/superpowers/plans/YYYY-MM-DD-artifact-identity.md",
+      "requiredSkill": "superpowers:writing-plans",
+      "notes": ["Create a task-by-task implementation plan before changing runtime behavior."]
+    },
+    "supportingSections": [
+      {
+        "heading": "Reviewer Calibration",
+        "content": "Only flag identity wording that could change runtime behavior or confuse artifact ownership.",
+        "items": ["Completeness", "Consistency", "Clarity", "Scope"],
+        "codeBlocks": []
+      }
+    ],
     "openQuestions": []
   }
 }

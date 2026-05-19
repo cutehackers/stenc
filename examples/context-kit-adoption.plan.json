@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "docType": "plan",
   "id": "plan:context-kit-adoption",
   "slug": "context-kit-adoption",
@@ -20,27 +20,92 @@
   },
   "body": {
     "goal": "Make Rail specs and plans easier for humans to scan while keeping them structured enough for AI coding agents to follow.",
+    "architecture": "Convert one canonical spec and one implementation plan into structured JSON, then render both through the fixed ContextKit static app.",
+    "techStack": ["Node.js", "Dependency-free JSON validator", "Static HTML renderer"],
+    "workerInstructions": {
+      "requiredSubSkills": ["superpowers:subagent-driven-development", "superpowers:executing-plans"],
+      "trackingSyntax": "- [ ]",
+      "note": "Implement this plan task-by-task; each step remains trackable as a checkbox item in the source plan."
+    },
+    "scopeCheck": {
+      "assessment": "This plan covers ContextKit adoption examples and renderer support as one documentation workflow.",
+      "decomposition": "No subsystem split is required for this example plan."
+    },
     "currentState": "Rail docs are plain Markdown with strong contracts but limited visual scanning support.",
     "targetState": "Rail docs use one JSON file per spec or plan and a fixed web page for human reading.",
     "scope": {
       "in": ["One canonical spec example", "One implementation plan example", "Thin AGENTS.md linkage if adopted in Rail"],
       "out": ["Full docs migration", "Runtime behavior changes"]
     },
+    "fileStructure": [
+      {
+        "action": "Modify",
+        "path": "skill/context-kit/templates/*.json",
+        "responsibility": "Document source templates."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/context-kit/scripts/setup-project.js",
+        "responsibility": "Static page renderer."
+      }
+    ],
     "slices": [
       {
         "id": "slice-1",
         "title": "ContextKit templates",
         "status": "todo",
         "surfaces": ["skill/context-kit/templates/*.json"],
-        "steps": ["Convert each template to metadata, links, page, and body sections.", "Run the ContextKit validator."],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/context-kit/templates/*.json",
+            "role": "Document templates."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-1-step-1",
+            "title": "Convert each template",
+            "status": "todo",
+            "instruction": "Convert each template to metadata, links, page, and body sections."
+          },
+          {
+            "id": "slice-1-step-2",
+            "title": "Run validator",
+            "status": "todo",
+            "command": "node skill/context-kit/scripts/validate-context-kit-doc.js skill/context-kit/templates",
+            "expected": "ContextKit validation passed."
+          }
+        ],
         "doneWhen": ["Templates validate as single-document JSON artifacts."]
       },
       {
         "id": "slice-2",
         "title": "Web app renderer",
         "status": "todo",
-        "surfaces": ["docs/context-kit/src/"],
-        "steps": ["Render spec and plan pages from nested body fields.", "Build the generated docs app."],
+        "surfaces": ["skill/context-kit/scripts/setup-project.js"],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/context-kit/scripts/setup-project.js",
+            "role": "Generated static app renderer."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-2-step-1",
+            "title": "Render pages",
+            "status": "todo",
+            "instruction": "Render spec and plan pages from nested body fields."
+          },
+          {
+            "id": "slice-2-step-2",
+            "title": "Build examples app",
+            "status": "todo",
+            "command": "./scripts/setup-examples-app.sh",
+            "expected": "Examples app HTML is regenerated from JSON."
+          }
+        ],
         "doneWhen": ["Spec and plan pages build from JSON."]
       }
     ],
@@ -62,6 +127,39 @@
       }
     ],
     "agentInstructions": ["Treat this as an adoption plan shape, not a Rail migration command.", "Do not edit Rail runtime code while adopting docs templates."],
+    "selfReviewChecks": [
+      {
+        "name": "Spec coverage",
+        "purpose": "Confirm the adoption plan preserves the source-of-truth hierarchy and validation path."
+      },
+      {
+        "name": "Placeholder scan",
+        "purpose": "Confirm no task relies on TBD or implicit follow-up work."
+      }
+    ],
+    "executionHandoff": {
+      "defaultPath": "docs/superpowers/plans/YYYY-MM-DD-context-kit-adoption.md",
+      "options": [
+        {
+          "label": "Subagent-Driven",
+          "description": "Dispatch a fresh subagent per task and review between tasks.",
+          "requiredSkill": "superpowers:subagent-driven-development"
+        },
+        {
+          "label": "Inline Execution",
+          "description": "Execute tasks in this session using checkpointed plan execution.",
+          "requiredSkill": "superpowers:executing-plans"
+        }
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "No Placeholders",
+        "content": "Every step must contain concrete content, commands, or expected output before execution.",
+        "items": ["No TBD values in executable steps", "No similar-to references", "No command without expected output"],
+        "codeBlocks": []
+      }
+    ],
     "openQuestions": []
   }
 }

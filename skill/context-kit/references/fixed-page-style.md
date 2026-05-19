@@ -32,6 +32,15 @@ Use these as follows:
 - Render `links.sourceOfTruth`, `body.validation`, and
   `body.agentInstructions` as
   explicit operational sections.
+- Render Superpowers-derived spec sections such as `body.requirements`,
+  `body.approaches`, `body.components`, `body.dataFlow`,
+  `body.errorHandling`, and `body.testingStrategy` as first-class sections.
+- Render Superpowers-derived plan sections such as `body.fileStructure`,
+  `body.workerInstructions`, `body.scopeCheck`, `body.slices[].files`,
+  structured `body.slices[].steps[]`, `body.selfReviewChecks`,
+  `body.executionHandoff`, and plan `body.supportingSections` without
+  collapsing code blocks, commands, expected output, or no-placeholder guidance
+  into plain text.
 - Render `body.scope.in` and `body.scope.out` side by side on wide screens and
   stacked on mobile.
 - Render `body.surfaces` as a table with `path`, `role`, and `owner` columns.

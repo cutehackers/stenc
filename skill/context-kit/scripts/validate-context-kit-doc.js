@@ -16,6 +16,7 @@ const VALID_STATUSES = new Set([
   "canonical",
   "superseded",
 ]);
+const VALID_SCHEMA_VERSIONS = new Set([1, 2]);
 
 const REQUIRED_TOP_LEVEL_FIELDS = [
   "schemaVersion",
@@ -34,28 +35,89 @@ const REQUIRED_TOP_LEVEL_FIELDS = [
 ];
 
 const REQUIRED_BODY_FIELDS = {
+  1: {
+    spec: [
+      "goal",
+      "problem",
+      "scope",
+      "architecture",
+      "contracts",
+      "surfaces",
+      "validation",
+      "agentInstructions",
+      "reviewChecklist",
+      "openQuestions",
+    ],
+    plan: [
+      "goal",
+      "currentState",
+      "targetState",
+      "scope",
+      "slices",
+      "executionOrder",
+      "risks",
+      "validation",
+      "agentInstructions",
+      "openQuestions",
+    ],
+    decision: [
+      "context",
+      "decision",
+      "optionsConsidered",
+      "consequences",
+      "validation",
+      "agentInstructions",
+      "openQuestions",
+    ],
+    "agent-context": [
+      "whenToUse",
+      "requiredReading",
+      "workingRules",
+      "validation",
+      "agentInstructions",
+      "openQuestions",
+    ],
+  },
+  2: {
   spec: [
     "goal",
     "problem",
     "scope",
     "architecture",
+    "requirements",
+    "approaches",
+    "components",
+    "dataFlow",
+    "errorHandling",
     "contracts",
     "surfaces",
+    "testingStrategy",
     "validation",
     "agentInstructions",
     "reviewChecklist",
+    "selfReviewChecks",
+    "implementationHandoff",
+    "supportingSections",
     "openQuestions",
   ],
   plan: [
     "goal",
+    "architecture",
+    "techStack",
+    "workerInstructions",
+    "scopeCheck",
     "currentState",
     "targetState",
     "scope",
+    "fileStructure",
     "slices",
     "executionOrder",
     "risks",
     "validation",
     "agentInstructions",
+    "selfReviewChecks",
+    "executionHandoff",
+    "supportingSections",
     "openQuestions",
   ],
   decision: [
@@ -75,6 +137,7 @@ const REQUIRED_BODY_FIELDS = {
     "agentInstructions",
     "openQuestions",
   ],
+  },
 };
 
 const COLLECTION_CONTRACTS = {
@@ -126,13 +189,36 @@ function requireStringArray(object, field, errors, prefix = "") {
   }
 }
 
+function validateCodeBlocks(entries, errors, prefix) {
+  if (entries === undefined) return;
+  if (!Array.isArray(entries)) {
+    errors.push(`${prefix}codeBlocks must be an array`);
+    return;
+  }
+  entries.forEach((block, index) => {
+    requireString(block, "language", errors, `${prefix}codeBlocks[${index}].`);
+    requireString(block, "content", errors, `${prefix}codeBlocks[${index}].`);
+  });
+}
+
+function validateNamedPurposeEntries(entries, errors, field) {
+  if (!Array.isArray(entries)) {
+    errors.push(`body.${field} must be an array`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "name", errors, `body.${field}[${index}].`);
+    requireString(entry, "purpose", errors, `body.${field}[${index}].`);
+  });
+}
+
 function validateTopLevel(doc, errors) {
   for (const field of REQUIRED_TOP_LEVEL_FIELDS) {
     if (!(field in doc)) errors.push(`missing field: ${field}`);
   }
 
-  if (doc.schemaVersion !== 1) {
-    errors.push("schemaVersion must be 1");
+  if (!VALID_SCHEMA_VERSIONS.has(doc.schemaVersion)) {
+    errors.push("schemaVersion must be 1 or 2");
   }
   if (!VALID_TYPES.has(doc.docType)) errors.push(`invalid docType: ${doc.docType}`);
   if (!VALID_STATUSES.has(doc.status)) errors.push(`invalid status: ${doc.status}`);
@@ -234,7 +320,199 @@ function validateSurfaces(entries, errors) {
   });
 }
 
-function validateSpecBody(body, errors) {
+function validateRequirements(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.requirements must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "id", errors, `body.requirements[${index}].`);
+    requireString(entry, "title", errors, `body.requirements[${index}].`);
+    requireString(entry, "detail", errors, `body.requirements[${index}].`);
+    requireStringArray(entry, "acceptanceCriteria", errors, `body.requirements[${index}].`);
+  });
+}
+
+function validateApproaches(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.approaches must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "name", errors, `body.approaches[${index}].`);
+    requireStringArray(entry, "tradeoffs", errors, `body.approaches[${index}].`);
+    requireString(entry, "recommendation", errors, `body.approaches[${index}].`);
+  });
+}
+
+function validateComponents(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.components must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "name", errors, `body.components[${index}].`);
+    requireString(entry, "responsibility", errors, `body.components[${index}].`);
+    requireStringArray(entry, "interfaces", errors, `body.components[${index}].`);
+    requireStringArray(entry, "dependencies", errors, `body.components[${index}].`);
+  });
+}
+
+function validateErrorHandling(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.errorHandling must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "case", errors, `body.errorHandling[${index}].`);
+    requireString(entry, "behavior", errors, `body.errorHandling[${index}].`);
+  });
+}
+
+function validateTestingStrategy(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.testingStrategy must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "command", errors, `body.testingStrategy[${index}].`);
+    requireString(entry, "expected", errors, `body.testingStrategy[${index}].`);
+  });
+}
+
+function validateImplementationHandoff(handoff, errors, prefix = "body.implementationHandoff.") {
+  if (!isPlainObject(handoff)) {
+    errors.push(`${prefix.slice(0, -1)} must be an object`);
+    return;
+  }
+  requireString(handoff, "planLocation", errors, prefix);
+  requireString(handoff, "requiredSkill", errors, prefix);
+  requireStringArray(handoff, "notes", errors, prefix);
+}
+
+function validateSupportingSections(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.supportingSections must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "heading", errors, `body.supportingSections[${index}].`);
+    requireString(entry, "content", errors, `body.supportingSections[${index}].`);
+    requireStringArray(entry, "items", errors, `body.supportingSections[${index}].`);
+    validateCodeBlocks(entry.codeBlocks, errors, `body.supportingSections[${index}].`);
+  });
+}
+
+function validateWorkerInstructions(instructions, errors) {
+  if (!isPlainObject(instructions)) {
+    errors.push("body.workerInstructions must be an object");
+    return;
+  }
+  requireStringArray(instructions, "requiredSubSkills", errors, "body.workerInstructions.");
+  requireString(instructions, "trackingSyntax", errors, "body.workerInstructions.");
+  requireString(instructions, "note", errors, "body.workerInstructions.");
+  if (
+    Array.isArray(instructions.requiredSubSkills) &&
+    !instructions.requiredSubSkills.includes("superpowers:subagent-driven-development")
+  ) {
+    errors.push("body.workerInstructions.requiredSubSkills must include superpowers:subagent-driven-development");
+  }
+  if (
+    Array.isArray(instructions.requiredSubSkills) &&
+    !instructions.requiredSubSkills.includes("superpowers:executing-plans")
+  ) {
+    errors.push("body.workerInstructions.requiredSubSkills must include superpowers:executing-plans");
+  }
+  if (instructions.trackingSyntax !== "- [ ]") {
+    errors.push("body.workerInstructions.trackingSyntax must be - [ ]");
+  }
+}
+
+function validateScopeCheck(scopeCheck, errors) {
+  if (!isPlainObject(scopeCheck)) {
+    errors.push("body.scopeCheck must be an object");
+    return;
+  }
+  requireString(scopeCheck, "assessment", errors, "body.scopeCheck.");
+  requireString(scopeCheck, "decomposition", errors, "body.scopeCheck.");
+}
+
+function validateFileStructure(entries, errors, fieldPath = "body.fileStructure") {
+  if (!Array.isArray(entries)) {
+    errors.push(`${fieldPath} must be an array`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "action", errors, `${fieldPath}[${index}].`);
+    requireString(entry, "path", errors, `${fieldPath}[${index}].`);
+    requireString(entry, "responsibility", errors, `${fieldPath}[${index}].`);
+  });
+}
+
+function validateSliceFiles(entries, errors, fieldPath) {
+  if (!Array.isArray(entries)) {
+    errors.push(`${fieldPath} must be an array`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "action", errors, `${fieldPath}[${index}].`);
+    requireString(entry, "path", errors, `${fieldPath}[${index}].`);
+    requireString(entry, "role", errors, `${fieldPath}[${index}].`);
+    if ("lines" in entry) requireString(entry, "lines", errors, `${fieldPath}[${index}].`);
+  });
+}
+
+function validatePlanStep(step, errors, prefix) {
+  if (!isPlainObject(step)) {
+    errors.push(`${prefix.slice(0, -1)} must be an object`);
+    return;
+  }
+  requireString(step, "id", errors, prefix);
+  requireString(step, "title", errors, prefix);
+  requireString(step, "status", errors, prefix);
+  const hasInstruction = isNonEmptyString(step.instruction);
+  const hasCommand = isNonEmptyString(step.command);
+  const hasExpected = isNonEmptyString(step.expected);
+  if ("instruction" in step) requireString(step, "instruction", errors, prefix);
+  if ("command" in step) requireString(step, "command", errors, prefix);
+  if ("expected" in step) requireString(step, "expected", errors, prefix);
+  validateCodeBlocks(step.codeBlocks, errors, prefix);
+  const hasCodeBlocks = Array.isArray(step.codeBlocks) && step.codeBlocks.length > 0;
+  if (hasCommand && !hasExpected) {
+    errors.push(`${prefix}expected must be a non-empty string when command is present`);
+  }
+  if (hasExpected && !hasCommand) {
+    errors.push(`${prefix}command must be a non-empty string when expected is present`);
+  }
+  if (!hasInstruction && !hasCommand && !hasCodeBlocks) {
+    errors.push(`${prefix.slice(0, -1)} must include instruction, command, or codeBlocks`);
+  }
+}
+
+function validateExecutionHandoff(handoff, errors) {
+  if (!isPlainObject(handoff)) {
+    errors.push("body.executionHandoff must be an object");
+    return;
+  }
+  requireString(handoff, "defaultPath", errors, "body.executionHandoff.");
+  if (!Array.isArray(handoff.options)) {
+    errors.push("body.executionHandoff.options must be an array");
+    return;
+  }
+  handoff.options.forEach((option, index) => {
+    requireString(option, "label", errors, `body.executionHandoff.options[${index}].`);
+    requireString(option, "description", errors, `body.executionHandoff.options[${index}].`);
+    requireString(option, "requiredSkill", errors, `body.executionHandoff.options[${index}].`);
+  });
+  const subagentOption = handoff.options.find((option) => option.label === "Subagent-Driven");
+  if (!subagentOption) {
+    errors.push("body.executionHandoff.options must include Subagent-Driven");
+  } else if (subagentOption.requiredSkill !== "superpowers:subagent-driven-development") {
+    errors.push("body.executionHandoff.options Subagent-Driven must require superpowers:subagent-driven-development");
+  }
+}
+
+function validateSpecBody(body, errors, schemaVersion) {
   requireString(body, "goal", errors, "body.");
   requireString(body, "problem", errors, "body.");
   validateScope(body.scope, errors);
@@ -248,6 +526,13 @@ function validateSpecBody(body, errors) {
     }
   }
 
+  if (schemaVersion >= 2) {
+    validateRequirements(body.requirements, errors);
+    validateApproaches(body.approaches, errors);
+    validateComponents(body.components, errors);
+    requireStringArray(body, "dataFlow", errors, "body.");
+    validateErrorHandling(body.errorHandling, errors);
+  }
   if (!Array.isArray(body.contracts)) {
     errors.push("body.contracts must be an array");
   } else {
@@ -258,17 +543,31 @@ function validateSpecBody(body, errors) {
   }
 
   validateSurfaces(body.surfaces, errors);
+  if (schemaVersion >= 2) validateTestingStrategy(body.testingStrategy, errors);
   validateValidationEntries(body.validation, errors);
   requireStringArray(body, "agentInstructions", errors, "body.");
   requireStringArray(body, "reviewChecklist", errors, "body.");
+  if (schemaVersion >= 2) {
+    validateNamedPurposeEntries(body.selfReviewChecks, errors, "selfReviewChecks");
+    validateImplementationHandoff(body.implementationHandoff, errors);
+    validateSupportingSections(body.supportingSections, errors);
+  }
   requireStringArray(body, "openQuestions", errors, "body.");
 }
 
-function validatePlanBody(body, errors) {
-  for (const field of ["goal", "currentState", "targetState"]) {
-    requireString(body, field, errors, "body.");
+function validatePlanBody(body, errors, schemaVersion) {
+  for (const field of ["goal", "architecture", "currentState", "targetState"]) {
+    if (schemaVersion >= 2 || field !== "architecture") {
+      requireString(body, field, errors, "body.");
+    }
+  }
+  if (schemaVersion >= 2) {
+    requireStringArray(body, "techStack", errors, "body.");
+    validateWorkerInstructions(body.workerInstructions, errors);
+    validateScopeCheck(body.scopeCheck, errors);
   }
   validateScope(body.scope, errors);
+  if (schemaVersion >= 2) validateFileStructure(body.fileStructure, errors);
 
   if (!Array.isArray(body.slices)) {
     errors.push("body.slices must be an array");
@@ -278,7 +577,16 @@ function validatePlanBody(body, errors) {
       requireString(slice, "title", errors, `body.slices[${index}].`);
       requireString(slice, "status", errors, `body.slices[${index}].`);
       requireStringArray(slice, "surfaces", errors, `body.slices[${index}].`);
-      requireStringArray(slice, "steps", errors, `body.slices[${index}].`);
+      if (schemaVersion >= 2) validateSliceFiles(slice.files, errors, `body.slices[${index}].files`);
+      if (!Array.isArray(slice.steps)) {
+        errors.push(`body.slices[${index}].steps must be an array`);
+      } else if (schemaVersion >= 2) {
+        slice.steps.forEach((step, stepIndex) => {
+          validatePlanStep(step, errors, `body.slices[${index}].steps[${stepIndex}].`);
+        });
+      } else if (!slice.steps.every(isNonEmptyString)) {
+        errors.push(`body.slices[${index}].steps must be an array of strings`);
+      }
       requireStringArray(slice, "doneWhen", errors, `body.slices[${index}].`);
     });
   }
@@ -294,6 +602,11 @@ function validatePlanBody(body, errors) {
   }
   validateValidationEntries(body.validation, errors);
   requireStringArray(body, "agentInstructions", errors, "body.");
+  if (schemaVersion >= 2) {
+    validateNamedPurposeEntries(body.selfReviewChecks, errors, "selfReviewChecks");
+    validateExecutionHandoff(body.executionHandoff, errors);
+    validateSupportingSections(body.supportingSections, errors);
+  }
   requireStringArray(body, "openQuestions", errors, "body.");
 }
 
@@ -329,13 +642,13 @@ function validateBody(doc, errors) {
     return;
   }
 
-  const required = REQUIRED_BODY_FIELDS[doc.docType] || [];
+  const required = REQUIRED_BODY_FIELDS[doc.schemaVersion]?.[doc.docType] || [];
   for (const field of required) {
     if (!(field in doc.body)) errors.push(`missing ${doc.docType} body field: ${field}`);
   }
 
-  if (doc.docType === "spec") validateSpecBody(doc.body, errors);
-  if (doc.docType === "plan") validatePlanBody(doc.body, errors);
+  if (doc.docType === "spec") validateSpecBody(doc.body, errors, doc.schemaVersion);
+  if (doc.docType === "plan") validatePlanBody(doc.body, errors, doc.schemaVersion);
   if (doc.docType === "decision") validateDecisionBody(doc.body, errors);
   if (doc.docType === "agent-context") validateAgentContextBody(doc.body, errors);
 }

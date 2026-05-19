@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "docType": "plan",
   "id": "plan:yyyy-mm-dd-topic",
   "slug": "yyyy-mm-dd-topic",
@@ -20,19 +20,52 @@
   },
   "body": {
     "goal": "TBD",
+    "architecture": "TBD",
+    "techStack": ["TBD"],
+    "workerInstructions": {
+      "requiredSubSkills": ["superpowers:subagent-driven-development", "superpowers:executing-plans"],
+      "trackingSyntax": "- [ ]",
+      "note": "Steps use checkbox syntax for task-by-task execution tracking."
+    },
+    "scopeCheck": {
+      "assessment": "TBD",
+      "decomposition": "TBD"
+    },
     "currentState": "TBD",
     "targetState": "TBD",
     "scope": {
       "in": ["TBD"],
       "out": ["TBD"]
     },
+    "fileStructure": [
+      {
+        "action": "Modify",
+        "path": "TBD",
+        "responsibility": "TBD"
+      }
+    ],
     "slices": [
       {
         "id": "slice-1",
         "title": "TBD",
         "status": "todo",
         "surfaces": ["TBD"],
-        "steps": ["TBD"],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "TBD",
+            "role": "TBD"
+          }
+        ],
+        "steps": [
+          {
+            "id": "step-1",
+            "title": "TBD",
+            "status": "todo",
+            "instruction": "TBD",
+            "codeBlocks": []
+          }
+        ],
         "doneWhen": ["TBD"]
       }
     ],
@@ -50,6 +83,35 @@
       }
     ],
     "agentInstructions": ["Follow slices in executionOrder unless new evidence invalidates the plan."],
+    "selfReviewChecks": [
+      {
+        "name": "Spec coverage",
+        "purpose": "Confirm every spec requirement maps to a concrete slice and step."
+      }
+    ],
+    "executionHandoff": {
+      "defaultPath": "docs/superpowers/plans/YYYY-MM-DD-topic.md",
+      "options": [
+        {
+          "label": "Subagent-Driven",
+          "description": "Dispatch a fresh subagent per task and review between tasks.",
+          "requiredSkill": "superpowers:subagent-driven-development"
+        },
+        {
+          "label": "Inline Execution",
+          "description": "Execute tasks in this session with checkpointed plan execution.",
+          "requiredSkill": "superpowers:executing-plans"
+        }
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "No Placeholders",
+        "content": "Every step must contain the actual content an engineer needs.",
+        "items": ["TBD"],
+        "codeBlocks": []
+      }
+    ],
     "openQuestions": []
   }
 }

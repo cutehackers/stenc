@@ -347,11 +347,26 @@ function listItems(items, code = false) {
     .join("")}</ul>`;
 }
 
+function codeBlocks(blocks) {
+  const values = toList(blocks);
+  if (values.length === 0) return "";
+  return `<div class="code-stack">${values
+    .map((block) => `<pre><code class="language-${escapeHtml(block.language)}">${escapeHtml(block.content)}</code></pre>`)
+    .join("")}</div>`;
+}
+
 function renderTable(headers, rows) {
   if (rows.length === 0) return "";
   return `<table class="table"><thead><tr>${headers
     .map((header) => `<th>${escapeHtml(header)}</th>`)
     .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+
+function renderPlanStep(step, index) {
+  if (typeof step === "string") {
+    return `<section class="step"><div class="meta"><span class="badge">step-${index + 1}</span></div><p>${escapeHtml(step)}</p></section>`;
+  }
+  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
 }
 
 function renderDocument(doc, collection) {
@@ -383,8 +398,18 @@ function renderDocument(doc, collection) {
   if (links.relatedSpec) parts.push(`<h2>Related Spec</h2><p><code>${escapeHtml(links.relatedSpec)}</code></p>`);
   if (toList(links.relatedPlans).length > 0) parts.push(`<h2>Related Plans</h2>${listItems(links.relatedPlans, true)}`);
   if (body.goal) parts.push(`<h2>Goal</h2><p>${escapeHtml(body.goal)}</p>`);
+  if (typeof body.architecture === "string" && body.architecture) {
+    parts.push(`<h2>Architecture</h2><p>${escapeHtml(body.architecture)}</p>`);
+  }
   if (architecture.summary) {
     parts.push(`<h2>Architecture</h2><p>${escapeHtml(architecture.summary)}</p>${listItems(architecture.flow)}`);
+  }
+  if (toList(body.techStack).length > 0) parts.push(`<h2>Tech Stack</h2>${listItems(body.techStack, true)}`);
+  if (body.workerInstructions) {
+    parts.push(`<h2>Worker Instructions</h2><div class="panel"><p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h4>Required Sub-Skills</h4>${listItems(body.workerInstructions.requiredSubSkills, true)}</div>`);
+  }
+  if (body.scopeCheck) {
+    parts.push(`<h2>Scope Check</h2><div class="grid"><div class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></div><div class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></div></div>`);
   }
   if (scope.in) {
     parts.push(`<h2>Scope</h2><div class="grid"><div class="panel"><h3>In</h3>${listItems(scope.in)}</div><div class="panel"><h3>Out</h3>${listItems(scope.out)}</div></div>`);
@@ -398,14 +423,36 @@ function renderDocument(doc, collection) {
   ]) {
     if (value) parts.push(`<h2>${label}</h2><p>${escapeHtml(value)}</p>`);
   }
+  if (toList(body.requirements).length > 0) {
+    parts.push(`<h2>Requirements</h2><div class="stack">${body.requirements
+      .map((requirement) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
+      .join("")}</div>`);
+  }
+  if (toList(body.approaches).length > 0) {
+    parts.push(`<h2>Approaches</h2><div class="stack">${body.approaches
+      .map((approach) => `<section class="panel"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
+      .join("")}</div>`);
+  }
+  if (toList(body.components).length > 0) {
+    parts.push(`<h2>Components</h2><div class="stack">${body.components
+      .map((component) => `<section class="panel"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
+      .join("")}</div>`);
+  }
+  if (toList(body.dataFlow).length > 0) parts.push(`<h2>Data Flow</h2>${listItems(body.dataFlow)}`);
+  if (toList(body.errorHandling).length > 0) {
+    parts.push(`<h2>Error Handling</h2>${renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))}`);
+  }
   if (toList(body.contracts).length > 0) {
     parts.push(`<h2>Contracts</h2><div class="stack">${body.contracts
       .map((contract) => `<section class="panel"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
       .join("")}</div>`);
   }
+  if (toList(body.fileStructure).length > 0) {
+    parts.push(`<h2>File Structure</h2>${renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))}`);
+  }
   if (toList(body.slices).length > 0) {
     parts.push(`<h2>Implementation Slices</h2><div class="stack">${body.slices
-      .map((slice) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><h4>Surfaces</h4>${listItems(slice.surfaces, true)}<h4>Steps</h4>${listItems(slice.steps)}<h4>Done When</h4>${listItems(slice.doneWhen)}</section>`)
+      .map((slice) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><h4>Surfaces</h4>${listItems(slice.surfaces, true)}${toList(slice.files).length > 0 ? `<h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}` : ""}<h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div><h4>Done When</h4>${listItems(slice.doneWhen)}</section>`)
       .join("")}</div>`);
   }
   if (toList(body.executionOrder).length > 0) parts.push(`<h2>Execution Order</h2>${listItems(body.executionOrder)}`);
@@ -422,11 +469,28 @@ function renderDocument(doc, collection) {
   if (toList(body.surfaces).length > 0) {
     parts.push(`<h2>File Or Surface Map</h2>${renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))}`);
   }
+  if (toList(body.testingStrategy).length > 0) {
+    parts.push(`<h2>Testing Strategy</h2>${renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))}`);
+  }
   if (toList(body.validation).length > 0) {
     parts.push(`<h2>Validation</h2>${renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
   }
   parts.push(`<h2>Agent Instructions</h2>${listItems(body.agentInstructions)}`);
   if (toList(body.reviewChecklist).length > 0) parts.push(`<h2>Review Checklist</h2>${listItems(body.reviewChecklist)}`);
+  if (toList(body.selfReviewChecks).length > 0) {
+    parts.push(`<h2>Self Review Checks</h2>${renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
+  }
+  if (body.implementationHandoff) {
+    parts.push(`<h2>Implementation Handoff</h2><div class="panel"><p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}</div>`);
+  }
+  if (body.executionHandoff) {
+    parts.push(`<h2>Execution Handoff</h2><div class="panel"><p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}</div>`);
+  }
+  if (toList(body.supportingSections).length > 0) {
+    parts.push(`<h2>Supporting Sections</h2><div class="stack">${body.supportingSections
+      .map((section) => `<section class="panel"><h3>${escapeHtml(section.heading)}</h3><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${codeBlocks(section.codeBlocks)}</section>`)
+      .join("")}</div>`);
+  }
   parts.push(`<h2>Open Questions</h2>${toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>"}</article>`);
   return parts.join("\n");
 }
@@ -448,7 +512,7 @@ function writeStyles(docsDir) {
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; }
 a { color: var(--accent); text-underline-offset: 3px; }
-code { border: 1px solid var(--line); border-radius: 6px; background: #f5f7fa; padding: 0.08rem 0.25rem; }
+code { border: 1px solid var(--line); border-radius: 6px; background: #f5f7fa; overflow-wrap: anywhere; padding: 0.08rem 0.25rem; }
 .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
 .sidebar { border-right: 1px solid var(--line); background: #fff; height: 100vh; padding: 28px 20px; position: sticky; top: 0; }
 .brand { color: var(--text); display: block; font-weight: 800; margin-bottom: 28px; text-decoration: none; }
@@ -461,17 +525,24 @@ h1 { font-size: clamp(2rem, 3vw, 3rem); letter-spacing: 0; line-height: 1.08; ma
 h2 { border-bottom: 1px solid var(--line); font-size: 1.15rem; letter-spacing: 0; margin: 32px 0 14px; padding-bottom: 8px; }
 h3 { font-size: 1rem; margin: 0 0 10px; }
 h4 { color: var(--muted); font-size: 0.82rem; letter-spacing: 0; margin: 16px 0 6px; text-transform: uppercase; }
+h5 { font-size: 0.98rem; margin: 8px 0; }
+h6 { color: var(--muted); font-size: 0.78rem; letter-spacing: 0; margin: 12px 0 4px; text-transform: uppercase; }
 .description { color: var(--muted); max-width: 760px; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .badge { border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); font-size: 0.8rem; padding: 4px 9px; }
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 18px; }
 .stack { display: grid; gap: 14px; }
+.step-list { display: grid; gap: 12px; }
+.step { border: 1px solid var(--line); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
 .list { margin: 0; padding-left: 1.15rem; }
-.table { border-collapse: collapse; width: 100%; }
+.table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; width: 100%; }
 .table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
 .table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
 .command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
+.code-stack { display: grid; gap: 10px; margin-top: 10px; }
+pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }
+pre code { border: 0; background: transparent; color: inherit; padding: 0; white-space: pre; }
 .operator-console .document-header { background: #202938; border-radius: var(--radius); color: #fff; padding: 24px; }
 .operator-console .description, .operator-console .badge { color: #d7dee9; }
 .operator-console .badge { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.25); }
