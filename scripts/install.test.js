@@ -47,7 +47,7 @@ test("install can prepare the target project's ContextKit docs app once", () => 
         "example-runtime.spec.json",
       ),
     ),
-    true,
+    false,
   );
 });
 

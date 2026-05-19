@@ -112,79 +112,6 @@ function readJsonIfPresent(filePath) {
   }
 }
 
-function hasCurrentDocumentShape(doc) {
-  return Boolean(
-    doc &&
-      doc.schemaVersion === 1 &&
-      doc.id &&
-      doc.createdAt &&
-      doc.updatedAt &&
-      doc.links &&
-      doc.page &&
-      STYLE_TEMPLATES.has(doc.page.styleTemplate) &&
-      doc.body,
-  );
-}
-
-function exampleRuntimeSpec() {
-  return {
-    schemaVersion: 1,
-    slug: "example-runtime",
-    docType: "spec",
-    id: "spec:example-runtime",
-    status: "draft",
-    title: "Example Runtime Contract",
-    description: "Example fixed-format ContextKit spec.",
-    owner: "context-kit",
-    createdAt: "2026-05-19",
-    updatedAt: "2026-05-19",
-    links: {
-      sourceOfTruth: ["content/specs/example-runtime.spec.json"],
-      relatedPlans: [],
-      relatedDecisions: [],
-    },
-    page: {
-      humanSummary: "A person reads this single spec as a styled web page with stable sections.",
-      agentSummary: "An AI coding agent reads this JSON artifact directly and follows exact fields.",
-      styleTemplate: "task-first",
-    },
-    body: {
-      goal: "Show the required shape for one ContextKit spec document.",
-      problem: "Free-form documents drift in structure and visual treatment.",
-      scope: {
-        in: ["Single spec fields", "Validation commands", "Agent instructions"],
-        out: ["Markdown authoring", "MDX component authoring", "Collection data inside one document"],
-      },
-      architecture: {
-        summary: "Structured JSON stores the document contract; the fixed ContextKit page derives indexes and renders a selected style template.",
-        flow: ["Author one JSON file", "Validate the artifact", "Render one web page"],
-      },
-      contracts: [
-        {
-          name: "Single document source",
-          rules: ["Specs are JSON source files.", "Pages render with the shared ContextKit layout."],
-        },
-      ],
-      surfaces: [
-        {
-          path: "content/specs/*.spec.json",
-          role: "Spec source artifact",
-          owner: "context-kit",
-        },
-      ],
-      validation: [
-        {
-          command: "node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content",
-          purpose: "Generated docs content validates.",
-        },
-      ],
-      agentInstructions: ["Read this JSON before changing the related implementation."],
-      reviewChecklist: ["The document describes exactly one spec.", "Validation commands are current."],
-      openQuestions: [],
-    },
-  };
-}
-
 function removeFrameworkArtifacts(docsDir) {
   for (const target of [
     `${"a"}stro.config.mjs`,
@@ -370,11 +297,6 @@ function writeAppData(docsDir, title) {
     ensureDirectory(path.join(docsDir, "content", collection.dir));
   }
 
-  const exampleSpec = path.join(docsDir, "content", "specs", "example-runtime.spec.json");
-  const existingExample = readJsonIfPresent(exampleSpec);
-  if (!hasCurrentDocumentShape(existingExample)) {
-    writeJson(exampleSpec, exampleRuntimeSpec());
-  }
 }
 
 function readCollection(docsDir, collection) {
