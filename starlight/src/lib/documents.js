@@ -7,8 +7,8 @@ export const DOC_TYPE_LABELS = {
 
 export function sortDocuments(documents) {
   return [...documents].sort((a, b) => {
-    const left = a.lastUpdated || '';
-    const right = b.lastUpdated || '';
+    const left = a.updatedAt || '';
+    const right = b.updatedAt || '';
     if (left !== right) return right.localeCompare(left);
     return a.title.localeCompare(b.title);
   });

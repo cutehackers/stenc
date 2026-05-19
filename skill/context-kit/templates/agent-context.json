@@ -1,34 +1,33 @@
 {
-  "slug": "tbd-agent-context",
+  "schemaVersion": 1,
   "docType": "agent-context",
+  "id": "agent-context:topic",
+  "slug": "topic",
   "status": "draft",
   "title": "TBD",
   "description": "TBD",
   "owner": "TBD",
-  "lastUpdated": "YYYY-MM-DD",
-  "humanSummary": "TBD",
-  "agentSummary": "TBD",
-  "sourceOfTruth": ["TBD"],
-  "goal": "TBD",
-  "architecture": "TBD",
-  "scope": {
-    "in": ["TBD"],
-    "out": ["TBD"]
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["TBD"],
+    "requiredReading": ["TBD"]
   },
-  "nonGoals": ["TBD"],
-  "surfaces": [
-    {
-      "surface": "TBD",
-      "role": "TBD",
-      "owner": "TBD"
-    }
-  ],
-  "whenToUse": ["TBD"],
-  "requiredReading": ["TBD"],
-  "workingRules": ["TBD"],
-  "evidence": ["TBD"],
-  "validationCommands": ["TBD"],
-  "agentInstructions": ["Load this context before changing files in the listed scope."],
-  "reviewChecklist": ["The context is short enough to load before work starts."],
-  "openQuestions": ["TBD"]
+  "page": {
+    "humanSummary": "TBD",
+    "agentSummary": "TBD"
+  },
+  "body": {
+    "whenToUse": ["TBD"],
+    "requiredReading": ["TBD"],
+    "workingRules": ["TBD"],
+    "validation": [
+      {
+        "command": "TBD",
+        "purpose": "TBD"
+      }
+    ],
+    "agentInstructions": ["Load this context before working in the named area."],
+    "openQuestions": []
+  }
 }

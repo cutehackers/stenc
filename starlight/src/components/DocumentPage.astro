@@ -2,8 +2,11 @@
 import { DOC_TYPE_LABELS, normalizeList } from '../lib/documents.js';
 const { doc, collection } = Astro.props;
 const typeLabel = DOC_TYPE_LABELS[collection] || doc.docType;
-const scope = doc.scope || {};
-const interfaces = doc.interfaces || {};
+const links = doc.links || {};
+const page = doc.page || {};
+const body = doc.body || {};
+const scope = body.scope || {};
+const architecture = body.architecture || {};
 ---
 <article>
   <header class="document-header">
@@ -13,80 +16,191 @@ const interfaces = doc.interfaces || {};
     <div class="meta">
       <span class="badge">Status: {doc.status}</span>
       <span class="badge">Owner: {doc.owner}</span>
-      <span class="badge">Updated: {doc.lastUpdated}</span>
+      <span class="badge">Updated: {doc.updatedAt}</span>
     </div>
   </header>
 
   <section class="grid">
     <div class="panel">
       <h3>Human Summary</h3>
-      <p>{doc.humanSummary}</p>
+      <p>{page.humanSummary}</p>
     </div>
     <div class="panel">
       <h3>Agent Summary</h3>
-      <p>{doc.agentSummary}</p>
+      <p>{page.agentSummary}</p>
     </div>
   </section>
 
   <h2>Source Of Truth</h2>
-  <ul class="list">{normalizeList(doc.sourceOfTruth).map((item) => <li><code>{item}</code></li>)}</ul>
+  <ul class="list">{normalizeList(links.sourceOfTruth).map((item) => <li><code>{item}</code></li>)}</ul>
 
-  <h2>Goal</h2>
-  <p>{doc.goal}</p>
-
-  <h2>Architecture</h2>
-  <p>{doc.architecture}</p>
-
-  <h2>Scope</h2>
-  <div class="grid">
-    <div class="panel">
-      <h3>In</h3>
-      <ul class="list">{normalizeList(scope.in).map((item) => <li>{item}</li>)}</ul>
-    </div>
-    <div class="panel">
-      <h3>Out</h3>
-      <ul class="list">{normalizeList(scope.out).map((item) => <li>{item}</li>)}</ul>
-    </div>
-  </div>
-
-  {doc.problem && <><h2>Problem</h2><p>{doc.problem}</p></>}
-  {doc.currentState && <><h2>Current State</h2><p>{doc.currentState}</p></>}
-  {doc.targetState && <><h2>Target State</h2><p>{doc.targetState}</p></>}
-  {doc.decision && <><h2>Decision</h2><p>{doc.decision}</p></>}
-
-  {normalizeList(doc.contract).length > 0 && (
+  {links.relatedSpec && <><h2>Related Spec</h2><p><code>{links.relatedSpec}</code></p></>}
+  {normalizeList(links.relatedPlans).length > 0 && (
     <>
-      <h2>Contract</h2>
-      <ul class="list">{normalizeList(doc.contract).map((item) => <li>{item}</li>)}</ul>
+      <h2>Related Plans</h2>
+      <ul class="list">{normalizeList(links.relatedPlans).map((item) => <li><code>{item}</code></li>)}</ul>
     </>
   )}
 
-  {normalizeList(doc.surfaces).length > 0 && (
+  {body.goal && <><h2>Goal</h2><p>{body.goal}</p></>}
+
+  {architecture.summary && (
     <>
-      <h2>File Or Surface Map</h2>
+      <h2>Architecture</h2>
+      <p>{architecture.summary}</p>
+      {normalizeList(architecture.flow).length > 0 && (
+        <ol class="list">{normalizeList(architecture.flow).map((item) => <li>{item}</li>)}</ol>
+      )}
+    </>
+  )}
+
+  {scope.in && (
+    <>
+      <h2>Scope</h2>
+      <div class="grid">
+        <div class="panel">
+          <h3>In</h3>
+          <ul class="list">{normalizeList(scope.in).map((item) => <li>{item}</li>)}</ul>
+        </div>
+        <div class="panel">
+          <h3>Out</h3>
+          <ul class="list">{normalizeList(scope.out).map((item) => <li>{item}</li>)}</ul>
+        </div>
+      </div>
+    </>
+  )}
+
+  {body.problem && <><h2>Problem</h2><p>{body.problem}</p></>}
+  {body.currentState && <><h2>Current State</h2><p>{body.currentState}</p></>}
+  {body.targetState && <><h2>Target State</h2><p>{body.targetState}</p></>}
+  {body.context && <><h2>Context</h2><p>{body.context}</p></>}
+  {body.decision && <><h2>Decision</h2><p>{body.decision}</p></>}
+
+  {normalizeList(body.contracts).length > 0 && (
+    <>
+      <h2>Contracts</h2>
+      <div class="stack">
+        {body.contracts.map((contract) => (
+          <section class="panel">
+            <h3>{contract.name}</h3>
+            <ul class="list">{normalizeList(contract.rules).map((item) => <li>{item}</li>)}</ul>
+          </section>
+        ))}
+      </div>
+    </>
+  )}
+
+  {normalizeList(body.slices).length > 0 && (
+    <>
+      <h2>Implementation Slices</h2>
+      <div class="stack">
+        {body.slices.map((slice) => (
+          <section class="panel">
+            <div class="meta">
+              <span class="badge">{slice.id}</span>
+              <span class="badge">{slice.status}</span>
+            </div>
+            <h3>{slice.title}</h3>
+            <h4>Surfaces</h4>
+            <ul class="list">{normalizeList(slice.surfaces).map((item) => <li><code>{item}</code></li>)}</ul>
+            <h4>Steps</h4>
+            <ul class="list">{normalizeList(slice.steps).map((item) => <li>{item}</li>)}</ul>
+            <h4>Done When</h4>
+            <ul class="list">{normalizeList(slice.doneWhen).map((item) => <li>{item}</li>)}</ul>
+          </section>
+        ))}
+      </div>
+    </>
+  )}
+
+  {normalizeList(body.executionOrder).length > 0 && (
+    <>
+      <h2>Execution Order</h2>
+      <ol class="list">{normalizeList(body.executionOrder).map((item) => <li>{item}</li>)}</ol>
+    </>
+  )}
+
+  {normalizeList(body.risks).length > 0 && (
+    <>
+      <h2>Risks</h2>
       <table class="table">
-        <thead><tr><th>Surface</th><th>Role</th><th>Owner</th></tr></thead>
-        <tbody>{doc.surfaces.map((row) => <tr><td><code>{row.surface}</code></td><td>{row.role}</td><td>{row.owner}</td></tr>)}</tbody>
+        <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+        <tbody>{body.risks.map((row) => <tr><td>{row.risk}</td><td>{row.mitigation}</td></tr>)}</tbody>
       </table>
     </>
   )}
 
-  {normalizeList(doc.validationCommands).length > 0 && (
+  {normalizeList(body.optionsConsidered).length > 0 && (
+    <>
+      <h2>Options Considered</h2>
+      <table class="table">
+        <thead><tr><th>Option</th><th>Outcome</th></tr></thead>
+        <tbody>{body.optionsConsidered.map((row) => <tr><td>{row.option}</td><td>{row.outcome}</td></tr>)}</tbody>
+      </table>
+    </>
+  )}
+
+  {normalizeList(body.consequences).length > 0 && (
+    <>
+      <h2>Consequences</h2>
+      <ul class="list">{normalizeList(body.consequences).map((item) => <li>{item}</li>)}</ul>
+    </>
+  )}
+
+  {normalizeList(body.whenToUse).length > 0 && (
+    <>
+      <h2>When To Use</h2>
+      <ul class="list">{normalizeList(body.whenToUse).map((item) => <li>{item}</li>)}</ul>
+    </>
+  )}
+
+  {normalizeList(body.requiredReading).length > 0 && (
+    <>
+      <h2>Required Reading</h2>
+      <ul class="list">{normalizeList(body.requiredReading).map((item) => <li><code>{item}</code></li>)}</ul>
+    </>
+  )}
+
+  {normalizeList(body.workingRules).length > 0 && (
+    <>
+      <h2>Working Rules</h2>
+      <ul class="list">{normalizeList(body.workingRules).map((item) => <li>{item}</li>)}</ul>
+    </>
+  )}
+
+  {normalizeList(body.surfaces).length > 0 && (
+    <>
+      <h2>File Or Surface Map</h2>
+      <table class="table">
+        <thead><tr><th>Path</th><th>Role</th><th>Owner</th></tr></thead>
+        <tbody>{body.surfaces.map((row) => <tr><td><code>{row.path}</code></td><td>{row.role}</td><td>{row.owner}</td></tr>)}</tbody>
+      </table>
+    </>
+  )}
+
+  {normalizeList(body.validation).length > 0 && (
     <>
       <h2>Validation</h2>
-      {doc.validationCommands.map((command) => <code class="command">{command}</code>)}
+      <table class="table">
+        <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+        <tbody>{body.validation.map((row) => <tr><td><code class="command">{row.command}</code></td><td>{row.purpose}</td></tr>)}</tbody>
+      </table>
     </>
   )}
 
   <h2>Agent Instructions</h2>
-  <ul class="list">{normalizeList(doc.agentInstructions).map((item) => <li>{item}</li>)}</ul>
+  <ul class="list">{normalizeList(body.agentInstructions).map((item) => <li>{item}</li>)}</ul>
 
-  <h2>Review Checklist</h2>
-  <ul class="list">{normalizeList(doc.reviewChecklist).map((item) => <li>{item}</li>)}</ul>
+  {normalizeList(body.reviewChecklist).length > 0 && (
+    <>
+      <h2>Review Checklist</h2>
+      <ul class="list">{normalizeList(body.reviewChecklist).map((item) => <li>{item}</li>)}</ul>
+    </>
+  )}
 
   <h2>Open Questions</h2>
-  {normalizeList(doc.openQuestions).length > 0 ? (
-    <ul class="list">{normalizeList(doc.openQuestions).map((item) => <li>{item}</li>)}</ul>
+  {normalizeList(body.openQuestions).length > 0 ? (
+    <ul class="list">{normalizeList(body.openQuestions).map((item) => <li>{item}</li>)}</ul>
   ) : (
     <p>No open questions.</p>
   )}

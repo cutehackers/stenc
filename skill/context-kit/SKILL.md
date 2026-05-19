@@ -20,8 +20,11 @@ MDX.
    - `decision`: ADR-style decision record
    - `agent-context`: entry context for AI coding agents
 2. Copy the matching JSON file from `templates/`.
-3. Fill required fields. Keep arrays and object shapes intact.
-4. Validate the document:
+3. Create one JSON file for one document. Do not include collection data or
+   other documents inside it.
+4. Fill `links`, `page`, and the type-specific `body`. Keep arrays and object
+   shapes intact.
+5. Validate the document:
 
 ```bash
 node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc.json
@@ -60,10 +63,12 @@ npm run dev
 ## Required Authoring Rules
 
 - Treat JSON as the source of truth.
-- Keep `humanSummary` short and useful for page scanning.
-- Keep `agentSummary`, `sourceOfTruth`, `surfaces`, `validationCommands`, and
-  `agentInstructions` exact enough for an AI coding agent to act safely.
-- Put unresolved work in `openQuestions`.
+- Keep `page.humanSummary` short and useful for page scanning.
+- Keep `page.agentSummary`, `links.sourceOfTruth`, `body.surfaces`,
+  `body.validation`, and `body.agentInstructions` exact enough for an AI coding
+  agent to act safely.
+- Put unresolved work in `body.openQuestions`.
+- Let the renderer derive indexes from `content/<collection>/*.json`.
 - Do not hide contract meaning in rendered-only UI.
 - Do not add Markdown, MDX imports, or per-document visual components.
 

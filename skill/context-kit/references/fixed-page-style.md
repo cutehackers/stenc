@@ -5,13 +5,16 @@ not choose per-document components or styles.
 
 ## Rendering Rules
 
-- Render `humanSummary` and `agentSummary` as first-viewport panels.
-- Render status, owner, and last-updated metadata in stable badges.
-- Render `sourceOfTruth`, `validationCommands`, and `agentInstructions` as
+- Render `page.humanSummary` and `page.agentSummary` as first-viewport panels.
+- Render status, owner, and `updatedAt` metadata in stable badges.
+- Render `links.sourceOfTruth`, `body.validation`, and
+  `body.agentInstructions` as
   explicit operational sections.
-- Render `scope.in` and `scope.out` side by side on wide screens and stacked on
-  mobile.
-- Render `surfaces` as a table with `surface`, `role`, and `owner` columns.
+- Render `body.scope.in` and `body.scope.out` side by side on wide screens and
+  stacked on mobile.
+- Render `body.surfaces` as a table with `path`, `role`, and `owner` columns.
+- Render collection indexes by scanning document files. Do not require a
+  document to contain other documents.
 - Keep all routes predictable:
   - `/specs/<slug>/`
   - `/plans/<slug>/`

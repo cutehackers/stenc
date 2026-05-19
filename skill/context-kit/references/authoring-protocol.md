@@ -10,10 +10,12 @@ JSON. There is no Markdown source and no MDX component layer.
 
 ## Workflow
 
-1. Classify the document as `spec`, `plan`, `decision`, or `agent-context`.
+1. Classify the single document as `spec`, `plan`, `decision`, or
+   `agent-context`.
 2. Start from the matching JSON template in `templates/`.
-3. Fill all required common fields.
-4. Fill all type-specific fields.
+3. Fill top-level metadata: `schemaVersion`, `docType`, `id`, `slug`,
+   `status`, `title`, `description`, `owner`, `createdAt`, and `updatedAt`.
+4. Fill `links`, `page`, and the type-specific `body`.
 5. Keep normative behavior in explicit arrays and objects, not prose-only
    paragraphs.
 6. Put unknowns in `openQuestions`.
@@ -24,22 +26,16 @@ JSON. There is no Markdown source and no MDX component layer.
 
 Every ContextKit document includes:
 
-- `humanSummary`
-- `agentSummary`
-- `sourceOfTruth`
-- `goal`
-- `architecture`
-- `scope`
-- `nonGoals`
-- `surfaces`
-- `evidence`
-- `validationCommands`
-- `agentInstructions`
-- `reviewChecklist`
-- `openQuestions`
+- top-level document identity and lifecycle metadata
+- `links.sourceOfTruth` plus type-specific links like `relatedSpec`
+- `page.humanSummary` and `page.agentSummary`
+- `body` fields for the selected document type
+
+Do not put collection data, sidebars, or a list of all docs into a document
+artifact. The renderer derives those from `content/<collection>/*.json`.
 
 Type-specific templates add contract, sequencing, rationale, or working-rule
-fields on top of this common structure.
+fields inside `body`.
 
 ## Document Types
 
@@ -52,7 +48,8 @@ it.
 ### Plan
 
 Use for execution order, migration work, launch readiness, or cleanup work. A
-plan owns sequencing and validation, not canonical product truth.
+plan owns sequencing and validation, not canonical product truth. Plans should
+be split into independently reviewable `body.slices`.
 
 ### Decision
 

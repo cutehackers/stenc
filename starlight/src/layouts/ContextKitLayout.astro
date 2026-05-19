@@ -99,6 +99,13 @@ const { site, title } = Astro.props;
         margin: 32px 0 14px;
         padding-bottom: 8px;
       }
+      h4 {
+        color: var(--muted);
+        font-size: 0.82rem;
+        letter-spacing: 0;
+        margin: 16px 0 6px;
+        text-transform: uppercase;
+      }
       .description { color: var(--muted); max-width: 760px; }
       .meta {
         display: flex;
@@ -126,6 +133,7 @@ const { site, title } = Astro.props;
         padding: 18px;
       }
       .panel h3 { margin: 0 0 10px; font-size: 1rem; }
+      .stack { display: grid; gap: 14px; }
       .list { margin: 0; padding-left: 1.15rem; }
       .table {
         border-collapse: collapse;

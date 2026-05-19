@@ -1,63 +1,66 @@
 {
-  "slug": "context-kit-adoption",
+  "schemaVersion": 1,
   "docType": "plan",
+  "id": "plan:context-kit-adoption",
+  "slug": "context-kit-adoption",
   "status": "draft",
   "title": "Rail ContextKit Adoption Plan",
-  "description": "Example fixed-format ContextKit plan for adopting ContextKit in Rail docs.",
+  "description": "Example single-document ContextKit plan for adopting ContextKit in Rail docs.",
   "owner": "rail-docs",
-  "relatedSpec": "docs/SPEC.md",
-  "lastUpdated": "2026-05-19",
-  "humanSummary": "Adopt ContextKit by converting a small set of canonical Rail docs first, then expand only after the template works for real runtime contracts.",
-  "agentSummary": "Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy and add ContextKit validation before broad migration.",
-  "sourceOfTruth": ["docs/SPEC.md", "docs/ARCHITECTURE.md", "docs/CONVENTIONS.md"],
-  "goal": "Make Rail specs and plans easier for humans to scan while keeping them structured enough for AI coding agents to follow.",
-  "architecture": "ContextKit stores document data as JSON and renders it through a fixed Astro web app. The JSON data remains the agent-readable contract.",
-  "scope": {
-    "in": ["One canonical spec example", "One implementation plan example", "Thin AGENTS.md linkage if adopted in Rail"],
-    "out": ["Full docs migration", "Runtime behavior changes"]
+  "createdAt": "2026-05-19",
+  "updatedAt": "2026-05-19",
+  "links": {
+    "sourceOfTruth": ["docs/SPEC.md", "docs/ARCHITECTURE.md", "docs/CONVENTIONS.md"],
+    "relatedSpec": "spec:artifact-identity"
   },
-  "nonGoals": ["Do not make free-form Markdown the document source.", "Do not change Rail's product contract as part of template adoption."],
-  "surfaces": [
-    {
-      "surface": "skill/context-kit/templates/",
-      "role": "JSON templates for new documents",
-      "owner": "context-kit"
+  "page": {
+    "humanSummary": "Adopt ContextKit by converting a small set of canonical Rail docs first, then expand only after the template works for real runtime contracts.",
+    "agentSummary": "Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy and add ContextKit validation before broad migration."
+  },
+  "body": {
+    "goal": "Make Rail specs and plans easier for humans to scan while keeping them structured enough for AI coding agents to follow.",
+    "currentState": "Rail docs are plain Markdown with strong contracts but limited visual scanning support.",
+    "targetState": "Rail docs use one JSON file per spec or plan and a fixed web page for human reading.",
+    "scope": {
+      "in": ["One canonical spec example", "One implementation plan example", "Thin AGENTS.md linkage if adopted in Rail"],
+      "out": ["Full docs migration", "Runtime behavior changes"]
     },
-    {
-      "surface": "examples/",
-      "role": "Example JSON documents",
-      "owner": "context-kit"
-    },
-    {
-      "surface": "docs/context-kit/",
-      "role": "Generated fixed web docs app in target repos",
-      "owner": "target project"
-    }
-  ],
-  "currentState": "Rail docs are plain Markdown with strong contracts but limited visual scanning support.",
-  "targetState": "Rail docs use structured JSON as the contract and a fixed web page for human reading.",
-  "implementationSlices": [
-    {
-      "slice": "ContextKit templates",
-      "surfaces": ["skill/context-kit/templates/*.json"],
-      "doneWhen": "Templates validate as JSON documents."
-    },
-    {
-      "slice": "Web app renderer",
-      "surfaces": ["docs/context-kit/src/"],
-      "doneWhen": "Spec and plan pages build from JSON."
-    }
-  ],
-  "executionOrder": ["Validate JSON templates.", "Render example spec and plan.", "Run the generated docs app build."],
-  "risks": [
-    {
-      "risk": "JSON becomes verbose for humans to author.",
-      "mitigation": "Keep templates explicit and fixed; optimize rendering, not source looseness."
-    }
-  ],
-  "evidence": ["ContextKit templates and examples are validated by ./scripts/validate.sh."],
-  "validationCommands": ["node skill/context-kit/scripts/validate-context-kit-doc.js examples", "./scripts/validate.sh"],
-  "agentInstructions": ["Treat this as an adoption plan shape, not a Rail migration command.", "Do not edit Rail runtime code while adopting docs templates."],
-  "reviewChecklist": ["The plan distinguishes examples from active Rail authority.", "Each implementation slice has a visible surface and done condition."],
-  "openQuestions": []
+    "slices": [
+      {
+        "id": "slice-1",
+        "title": "ContextKit templates",
+        "status": "todo",
+        "surfaces": ["skill/context-kit/templates/*.json"],
+        "steps": ["Convert each template to metadata, links, page, and body sections.", "Run the ContextKit validator."],
+        "doneWhen": ["Templates validate as single-document JSON artifacts."]
+      },
+      {
+        "id": "slice-2",
+        "title": "Web app renderer",
+        "status": "todo",
+        "surfaces": ["docs/context-kit/src/"],
+        "steps": ["Render spec and plan pages from nested body fields.", "Build the generated docs app."],
+        "doneWhen": ["Spec and plan pages build from JSON."]
+      }
+    ],
+    "executionOrder": ["slice-1", "slice-2"],
+    "risks": [
+      {
+        "risk": "JSON becomes verbose for humans to author.",
+        "mitigation": "Keep each document scoped to one artifact and optimize rendering, not source looseness."
+      }
+    ],
+    "validation": [
+      {
+        "command": "node skill/context-kit/scripts/validate-context-kit-doc.js examples",
+        "purpose": "Example document contract validation"
+      },
+      {
+        "command": "./scripts/validate.sh",
+        "purpose": "Full ContextKit validation"
+      }
+    ],
+    "agentInstructions": ["Treat this as an adoption plan shape, not a Rail migration command.", "Do not edit Rail runtime code while adopting docs templates."],
+    "openQuestions": []
+  }
 }

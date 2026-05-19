@@ -1,48 +1,54 @@
 {
-  "slug": "tbd-plan",
+  "schemaVersion": 1,
   "docType": "plan",
+  "id": "plan:yyyy-mm-dd-topic",
+  "slug": "yyyy-mm-dd-topic",
   "status": "draft",
   "title": "TBD",
   "description": "TBD",
   "owner": "TBD",
-  "relatedSpec": "TBD",
-  "lastUpdated": "YYYY-MM-DD",
-  "humanSummary": "TBD",
-  "agentSummary": "TBD",
-  "sourceOfTruth": ["TBD"],
-  "goal": "TBD",
-  "architecture": "TBD",
-  "scope": {
-    "in": ["TBD"],
-    "out": ["TBD"]
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["TBD"],
+    "relatedSpec": "spec:yyyy-mm-dd-topic"
   },
-  "nonGoals": ["TBD"],
-  "surfaces": [
-    {
-      "surface": "TBD",
-      "role": "TBD",
-      "owner": "TBD"
-    }
-  ],
-  "currentState": "TBD",
-  "targetState": "TBD",
-  "implementationSlices": [
-    {
-      "slice": "TBD",
-      "surfaces": ["TBD"],
-      "doneWhen": "TBD"
-    }
-  ],
-  "executionOrder": ["TBD"],
-  "risks": [
-    {
-      "risk": "TBD",
-      "mitigation": "TBD"
-    }
-  ],
-  "evidence": ["TBD"],
-  "validationCommands": ["TBD"],
-  "agentInstructions": ["Follow the execution order unless new evidence invalidates it."],
-  "reviewChecklist": ["Every slice has a clear file or surface owner."],
-  "openQuestions": ["TBD"]
+  "page": {
+    "humanSummary": "TBD",
+    "agentSummary": "TBD"
+  },
+  "body": {
+    "goal": "TBD",
+    "currentState": "TBD",
+    "targetState": "TBD",
+    "scope": {
+      "in": ["TBD"],
+      "out": ["TBD"]
+    },
+    "slices": [
+      {
+        "id": "slice-1",
+        "title": "TBD",
+        "status": "todo",
+        "surfaces": ["TBD"],
+        "steps": ["TBD"],
+        "doneWhen": ["TBD"]
+      }
+    ],
+    "executionOrder": ["slice-1"],
+    "risks": [
+      {
+        "risk": "TBD",
+        "mitigation": "TBD"
+      }
+    ],
+    "validation": [
+      {
+        "command": "TBD",
+        "purpose": "TBD"
+      }
+    ],
+    "agentInstructions": ["Follow slices in executionOrder unless new evidence invalidates the plan."],
+    "openQuestions": []
+  }
 }

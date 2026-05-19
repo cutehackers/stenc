@@ -13,12 +13,14 @@ documents.
   validator.
 - Keep authoring rules under `skill/context-kit/references/`.
 - Keep scripts deterministic and dependency-light.
-- Starlight setup is part of installation. The current documents must be
-  viewable through the local Starlight workspace after install.
-- Do not make Astro Starlight rendering the source of truth. The document
-  structure must remain meaningful in plain Markdown or MDX.
-- If required frontmatter or headings change, update templates, references, and
-  validator together.
+- Target project setup is part of installation. The current documents must be
+  viewable through the generated ContextKit Astro workspace after install.
+- Do not make Astro rendering the source of truth. Each document source is one
+  structured JSON file with `metadata`, `links`, `page`, and `body` sections.
+- Do not reintroduce Markdown, MDX, frontmatter, or per-document visual
+  components as the document source.
+- If required JSON fields change, update templates, references, examples,
+  validator, and generated renderer together.
 
 ## Validation
 
@@ -28,9 +30,9 @@ Run from the repo root:
 ./scripts/validate.sh
 ```
 
-When checking Starlight directly, run:
+When checking the generated examples app directly, run:
 
 ```bash
-./scripts/setup-starlight.sh
+./scripts/setup-examples-app.sh
 cd starlight && npm run build
 ```

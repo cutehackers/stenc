@@ -1,70 +1,122 @@
 # ContextKit JSON Field Contract
 
-Required common fields for all document types:
+Each ContextKit source file is exactly one document artifact. Collection pages,
+navigation, and indexes are derived by the renderer from files on disk.
+
+## Common Shape
+
+All document types use the same top-level shape:
 
 ```json
 {
-  "slug": "url-safe-document-id",
+  "schemaVersion": 1,
   "docType": "spec | plan | decision | agent-context",
+  "id": "spec:yyyy-mm-dd-topic",
+  "slug": "yyyy-mm-dd-topic",
   "status": "draft | proposed | approved | canonical | superseded",
   "title": "Human-readable page title",
-  "description": "One-sentence summary",
-  "owner": "Team, package, module, or role that owns the page",
-  "lastUpdated": "YYYY-MM-DD",
-  "humanSummary": "Short page-scanning summary",
-  "agentSummary": "Short agent-action summary",
-  "sourceOfTruth": ["Canonical files, APIs, docs, or artifacts"],
-  "goal": "What this document settles or guides",
-  "architecture": "System shape, boundaries, or decision path",
-  "scope": {
-    "in": ["Covered behavior, files, APIs, workflows, or docs"],
-    "out": ["Adjacent work this page does not authorize"]
+  "description": "One-sentence page summary",
+  "owner": "Team, package, module, or role",
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["Canonical files, APIs, docs, or artifacts"]
   },
-  "nonGoals": ["Tempting but excluded changes"],
-  "surfaces": [
-    {
-      "surface": "Exact file, API, workflow, or product surface",
-      "role": "Why it matters",
-      "owner": "Owning team or module"
-    }
-  ],
-  "evidence": ["Real inputs behind the document"],
-  "validationCommands": ["Commands that prove relevant behavior"],
-  "agentInstructions": ["Operational instructions for AI coding agents"],
-  "reviewChecklist": ["Human review checks"],
-  "openQuestions": ["Unresolved questions"]
+  "page": {
+    "humanSummary": "Short page-scanning summary",
+    "agentSummary": "Short agent-action summary"
+  },
+  "body": {}
 }
 ```
 
-## Type-Specific Fields
+## Spec Body
 
-`spec` documents additionally require:
+Specs own canonical behavior, runtime, API, schema, or workflow contracts.
 
+Required `body` fields:
+
+- `goal`
 - `problem`
-- `vocabulary`
-- `contract`
-- `interfaces`
-- `invariants`
+- `scope.in`
+- `scope.out`
+- `architecture.summary`
+- `architecture.flow`
+- `contracts[].name`
+- `contracts[].rules`
+- `surfaces[].path`
+- `surfaces[].role`
+- `surfaces[].owner`
+- `validation[].command`
+- `validation[].purpose`
+- `agentInstructions`
+- `reviewChecklist`
+- `openQuestions`
 
-`plan` documents additionally require:
+Spec `links` may include `relatedPlans` and `relatedDecisions`.
 
+## Plan Body
+
+Plans own execution order and validation flow. They should point to the spec
+that owns the durable product or runtime truth.
+
+Required `links` fields:
+
+- `sourceOfTruth`
 - `relatedSpec`
+
+Required `body` fields:
+
+- `goal`
 - `currentState`
 - `targetState`
-- `implementationSlices`
+- `scope.in`
+- `scope.out`
+- `slices[].id`
+- `slices[].title`
+- `slices[].status`
+- `slices[].surfaces`
+- `slices[].steps`
+- `slices[].doneWhen`
 - `executionOrder`
-- `risks`
+- `risks[].risk`
+- `risks[].mitigation`
+- `validation[].command`
+- `validation[].purpose`
+- `agentInstructions`
+- `openQuestions`
 
-`decision` documents additionally require:
+## Decision Body
 
+Decisions record rationale and consequences.
+
+Required `links` fields:
+
+- `sourceOfTruth`
 - `relatedSpec`
+
+Required `body` fields:
+
 - `context`
 - `decision`
-- `optionsConsidered`
+- `optionsConsidered[].option`
+- `optionsConsidered[].outcome`
 - `consequences`
+- `validation[].command`
+- `validation[].purpose`
+- `agentInstructions`
+- `openQuestions`
 
-`agent-context` documents additionally require:
+## Agent Context Body
+
+Agent-context documents provide scoped working rules.
+
+Required `body` fields:
 
 - `whenToUse`
 - `requiredReading`
 - `workingRules`
+- `validation[].command`
+- `validation[].purpose`
+- `agentInstructions`
+- `openQuestions`

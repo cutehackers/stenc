@@ -75,6 +75,34 @@ The JSON is the source of truth. The web app is the human-readable page. There
 is no Markdown projection, no MDX component import, and no separate rendered
 copy to keep in sync.
 
+Each JSON file is one document:
+
+```json
+{
+  "schemaVersion": 1,
+  "docType": "spec",
+  "id": "spec:yyyy-mm-dd-topic",
+  "slug": "yyyy-mm-dd-topic",
+  "status": "draft",
+  "title": "Document Title",
+  "description": "One-sentence summary.",
+  "owner": "owning-team",
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["docs/SPEC.md"]
+  },
+  "page": {
+    "humanSummary": "What a person should understand first.",
+    "agentSummary": "What an AI coding agent must preserve."
+  },
+  "body": {}
+}
+```
+
+List pages and navigation are derived from `content/<collection>/*.json`; a
+document file must not contain other documents.
+
 ## Use
 
 Ask Codex to use the `context-kit` skill when creating or updating:

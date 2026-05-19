@@ -49,7 +49,10 @@ test("prepares a fixed ContextKit web app backed by JSON documents", () => {
   const spec = JSON.parse(fs.readFileSync(specPath, "utf8"));
   assert.equal(spec.docType, "spec");
   assert.equal(spec.slug, "example-runtime");
-  assert.equal(Array.isArray(spec.contract), true);
+  assert.equal(spec.id, "spec:example-runtime");
+  assert.equal(Array.isArray(spec.body.contracts), true);
+  assert.equal(Array.isArray(spec.links.sourceOfTruth), true);
+  assert.equal(typeof spec.page.humanSummary, "string");
 
   assert.equal(
     fs.existsSync(path.join(docsRoot, "src", "pages", "specs", "[slug].astro")),

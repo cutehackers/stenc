@@ -1,44 +1,55 @@
 {
-  "slug": "tbd-spec",
+  "schemaVersion": 1,
   "docType": "spec",
+  "id": "spec:yyyy-mm-dd-topic",
+  "slug": "yyyy-mm-dd-topic",
   "status": "draft",
   "title": "TBD",
   "description": "TBD",
   "owner": "TBD",
-  "lastUpdated": "YYYY-MM-DD",
-  "humanSummary": "TBD",
-  "agentSummary": "TBD",
-  "sourceOfTruth": ["TBD"],
-  "goal": "TBD",
-  "architecture": "TBD",
-  "scope": {
-    "in": ["TBD"],
-    "out": ["TBD"]
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["TBD"],
+    "relatedPlans": [],
+    "relatedDecisions": []
   },
-  "nonGoals": ["TBD"],
-  "surfaces": [
-    {
-      "surface": "TBD",
-      "role": "TBD",
-      "owner": "TBD"
-    }
-  ],
-  "evidence": ["TBD"],
-  "validationCommands": ["TBD"],
-  "agentInstructions": ["Read this spec before changing the related implementation."],
-  "reviewChecklist": ["The source of truth is explicit and current."],
-  "openQuestions": ["TBD"],
-  "problem": "TBD",
-  "vocabulary": [
-    {
-      "term": "TBD",
-      "meaning": "TBD"
-    }
-  ],
-  "contract": ["TBD"],
-  "interfaces": {
-    "public": ["TBD"],
-    "internal": ["TBD"]
+  "page": {
+    "humanSummary": "TBD",
+    "agentSummary": "TBD"
   },
-  "invariants": ["TBD"]
+  "body": {
+    "goal": "TBD",
+    "problem": "TBD",
+    "scope": {
+      "in": ["TBD"],
+      "out": ["TBD"]
+    },
+    "architecture": {
+      "summary": "TBD",
+      "flow": ["TBD"]
+    },
+    "contracts": [
+      {
+        "name": "TBD",
+        "rules": ["TBD"]
+      }
+    ],
+    "surfaces": [
+      {
+        "path": "TBD",
+        "role": "TBD",
+        "owner": "TBD"
+      }
+    ],
+    "validation": [
+      {
+        "command": "TBD",
+        "purpose": "TBD"
+      }
+    ],
+    "agentInstructions": ["Read this JSON document before changing related implementation."],
+    "reviewChecklist": ["The document describes exactly one spec artifact."],
+    "openQuestions": []
+  }
 }

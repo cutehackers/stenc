@@ -1,42 +1,39 @@
 {
-  "slug": "tbd-decision",
+  "schemaVersion": 1,
   "docType": "decision",
+  "id": "decision:yyyy-mm-dd-topic",
+  "slug": "yyyy-mm-dd-topic",
   "status": "proposed",
   "title": "TBD",
   "description": "TBD",
   "owner": "TBD",
-  "relatedSpec": "TBD",
-  "lastUpdated": "YYYY-MM-DD",
-  "humanSummary": "TBD",
-  "agentSummary": "TBD",
-  "sourceOfTruth": ["TBD"],
-  "goal": "TBD",
-  "architecture": "TBD",
-  "scope": {
-    "in": ["TBD"],
-    "out": ["TBD"]
+  "createdAt": "YYYY-MM-DD",
+  "updatedAt": "YYYY-MM-DD",
+  "links": {
+    "sourceOfTruth": ["TBD"],
+    "relatedSpec": "spec:yyyy-mm-dd-topic"
   },
-  "nonGoals": ["TBD"],
-  "surfaces": [
-    {
-      "surface": "TBD",
-      "role": "TBD",
-      "owner": "TBD"
-    }
-  ],
-  "context": "TBD",
-  "decision": "TBD",
-  "optionsConsidered": [
-    {
-      "option": "TBD",
-      "pros": ["TBD"],
-      "cons": ["TBD"]
-    }
-  ],
-  "consequences": ["TBD"],
-  "evidence": ["TBD"],
-  "validationCommands": ["TBD"],
-  "agentInstructions": ["Treat this as rationale, not the implementation contract."],
-  "reviewChecklist": ["The chosen option and rejected options are distinguishable."],
-  "openQuestions": ["TBD"]
+  "page": {
+    "humanSummary": "TBD",
+    "agentSummary": "TBD"
+  },
+  "body": {
+    "context": "TBD",
+    "decision": "TBD",
+    "optionsConsidered": [
+      {
+        "option": "TBD",
+        "outcome": "TBD"
+      }
+    ],
+    "consequences": ["TBD"],
+    "validation": [
+      {
+        "command": "TBD",
+        "purpose": "TBD"
+      }
+    ],
+    "agentInstructions": ["Preserve this decision unless a newer decision supersedes it."],
+    "openQuestions": []
+  }
 }

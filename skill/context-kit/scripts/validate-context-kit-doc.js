@@ -3,45 +3,74 @@
 const fs = require("fs");
 const path = require("path");
 
-const REQUIRED_FIELDS = [
-  "slug",
+const VALID_TYPES = new Set(["spec", "plan", "decision", "agent-context"]);
+const VALID_STATUSES = new Set([
+  "draft",
+  "proposed",
+  "approved",
+  "canonical",
+  "superseded",
+]);
+
+const REQUIRED_TOP_LEVEL_FIELDS = [
+  "schemaVersion",
   "docType",
+  "id",
+  "slug",
   "status",
   "title",
   "description",
   "owner",
-  "lastUpdated",
-  "humanSummary",
-  "agentSummary",
-  "sourceOfTruth",
-  "goal",
-  "architecture",
-  "scope",
-  "nonGoals",
-  "surfaces",
-  "evidence",
-  "validationCommands",
-  "agentInstructions",
-  "reviewChecklist",
-  "openQuestions",
+  "createdAt",
+  "updatedAt",
+  "links",
+  "page",
+  "body",
 ];
 
-const TYPE_FIELDS = {
-  spec: ["problem", "vocabulary", "contract", "interfaces", "invariants"],
+const REQUIRED_BODY_FIELDS = {
+  spec: [
+    "goal",
+    "problem",
+    "scope",
+    "architecture",
+    "contracts",
+    "surfaces",
+    "validation",
+    "agentInstructions",
+    "reviewChecklist",
+    "openQuestions",
+  ],
   plan: [
-    "relatedSpec",
+    "goal",
     "currentState",
     "targetState",
-    "implementationSlices",
+    "scope",
+    "slices",
     "executionOrder",
     "risks",
+    "validation",
+    "agentInstructions",
+    "openQuestions",
   ],
-  decision: ["relatedSpec", "context", "decision", "optionsConsidered", "consequences"],
-  "agent-context": ["whenToUse", "requiredReading", "workingRules"],
+  decision: [
+    "context",
+    "decision",
+    "optionsConsidered",
+    "consequences",
+    "validation",
+    "agentInstructions",
+    "openQuestions",
+  ],
+  "agent-context": [
+    "whenToUse",
+    "requiredReading",
+    "workingRules",
+    "validation",
+    "agentInstructions",
+    "openQuestions",
+  ],
 };
-
-const VALID_TYPES = new Set(Object.keys(TYPE_FIELDS));
-const VALID_STATUSES = new Set(["draft", "proposed", "approved", "canonical", "superseded"]);
 
 function listFiles(inputPath) {
   const stat = fs.statSync(inputPath);
@@ -61,6 +90,10 @@ function readJson(filePath) {
   }
 }
 
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -69,93 +102,221 @@ function isStringArray(value) {
   return Array.isArray(value) && value.every(isNonEmptyString);
 }
 
-function validateCommonShape(doc, errors) {
-  for (const field of REQUIRED_FIELDS) {
+function requireString(object, field, errors, prefix = "") {
+  if (!isNonEmptyString(object?.[field])) {
+    errors.push(`${prefix}${field} must be a non-empty string`);
+  }
+}
+
+function requireStringArray(object, field, errors, prefix = "") {
+  if (!isStringArray(object?.[field])) {
+    errors.push(`${prefix}${field} must be an array of strings`);
+  }
+}
+
+function validateTopLevel(doc, errors) {
+  for (const field of REQUIRED_TOP_LEVEL_FIELDS) {
     if (!(field in doc)) errors.push(`missing field: ${field}`);
   }
 
+  if (doc.schemaVersion !== 1) {
+    errors.push("schemaVersion must be 1");
+  }
   if (!VALID_TYPES.has(doc.docType)) errors.push(`invalid docType: ${doc.docType}`);
   if (!VALID_STATUSES.has(doc.status)) errors.push(`invalid status: ${doc.status}`);
+
   for (const field of [
+    "id",
     "slug",
     "title",
     "description",
     "owner",
-    "lastUpdated",
-    "humanSummary",
-    "agentSummary",
-    "goal",
-    "architecture",
+    "createdAt",
+    "updatedAt",
   ]) {
     if (field in doc && !isNonEmptyString(doc[field])) {
       errors.push(`field must be a non-empty string: ${field}`);
     }
   }
 
-  for (const field of [
-    "sourceOfTruth",
-    "nonGoals",
-    "evidence",
-    "validationCommands",
-    "agentInstructions",
-    "reviewChecklist",
-    "openQuestions",
-  ]) {
-    if (field in doc && !isStringArray(doc[field])) {
-      errors.push(`field must be an array of strings: ${field}`);
-    }
-  }
-
-  if (doc.scope) {
-    if (!isStringArray(doc.scope.in)) errors.push("scope.in must be an array of strings");
-    if (!isStringArray(doc.scope.out)) errors.push("scope.out must be an array of strings");
-  }
-
-  if (doc.surfaces) {
-    if (!Array.isArray(doc.surfaces)) {
-      errors.push("surfaces must be an array");
-    } else {
-      for (const [index, surface] of doc.surfaces.entries()) {
-        for (const field of ["surface", "role", "owner"]) {
-          if (!isNonEmptyString(surface[field])) {
-            errors.push(`surfaces[${index}].${field} must be a non-empty string`);
-          }
-        }
-      }
+  if (isNonEmptyString(doc.id) && isNonEmptyString(doc.docType)) {
+    const expectedPrefix = `${doc.docType}:`;
+    if (!doc.id.startsWith(expectedPrefix)) {
+      errors.push(`id must start with ${expectedPrefix}`);
     }
   }
 }
 
-function validateTypeShape(doc, errors) {
-  if (!VALID_TYPES.has(doc.docType)) return;
-  for (const field of TYPE_FIELDS[doc.docType]) {
-    if (!(field in doc)) errors.push(`missing ${doc.docType} field: ${field}`);
+function validateLinks(doc, errors) {
+  if (!isPlainObject(doc.links)) {
+    errors.push("links must be an object");
+    return;
   }
+  requireStringArray(doc.links, "sourceOfTruth", errors, "links.");
 
   if (doc.docType === "spec") {
-    if (!isStringArray(doc.contract)) errors.push("contract must be an array of strings");
-    if (!isStringArray(doc.invariants)) errors.push("invariants must be an array of strings");
-    if (!Array.isArray(doc.vocabulary)) errors.push("vocabulary must be an array");
-  }
-
-  if (doc.docType === "plan") {
-    if (!Array.isArray(doc.implementationSlices)) {
-      errors.push("implementationSlices must be an array");
+    if ("relatedPlans" in doc.links && !isStringArray(doc.links.relatedPlans)) {
+      errors.push("links.relatedPlans must be an array of strings");
     }
-    if (!isStringArray(doc.executionOrder)) errors.push("executionOrder must be an array of strings");
-    if (!Array.isArray(doc.risks)) errors.push("risks must be an array");
+    if ("relatedDecisions" in doc.links && !isStringArray(doc.links.relatedDecisions)) {
+      errors.push("links.relatedDecisions must be an array of strings");
+    }
   }
 
-  if (doc.docType === "decision") {
-    if (!Array.isArray(doc.optionsConsidered)) errors.push("optionsConsidered must be an array");
-    if (!isStringArray(doc.consequences)) errors.push("consequences must be an array of strings");
+  if (doc.docType === "plan" || doc.docType === "decision") {
+    requireString(doc.links, "relatedSpec", errors, "links.");
   }
 
-  if (doc.docType === "agent-context") {
-    if (!isStringArray(doc.whenToUse)) errors.push("whenToUse must be an array of strings");
-    if (!isStringArray(doc.requiredReading)) errors.push("requiredReading must be an array of strings");
-    if (!isStringArray(doc.workingRules)) errors.push("workingRules must be an array of strings");
+  if (doc.docType === "agent-context" && "requiredReading" in doc.links) {
+    requireStringArray(doc.links, "requiredReading", errors, "links.");
   }
+}
+
+function validatePage(doc, errors) {
+  if (!isPlainObject(doc.page)) {
+    errors.push("page must be an object");
+    return;
+  }
+  requireString(doc.page, "humanSummary", errors, "page.");
+  requireString(doc.page, "agentSummary", errors, "page.");
+}
+
+function validateScope(scope, errors, prefix = "body.scope.") {
+  if (!isPlainObject(scope)) {
+    errors.push("body.scope must be an object");
+    return;
+  }
+  requireStringArray(scope, "in", errors, prefix);
+  requireStringArray(scope, "out", errors, prefix);
+}
+
+function validateValidationEntries(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.validation must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "command", errors, `body.validation[${index}].`);
+    requireString(entry, "purpose", errors, `body.validation[${index}].`);
+  });
+}
+
+function validateSurfaces(entries, errors) {
+  if (!Array.isArray(entries)) {
+    errors.push("body.surfaces must be an array");
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "path", errors, `body.surfaces[${index}].`);
+    requireString(entry, "role", errors, `body.surfaces[${index}].`);
+    requireString(entry, "owner", errors, `body.surfaces[${index}].`);
+  });
+}
+
+function validateSpecBody(body, errors) {
+  requireString(body, "goal", errors, "body.");
+  requireString(body, "problem", errors, "body.");
+  validateScope(body.scope, errors);
+
+  if (!isPlainObject(body.architecture)) {
+    errors.push("body.architecture must be an object");
+  } else {
+    requireString(body.architecture, "summary", errors, "body.architecture.");
+    if ("flow" in body.architecture) {
+      requireStringArray(body.architecture, "flow", errors, "body.architecture.");
+    }
+  }
+
+  if (!Array.isArray(body.contracts)) {
+    errors.push("body.contracts must be an array");
+  } else {
+    body.contracts.forEach((contract, index) => {
+      requireString(contract, "name", errors, `body.contracts[${index}].`);
+      requireStringArray(contract, "rules", errors, `body.contracts[${index}].`);
+    });
+  }
+
+  validateSurfaces(body.surfaces, errors);
+  validateValidationEntries(body.validation, errors);
+  requireStringArray(body, "agentInstructions", errors, "body.");
+  requireStringArray(body, "reviewChecklist", errors, "body.");
+  requireStringArray(body, "openQuestions", errors, "body.");
+}
+
+function validatePlanBody(body, errors) {
+  for (const field of ["goal", "currentState", "targetState"]) {
+    requireString(body, field, errors, "body.");
+  }
+  validateScope(body.scope, errors);
+
+  if (!Array.isArray(body.slices)) {
+    errors.push("body.slices must be an array");
+  } else {
+    body.slices.forEach((slice, index) => {
+      requireString(slice, "id", errors, `body.slices[${index}].`);
+      requireString(slice, "title", errors, `body.slices[${index}].`);
+      requireString(slice, "status", errors, `body.slices[${index}].`);
+      requireStringArray(slice, "surfaces", errors, `body.slices[${index}].`);
+      requireStringArray(slice, "steps", errors, `body.slices[${index}].`);
+      requireStringArray(slice, "doneWhen", errors, `body.slices[${index}].`);
+    });
+  }
+
+  requireStringArray(body, "executionOrder", errors, "body.");
+  if (!Array.isArray(body.risks)) {
+    errors.push("body.risks must be an array");
+  } else {
+    body.risks.forEach((risk, index) => {
+      requireString(risk, "risk", errors, `body.risks[${index}].`);
+      requireString(risk, "mitigation", errors, `body.risks[${index}].`);
+    });
+  }
+  validateValidationEntries(body.validation, errors);
+  requireStringArray(body, "agentInstructions", errors, "body.");
+  requireStringArray(body, "openQuestions", errors, "body.");
+}
+
+function validateDecisionBody(body, errors) {
+  requireString(body, "context", errors, "body.");
+  requireString(body, "decision", errors, "body.");
+  if (!Array.isArray(body.optionsConsidered)) {
+    errors.push("body.optionsConsidered must be an array");
+  } else {
+    body.optionsConsidered.forEach((option, index) => {
+      requireString(option, "option", errors, `body.optionsConsidered[${index}].`);
+      requireString(option, "outcome", errors, `body.optionsConsidered[${index}].`);
+    });
+  }
+  requireStringArray(body, "consequences", errors, "body.");
+  validateValidationEntries(body.validation, errors);
+  requireStringArray(body, "agentInstructions", errors, "body.");
+  requireStringArray(body, "openQuestions", errors, "body.");
+}
+
+function validateAgentContextBody(body, errors) {
+  requireStringArray(body, "whenToUse", errors, "body.");
+  requireStringArray(body, "requiredReading", errors, "body.");
+  requireStringArray(body, "workingRules", errors, "body.");
+  validateValidationEntries(body.validation, errors);
+  requireStringArray(body, "agentInstructions", errors, "body.");
+  requireStringArray(body, "openQuestions", errors, "body.");
+}
+
+function validateBody(doc, errors) {
+  if (!isPlainObject(doc.body)) {
+    errors.push("body must be an object");
+    return;
+  }
+
+  const required = REQUIRED_BODY_FIELDS[doc.docType] || [];
+  for (const field of required) {
+    if (!(field in doc.body)) errors.push(`missing ${doc.docType} body field: ${field}`);
+  }
+
+  if (doc.docType === "spec") validateSpecBody(doc.body, errors);
+  if (doc.docType === "plan") validatePlanBody(doc.body, errors);
+  if (doc.docType === "decision") validateDecisionBody(doc.body, errors);
+  if (doc.docType === "agent-context") validateAgentContextBody(doc.body, errors);
 }
 
 function validateFile(filePath) {
@@ -163,8 +324,10 @@ function validateFile(filePath) {
   const doc = readJson(filePath);
   if (doc.__parseError) return [`invalid JSON: ${doc.__parseError}`];
   if (path.basename(filePath) === "site.json") return [];
-  validateCommonShape(doc, errors);
-  validateTypeShape(doc, errors);
+  validateTopLevel(doc, errors);
+  validateLinks(doc, errors);
+  validatePage(doc, errors);
+  validateBody(doc, errors);
   return errors;
 }
 

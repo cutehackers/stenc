@@ -8,6 +8,7 @@ node "${VALIDATOR}" \
   "${REPO_ROOT}/skill/context-kit/templates" \
   "${REPO_ROOT}/examples"
 
+node "${REPO_ROOT}/skill/context-kit/scripts/validate-context-kit-doc.test.js"
 node "${REPO_ROOT}/skill/context-kit/scripts/setup-project.test.js"
 node "${REPO_ROOT}/scripts/install.test.js"
 
