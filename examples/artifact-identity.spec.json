@@ -5,13 +5,13 @@
   "slug": "artifact-identity",
   "status": "draft",
   "title": "Rail Artifact Identity Contract",
-  "description": "Example single-document ContextKit spec for Rail artifact identity and projection authority.",
+  "description": "Example single-document Stenc spec for Rail artifact identity and projection authority.",
   "owner": "rail-runtime",
   "createdAt": "2026-05-19",
   "updatedAt": "2026-05-19",
   "links": {
     "sourceOfTruth": ["docs/SPEC.md", "docs/ARCHITECTURE.md"],
-    "relatedPlans": ["plan:context-kit-adoption"],
+    "relatedPlans": ["plan:stenc-adoption"],
     "relatedDecisions": []
   },
   "page": {

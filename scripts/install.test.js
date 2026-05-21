@@ -10,9 +10,9 @@ const test = require("node:test");
 const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
 
-test("install can prepare the target project's ContextKit docs app once", () => {
-  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-install-project-"));
+test("install can prepare the target project's Stenc docs app once", () => {
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-install-project-"));
 
   const result = spawnSync(
     "bash",
@@ -33,7 +33,7 @@ test("install can prepare the target project's ContextKit docs app once", () => 
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(
-    fs.existsSync(path.join(skillsRoot, "context-kit", "SKILL.md")),
+    fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")),
     true,
   );
   assert.equal(
@@ -41,7 +41,7 @@ test("install can prepare the target project's ContextKit docs app once", () => 
       path.join(
         projectRoot,
         "docs",
-        "context-kit",
+        "stenc",
         "content",
         "specs",
         "example-runtime.spec.json",
@@ -52,8 +52,8 @@ test("install can prepare the target project's ContextKit docs app once", () => 
 });
 
 test("install can prepare a target project with default project install", () => {
-  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-install-default-"));
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-install-default-"));
 
   const result = spawnSync(
     "bash",
@@ -72,7 +72,7 @@ test("install can prepare a target project with default project install", () => 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(
     fs.existsSync(
-      path.join(projectRoot, "docs", "context-kit", "index.html"),
+      path.join(projectRoot, "docs", "stenc", "index.html"),
     ),
     true,
   );

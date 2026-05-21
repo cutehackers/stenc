@@ -12,14 +12,14 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./scripts/install.sh [options]
 
-Installs the ContextKit Codex skill into ~/.codex/skills/context-kit and
-prepares the local ContextKit examples app.
+Installs the Stenc Codex skill into ~/.codex/skills/stenc and
+prepares the local Stenc examples app.
 
 Options:
-  --project-root <path>       Also prepare this target project's ContextKit
+  --project-root <path>       Also prepare this target project's Stenc
                               web documentation app.
   --docs-dir <path>           Docs app path inside --project-root. Defaults to
-                              docs/context-kit.
+                              docs/stenc.
   --title <text>              Target docs app title. Defaults to "Docs".
   --skip-project-install      Deprecated compatibility flag.
 EOF
@@ -42,7 +42,7 @@ EOF
       shift 2
       ;;
     --docs-source)
-      echo "$1 was removed; use --docs-dir for the ContextKit web app" >&2
+      echo "$1 was removed; use --docs-dir for the Stenc web app" >&2
       exit 2
       ;;
     --title)
@@ -65,12 +65,12 @@ EOF
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_DIR="${REPO_ROOT}/skill/context-kit"
+SOURCE_DIR="${REPO_ROOT}/skill/stenc"
 TARGET_ROOT="${CODEX_SKILLS_DIR:-${HOME}/.codex/skills}"
-TARGET_DIR="${TARGET_ROOT}/context-kit"
+TARGET_DIR="${TARGET_ROOT}/stenc"
 
 if [[ ! -f "${SOURCE_DIR}/SKILL.md" ]]; then
-  echo "ContextKit skill source not found: ${SOURCE_DIR}" >&2
+  echo "Stenc skill source not found: ${SOURCE_DIR}" >&2
   exit 1
 fi
 
@@ -78,7 +78,7 @@ mkdir -p "${TARGET_ROOT}"
 rm -rf "${TARGET_DIR}"
 cp -R "${SOURCE_DIR}" "${TARGET_DIR}"
 
-echo "Installed ContextKit skill to ${TARGET_DIR}"
+echo "Installed Stenc skill to ${TARGET_DIR}"
 "${REPO_ROOT}/scripts/setup-examples-app.sh"
 
 if [[ -n "${PROJECT_ROOT}" ]]; then

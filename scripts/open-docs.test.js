@@ -10,9 +10,9 @@ const test = require("node:test");
 const REPO_ROOT = path.resolve(__dirname, "..");
 const SCRIPT_PATH = path.join(REPO_ROOT, "scripts", "open-docs.sh");
 
-test("open-docs defaults to the current project and docs/context-kit", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-open-docs-"));
-  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+test("open-docs defaults to the current project and docs/stenc", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-open-docs-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
   fs.mkdirSync(docsRoot, { recursive: true });
   fs.writeFileSync(path.join(docsRoot, "index.html"), "<!doctype html>\n");
 
@@ -27,8 +27,8 @@ test("open-docs defaults to the current project and docs/context-kit", () => {
 });
 
 test("open-docs can run from a target project root script path", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-open-docs-script-"));
-  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-open-docs-script-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
   const projectScript = path.join(projectRoot, "open-docs.sh");
   fs.mkdirSync(docsRoot, { recursive: true });
   fs.writeFileSync(path.join(docsRoot, "index.html"), "<!doctype html>\n");

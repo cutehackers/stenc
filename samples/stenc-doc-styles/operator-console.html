@@ -8,7 +8,7 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="./index.html">ContextKit</a>
+      <a class="brand" href="./index.html">Stenc</a>
       <nav aria-label="Sample pages">
         <a href="./task-first.html">Task-first Guide</a>
         <a aria-current="page" href="./operator-console.html">Operator Console</a>
@@ -55,9 +55,9 @@
         <article class="panel full">
           <h2>Plan header</h2>
           <div class="plan-header-grid">
-            <div><span>Goal</span><p>Ship a fixed ContextKit documentation style without framework dependency.</p></div>
+            <div><span>Goal</span><p>Ship a fixed Stenc documentation style without framework dependency.</p></div>
             <div><span>Architecture</span><p>Generate predictable pages from JSON source sections.</p></div>
-            <div><span>Tech Stack</span><p>Plain HTML/CSS sample, ContextKit JSON contract, validation scripts.</p></div>
+            <div><span>Tech Stack</span><p>Plain HTML/CSS sample, Stenc JSON contract, validation scripts.</p></div>
           </div>
         </article>
 
@@ -78,7 +78,7 @@
             <tbody>
               <tr><td><code>templates/spec.json</code></td><td>Source shape</td><td>Skill</td></tr>
               <tr><td><code>setup-project.js</code></td><td>Generated app</td><td>Installer</td></tr>
-              <tr><td><code>validate-context-kit-doc.js</code></td><td>Schema guardrail</td><td>Scripts</td></tr>
+              <tr><td><code>validate-stenc-doc.js</code></td><td>Schema guardrail</td><td>Scripts</td></tr>
             </tbody>
           </table>
         </article>
@@ -104,7 +104,7 @@
         <article class="panel">
           <h2>Validation commands</h2>
           <pre><code>./scripts/validate.sh</code></pre>
-          <pre><code>node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content</code></pre>
+          <pre><code>node skill/stenc/scripts/validate-stenc-doc.js docs/stenc/content</code></pre>
         </article>
 
         <article class="panel">
@@ -154,7 +154,7 @@
         <article class="panel full">
           <h2>Agent execution packet</h2>
           <div class="packet-grid">
-            <div><span>Read first</span><code>skill/context-kit/SKILL.md</code></div>
+            <div><span>Read first</span><code>skill/stenc/SKILL.md</code></div>
             <div><span>Change with</span><code>templates/*</code> and <code>validator</code></div>
             <div><span>Do not add</span><code>mdx</code>, <code>frontmatter</code>, or per-doc UI</div>
             <div><span>Proof</span><code>./scripts/validate.sh</code></div>

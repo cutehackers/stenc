@@ -7,7 +7,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
-const VALIDATOR = path.join(__dirname, "validate-context-kit-doc.js");
+const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -22,8 +22,8 @@ function validSingleSpec() {
     slug: "2026-05-19-runner-runtime",
     status: "draft",
     title: "Runner Runtime",
-    description: "Single ContextKit spec artifact.",
-    owner: "context-kit",
+    description: "Single Stenc spec artifact.",
+    owner: "stenc",
     createdAt: "2026-05-19",
     updatedAt: "2026-05-19",
     links: {
@@ -51,7 +51,7 @@ function validSingleSpec() {
         {
           id: "REQ-1",
           title: "Single source artifact",
-          detail: "One JSON file contains one ContextKit spec document.",
+          detail: "One JSON file contains one Stenc spec document.",
           acceptanceCriteria: ["The validator accepts the document as a single artifact."],
         },
       ],
@@ -87,18 +87,18 @@ function validSingleSpec() {
         {
           path: "content/specs/*.spec.json",
           role: "Spec source artifact",
-          owner: "context-kit",
+          owner: "stenc",
         },
       ],
       testingStrategy: [
         {
-          command: "node skill/context-kit/scripts/validate-context-kit-doc.test.js",
+          command: "node skill/stenc/scripts/validate-stenc-doc.test.js",
           expected: "The single-spec validator test passes.",
         },
       ],
       validation: [
         {
-          command: "node skill/context-kit/scripts/validate-context-kit-doc.js docs/context-kit/content",
+          command: "node skill/stenc/scripts/validate-stenc-doc.js docs/stenc/content",
           purpose: "Generated content validates.",
         },
       ],
@@ -136,8 +136,8 @@ function validSinglePlan() {
     slug: "2026-05-19-runner-runtime",
     status: "draft",
     title: "Runner Runtime Plan",
-    description: "Single ContextKit plan artifact.",
-    owner: "context-kit",
+    description: "Single Stenc plan artifact.",
+    owner: "stenc",
     createdAt: "2026-05-19",
     updatedAt: "2026-05-19",
     links: {
@@ -264,7 +264,7 @@ function validSuperpowersSpec() {
     {
       id: "REQ-1",
       title: "Preserve source format",
-      detail: "ContextKit must preserve every meaningful section from a Superpowers design spec.",
+      detail: "Stenc must preserve every meaningful section from a Superpowers design spec.",
       acceptanceCriteria: ["No architecture, component, data-flow, error-handling, or testing section is lost."],
     },
   ];
@@ -292,7 +292,7 @@ function validSuperpowersSpec() {
   ];
   spec.body.testingStrategy = [
     {
-      command: "node skill/context-kit/scripts/validate-context-kit-doc.test.js",
+      command: "node skill/stenc/scripts/validate-stenc-doc.test.js",
       expected: "Spec and plan coverage tests pass.",
     },
   ];
@@ -343,18 +343,18 @@ function validSuperpowersPlan() {
     note: "Steps use checkbox syntax for task-by-task execution tracking.",
   };
   plan.body.scopeCheck = {
-    assessment: "This plan covers one ContextKit schema extension.",
+    assessment: "This plan covers one Stenc schema extension.",
     decomposition: "No subsystem split is required.",
   };
   plan.body.fileStructure = [
     {
       action: "Modify",
-      path: "skill/context-kit/scripts/validate-context-kit-doc.js",
+      path: "skill/stenc/scripts/validate-stenc-doc.js",
       responsibility: "Validate Superpowers-compatible fields.",
     },
     {
       action: "Test",
-      path: "skill/context-kit/scripts/validate-context-kit-doc.test.js",
+      path: "skill/stenc/scripts/validate-stenc-doc.test.js",
       responsibility: "Lock coverage for Superpowers spec and plan content.",
     },
   ];
@@ -363,11 +363,11 @@ function validSuperpowersPlan() {
       id: "task-1",
       title: "Plan step richness",
       status: "todo",
-      surfaces: ["skill/context-kit/scripts/validate-context-kit-doc.js"],
+      surfaces: ["skill/stenc/scripts/validate-stenc-doc.js"],
       files: [
         {
           action: "Modify",
-          path: "skill/context-kit/scripts/validate-context-kit-doc.js",
+          path: "skill/stenc/scripts/validate-stenc-doc.js",
           lines: "240-320",
           role: "Plan validator",
         },
@@ -389,14 +389,14 @@ function validSuperpowersPlan() {
           id: "step-2",
           title: "Run test to verify it fails",
           status: "todo",
-          command: "node skill/context-kit/scripts/validate-context-kit-doc.test.js",
+          command: "node skill/stenc/scripts/validate-stenc-doc.test.js",
           expected: "FAIL with validation errors for the new structured fields.",
         },
         {
           id: "step-3",
           title: "Commit",
           status: "todo",
-          command: "git add skill/context-kit/scripts && git commit -m \"feat: cover superpowers plan content\"",
+          command: "git add skill/stenc/scripts && git commit -m \"feat: cover superpowers plan content\"",
           expected: "Commit records the validator and test changes.",
         },
       ],
@@ -440,37 +440,37 @@ function validSuperpowersPlan() {
 }
 
 test("accepts one self-contained spec document artifact", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-"));
   writeJson(path.join(dir, "runner.spec.json"), validSingleSpec());
 
   const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /ContextKit validation passed/);
+  assert.match(result.stdout, /Stenc validation passed/);
 });
 
 test("accepts Superpowers design spec content without flattening sections", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-superpowers-spec-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-superpowers-spec-"));
   writeJson(path.join(dir, "superpowers.spec.json"), validSuperpowersSpec());
 
   const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /ContextKit validation passed/);
+  assert.match(result.stdout, /Stenc validation passed/);
 });
 
 test("accepts Superpowers implementation plan content without flattening steps", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-superpowers-plan-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-superpowers-plan-"));
   writeJson(path.join(dir, "superpowers.plan.json"), validSuperpowersPlan());
 
   const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /ContextKit validation passed/);
+  assert.match(result.stdout, /Stenc validation passed/);
 });
 
 test("accepts schemaVersion 1 nested spec and plan documents for compatibility", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-v1-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-v1-"));
   const spec = validSingleSpec();
   spec.schemaVersion = 1;
   for (const field of [
@@ -516,11 +516,11 @@ test("accepts schemaVersion 1 nested spec and plan documents for compatibility",
   const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /ContextKit validation passed/);
+  assert.match(result.stdout, /Stenc validation passed/);
 });
 
 test("rejects Superpowers plan steps without actionable content or expected command output", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-weak-steps-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-weak-steps-"));
   const plan = validSuperpowersPlan();
   plan.body.slices[0].steps = [
     {
@@ -546,7 +546,7 @@ test("rejects Superpowers plan steps without actionable content or expected comm
 });
 
 test("rejects Superpowers plans with a drifted worker header", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-worker-header-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-worker-header-"));
   const plan = validSuperpowersPlan();
   plan.body.workerInstructions.requiredSubSkills = ["superpowers:executing-plans"];
   plan.body.workerInstructions.trackingSyntax = "*";
@@ -568,14 +568,14 @@ test("rejects Superpowers plans with a drifted worker header", () => {
 });
 
 test("rejects legacy flat spec documents", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-flat-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-flat-"));
   writeJson(path.join(dir, "legacy.spec.json"), {
     slug: "legacy",
     docType: "spec",
     status: "draft",
     title: "Legacy",
     description: "Legacy flat document.",
-    owner: "context-kit",
+    owner: "stenc",
     lastUpdated: "2026-05-19",
     humanSummary: "Old shape.",
     agentSummary: "Old shape.",
@@ -605,7 +605,7 @@ test("rejects legacy flat spec documents", () => {
 });
 
 test("rejects markdown and mdx files as document sources", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-mdx-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-mdx-"));
   fs.writeFileSync(path.join(dir, "legacy.mdx"), "# Legacy\n");
   fs.writeFileSync(path.join(dir, "legacy.md"), "# Legacy\n");
 
@@ -617,7 +617,7 @@ test("rejects markdown and mdx files as document sources", () => {
 });
 
 test("rejects documents without a fixed page style template", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-style-missing-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-style-missing-"));
   const spec = validSingleSpec();
   delete spec.page.styleTemplate;
   writeJson(path.join(dir, "runner.spec.json"), spec);
@@ -629,7 +629,7 @@ test("rejects documents without a fixed page style template", () => {
 });
 
 test("rejects unknown fixed page style templates", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-style-invalid-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-style-invalid-"));
   const spec = validSingleSpec();
   spec.page.styleTemplate = "custom";
   writeJson(path.join(dir, "runner.spec.json"), spec);
@@ -641,7 +641,7 @@ test("rejects unknown fixed page style templates", () => {
 });
 
 test("rejects documents whose collection path does not match docType", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-validator-collection-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-collection-"));
   writeJson(
     path.join(dir, "content", "specs", "runner.plan.json"),
     validSinglePlan(),

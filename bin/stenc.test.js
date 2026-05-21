@@ -7,11 +7,11 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
-const CLI_PATH = path.join(__dirname, "context-kit.js");
+const CLI_PATH = path.join(__dirname, "stenc.js");
 
 test("install defaults to the current target project", () => {
-  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-cli-project-"));
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-cli-project-"));
 
   const result = spawnSync(
     process.execPath,
@@ -31,13 +31,13 @@ test("install defaults to the current target project", () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(
-    fs.existsSync(path.join(skillsRoot, "context-kit", "SKILL.md")),
+    fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")),
     true,
   );
 
   const siteJson = JSON.parse(
     fs.readFileSync(
-      path.join(projectRoot, "docs", "context-kit", "content", "site.json"),
+      path.join(projectRoot, "docs", "stenc", "content", "site.json"),
       "utf8",
     ),
   );
@@ -45,9 +45,9 @@ test("install defaults to the current target project", () => {
 });
 
 test("install still accepts an explicit project root", () => {
-  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-skills-"));
-  const commandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-command-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-explicit-project-"));
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const commandRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-command-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-explicit-project-"));
 
   const result = spawnSync(
     process.execPath,

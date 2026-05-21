@@ -1,11 +1,11 @@
-# ContextKit Fixed Page Style
+# Stenc Fixed Page Style
 
-ContextKit pages are fixed-format web pages rendered from JSON. Authors do not
+Stenc pages are fixed-format web pages rendered from JSON. Authors do not
 choose per-document components or ad hoc styles.
 
 ## Canonical Styles
 
-All ContextKit documentation created in this repository uses one of three fixed
+All Stenc documentation created in this repository uses one of three fixed
 style families:
 
 - `task-first`

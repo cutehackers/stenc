@@ -695,7 +695,7 @@ function validateFile(filePath) {
 
 const targets = process.argv.slice(2);
 if (targets.length === 0) {
-  console.error("Usage: validate-context-kit-doc.js <json-file-or-directory> [...]");
+  console.error("Usage: validate-stenc-doc.js <json-file-or-directory> [...]");
   process.exit(2);
 }
 
@@ -712,8 +712,8 @@ for (const target of targets) {
 }
 
 if (failureCount > 0) {
-  console.error(`\nContextKit validation failed for ${failureCount} file(s).`);
+  console.error(`\nStenc validation failed for ${failureCount} file(s).`);
   process.exit(1);
 }
 
-console.log("ContextKit validation passed.");
+console.log("Stenc validation passed.");

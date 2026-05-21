@@ -1,15 +1,15 @@
 ---
-name: context-kit
-description: Create fixed-format ContextKit spec, plan, decision, and agent-context web documents backed by structured JSON.
+name: stenc
+description: Create fixed-format Stenc spec, plan, decision, and agent-context web documents backed by structured JSON.
 ---
 
-# ContextKit
+# Stenc
 
-ContextKit is an authoring protocol for documents that humans can scan in a
+Stenc is an authoring protocol for documents that humans can scan in a
 fixed web interface and AI coding agents can follow without guessing.
 
 The source contract is structured JSON. The generated fixed web interface
-renders that JSON as consistent pages. Do not author ContextKit documents as
+renders that JSON as consistent pages. Do not author Stenc documents as
 Markdown or MDX.
 
 ## Quick Start
@@ -39,45 +39,34 @@ Markdown or MDX.
 6. Validate the document:
 
 ```bash
-node ~/.codex/skills/context-kit/scripts/validate-context-kit-doc.js path/to/doc.json
+node ~/.codex/skills/stenc/scripts/validate-stenc-doc.js path/to/doc.json
 ```
 
 ## Target Project Setup
 
-When installing ContextKit for a repository that should render ContextKit docs,
-run the installer from the target project root:
+When installing Stenc for a repository that should render Stenc docs,
+run the one-command installer from the target project root:
 
 ```bash
 cd /absolute/path/to/project
-npx /path/to/context-kit install --title "Project Docs"
+curl -fsSL https://raw.githubusercontent.com/cutehackers/stenc/main/scripts/bootstrap.sh | bash -s -- --title "Project Docs"
 ```
 
-This installs the Codex skill and creates `docs/context-kit` in one pass. If
-`--title` is omitted, the generated app uses `Docs`.
-
-For repeat local use, link the ContextKit repository once:
-
-```bash
-cd /path/to/context-kit
-npm link
-```
-
-Then run this from any target project:
-
-```bash
-context-kit install --title "Project Docs"
-```
+This installs the Codex skill and creates `docs/stenc` in one pass. If
+`--title` is omitted, the generated app uses `Docs`. The installer caches the
+Stenc repository under `~/.cache/stenc`, so users do not need to pass
+a local Stenc repository path.
 
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:
 
 ```bash
-node ~/.codex/skills/context-kit/scripts/setup-project.js \
+node ~/.codex/skills/stenc/scripts/setup-project.js \
   --project-root /absolute/path/to/project \
-  --docs-dir docs/context-kit
+  --docs-dir docs/stenc
 ```
 
-The generated app lives at `<project>/docs/context-kit` by default. From the
+The generated app lives at `<project>/docs/stenc` by default. From the
 target project root, run:
 
 ```bash

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
   "docType": "plan",
-  "id": "plan:context-kit-adoption",
-  "slug": "context-kit-adoption",
+  "id": "plan:stenc-adoption",
+  "slug": "stenc-adoption",
   "status": "draft",
-  "title": "Rail ContextKit Adoption Plan",
-  "description": "Example single-document ContextKit plan for adopting ContextKit in Rail docs.",
+  "title": "Rail Stenc Adoption Plan",
+  "description": "Example single-document Stenc plan for adopting Stenc in Rail docs.",
   "owner": "rail-docs",
   "createdAt": "2026-05-19",
   "updatedAt": "2026-05-19",
@@ -14,13 +14,13 @@
     "relatedSpec": "spec:artifact-identity"
   },
   "page": {
-    "humanSummary": "Adopt ContextKit by converting a small set of canonical Rail docs first, then expand only after the template works for real runtime contracts.",
-    "agentSummary": "Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy and add ContextKit validation before broad migration.",
+    "humanSummary": "Adopt Stenc by converting a small set of canonical Rail docs first, then expand only after the template works for real runtime contracts.",
+    "agentSummary": "Start from canonical specs and plans. Preserve Rail's source-of-truth hierarchy and add Stenc validation before broad migration.",
     "styleTemplate": "operator-console"
   },
   "body": {
     "goal": "Make Rail specs and plans easier for humans to scan while keeping them structured enough for AI coding agents to follow.",
-    "architecture": "Convert one canonical spec and one implementation plan into structured JSON, then render both through the fixed ContextKit static app.",
+    "architecture": "Convert one canonical spec and one implementation plan into structured JSON, then render both through the fixed Stenc static app.",
     "techStack": ["Node.js", "Dependency-free JSON validator", "Static HTML renderer"],
     "workerInstructions": {
       "requiredSubSkills": ["superpowers:subagent-driven-development", "superpowers:executing-plans"],
@@ -28,7 +28,7 @@
       "note": "Implement this plan task-by-task; each step remains trackable as a checkbox item in the source plan."
     },
     "scopeCheck": {
-      "assessment": "This plan covers ContextKit adoption examples and renderer support as one documentation workflow.",
+      "assessment": "This plan covers Stenc adoption examples and renderer support as one documentation workflow.",
       "decomposition": "No subsystem split is required for this example plan."
     },
     "currentState": "Rail docs are plain Markdown with strong contracts but limited visual scanning support.",
@@ -40,25 +40,25 @@
     "fileStructure": [
       {
         "action": "Modify",
-        "path": "skill/context-kit/templates/*.json",
+        "path": "skill/stenc/templates/*.json",
         "responsibility": "Document source templates."
       },
       {
         "action": "Modify",
-        "path": "skill/context-kit/scripts/setup-project.js",
+        "path": "skill/stenc/scripts/setup-project.js",
         "responsibility": "Static page renderer."
       }
     ],
     "slices": [
       {
         "id": "slice-1",
-        "title": "ContextKit templates",
+        "title": "Stenc templates",
         "status": "todo",
-        "surfaces": ["skill/context-kit/templates/*.json"],
+        "surfaces": ["skill/stenc/templates/*.json"],
         "files": [
           {
             "action": "Modify",
-            "path": "skill/context-kit/templates/*.json",
+            "path": "skill/stenc/templates/*.json",
             "role": "Document templates."
           }
         ],
@@ -73,8 +73,8 @@
             "id": "slice-1-step-2",
             "title": "Run validator",
             "status": "todo",
-            "command": "node skill/context-kit/scripts/validate-context-kit-doc.js skill/context-kit/templates",
-            "expected": "ContextKit validation passed."
+            "command": "node skill/stenc/scripts/validate-stenc-doc.js skill/stenc/templates",
+            "expected": "Stenc validation passed."
           }
         ],
         "doneWhen": ["Templates validate as single-document JSON artifacts."]
@@ -83,11 +83,11 @@
         "id": "slice-2",
         "title": "Web app renderer",
         "status": "todo",
-        "surfaces": ["skill/context-kit/scripts/setup-project.js"],
+        "surfaces": ["skill/stenc/scripts/setup-project.js"],
         "files": [
           {
             "action": "Modify",
-            "path": "skill/context-kit/scripts/setup-project.js",
+            "path": "skill/stenc/scripts/setup-project.js",
             "role": "Generated static app renderer."
           }
         ],
@@ -118,12 +118,12 @@
     ],
     "validation": [
       {
-        "command": "node skill/context-kit/scripts/validate-context-kit-doc.js examples",
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js examples",
         "purpose": "Example document contract validation"
       },
       {
         "command": "./scripts/validate.sh",
-        "purpose": "Full ContextKit validation"
+        "purpose": "Full Stenc validation"
       }
     ],
     "agentInstructions": ["Treat this as an adoption plan shape, not a Rail migration command.", "Do not edit Rail runtime code while adopting docs templates."],
@@ -138,7 +138,7 @@
       }
     ],
     "executionHandoff": {
-      "defaultPath": "docs/superpowers/plans/YYYY-MM-DD-context-kit-adoption.md",
+      "defaultPath": "docs/superpowers/plans/YYYY-MM-DD-stenc-adoption.md",
       "options": [
         {
           "label": "Subagent-Driven",

@@ -199,7 +199,7 @@ h3 {
 .record-card,
 .component-inventory,
 .scope-grid > div,
-.contextkit-header,
+.stenc-header,
 .agent-banner {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -301,34 +301,34 @@ h3 {
   padding: 16px;
 }
 
-.contextkit-header {
+.stenc-header {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbfb 100%);
   padding: 16px;
 }
 
-.contextkit-header dl {
+.stenc-header dl {
   display: grid;
   gap: 0;
   margin: 0;
 }
 
-.contextkit-header div,
+.stenc-header div,
 .plan-header-grid div {
   border-top: 1px solid var(--line);
   padding-top: 12px;
 }
 
-.contextkit-header div {
+.stenc-header div {
   padding-left: 0;
   padding-right: 0;
 }
 
-.contextkit-header .agent-banner {
+.stenc-header .agent-banner {
   border-top: 0;
   padding: 14px 16px;
 }
 
-.contextkit-header dt,
+.stenc-header dt,
 .plan-header-grid span {
   color: var(--accent);
   display: block;
@@ -338,7 +338,7 @@ h3 {
   text-transform: uppercase;
 }
 
-.contextkit-header dd,
+.stenc-header dd,
 .plan-header-grid p {
   margin: 4px 0 0;
 }
@@ -374,12 +374,12 @@ h3 {
   padding-bottom: 0;
 }
 
-.guide-main section.contextkit-header {
+.guide-main section.stenc-header {
   padding: 16px;
 }
 
-.contextkit-header > h2,
-.contextkit-header > dl {
+.stenc-header > h2,
+.stenc-header > dl {
   padding-left: 0;
   padding-right: 0;
 }
@@ -870,7 +870,7 @@ h3 {
   padding: 22px;
 }
 
-.content-block.contextkit-header {
+.content-block.stenc-header {
   padding: 16px;
 }
 

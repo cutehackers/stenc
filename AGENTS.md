@@ -2,19 +2,19 @@
 
 ## Purpose
 
-This repository owns ContextKit, an installable Codex skill for writing
+This repository owns Stenc, an installable Codex skill for writing
 agent-readable, human-friendly spec, plan, decision, and agent-context
 documents.
 
 ## Working Rules
 
-- Treat `skill/context-kit/SKILL.md` as the product entrypoint.
-- Keep templates under `skill/context-kit/templates/` aligned with the
+- Treat `skill/stenc/SKILL.md` as the product entrypoint.
+- Keep templates under `skill/stenc/templates/` aligned with the
   validator.
-- Keep authoring rules under `skill/context-kit/references/`.
+- Keep authoring rules under `skill/stenc/references/`.
 - Keep scripts deterministic and dependency-light.
 - Target project setup is part of installation. The current documents must be
-  viewable through the generated ContextKit static workspace after install.
+  viewable through the generated Stenc static workspace after install.
 - Do not make rendering the source of truth. Each document source is one
   structured JSON file with top-level metadata fields plus `links`, `page`, and
   `body` sections.

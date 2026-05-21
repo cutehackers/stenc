@@ -1,6 +1,6 @@
-# ContextKit Authoring Protocol
+# Stenc Authoring Protocol
 
-ContextKit documents support two readers at once:
+Stenc documents support two readers at once:
 
 - humans scanning fixed web pages
 - AI coding agents extracting stable contracts, constraints, and validation
@@ -40,7 +40,7 @@ JSON. There is no Markdown source and no MDX component layer.
 
 ## Common Structure
 
-Every ContextKit document includes:
+Every Stenc document includes:
 
 - top-level document identity and lifecycle metadata
 - `links.sourceOfTruth` plus type-specific links like `relatedSpec`

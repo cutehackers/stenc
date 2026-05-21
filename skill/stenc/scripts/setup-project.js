@@ -19,11 +19,11 @@ const STYLE_TEMPLATES = new Set(["task-first", "operator-console", "evidence-led
 function usage() {
   console.log(`Usage: setup-project.js [options]
 
-Prepare a target repository ContextKit static documentation app.
+Prepare a target repository Stenc static documentation app.
 
 Options:
   --project-root <path>  Target repository root. Defaults to the current directory.
-  --docs-dir <path>      ContextKit static docs path. Defaults to docs/context-kit.
+  --docs-dir <path>      Stenc static docs path. Defaults to docs/stenc.
   --title <text>         Site title. Defaults to "Docs".
   --skip-install         Deprecated no-op kept for installer compatibility.
   --skip-open-docs-script
@@ -35,7 +35,7 @@ Options:
 function parseArgs(argv) {
   const options = {
     projectRoot: process.cwd(),
-    docsDir: "docs/context-kit",
+    docsDir: "docs/stenc",
     title: null,
     skipOpenDocsScript: false,
   };
@@ -52,7 +52,7 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === "--docs-source") {
-      throw new Error(`${arg} was removed; use --docs-dir for the ContextKit static docs app`);
+      throw new Error(`${arg} was removed; use --docs-dir for the Stenc static docs app`);
     }
     const valueOptions = new Set(["--project-root", "--docs-dir", "--title"]);
     if (valueOptions.has(arg)) {
@@ -154,7 +154,7 @@ usage() {
   cat <<'EOF'
 Usage: ./open-docs.sh [options]
 
-Open this project's ContextKit static docs and stop it with Enter.
+Open this project's Stenc static docs and stop it with Enter.
 
 Options:
   --docs-dir <path>      Docs path inside this project. Defaults to the installed docs path.
@@ -210,14 +210,14 @@ if [[ "\${DRY_RUN}" -eq 1 ]]; then
 fi
 
 if [[ ! -f "\${DOCS_PATH}/index.html" ]]; then
-  echo "ContextKit static docs not found: \${DOCS_PATH}" >&2
+  echo "Stenc static docs not found: \${DOCS_PATH}" >&2
   echo "Run setup first, for example:" >&2
-  echo "  context-kit install --docs-dir \${DOCS_DIR}" >&2
+  echo "  stenc install --docs-dir \${DOCS_DIR}" >&2
   exit 1
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "node is required to open the ContextKit static docs." >&2
+  echo "node is required to open the Stenc static docs." >&2
   exit 1
 fi
 
@@ -266,7 +266,7 @@ trap cleanup EXIT INT TERM
 
 for _ in $(seq 1 80); do
   if ! kill -0 "\${SERVER_PID}" >/dev/null 2>&1; then
-    echo "ContextKit static server failed to start." >&2
+    echo "Stenc static server failed to start." >&2
     exit 1
   fi
   if curl -fsS "\${URL}" >/dev/null 2>&1; then
@@ -279,7 +279,7 @@ if command -v open >/dev/null 2>&1; then
   open "\${URL}"
 fi
 
-echo "ContextKit docs running at \${URL}"
+echo "Stenc docs running at \${URL}"
 echo "Press Enter to stop."
 IFS= read -r _
 `,
@@ -290,7 +290,7 @@ IFS= read -r _
 function writeAppData(docsDir, title) {
   writeJson(path.join(docsDir, "content", "site.json"), {
     title,
-    description: "Fixed-format ContextKit documentation app.",
+    description: "Fixed-format Stenc documentation app.",
   });
 
   for (const collection of COLLECTIONS) {
@@ -559,7 +559,7 @@ pre code { border: 0; background: transparent; color: inherit; padding: 0; white
 function writeStaticPages(docsDir, title) {
   const site = readJsonIfPresent(path.join(docsDir, "content", "site.json")) || {
     title,
-    description: "Fixed-format ContextKit documentation app.",
+    description: "Fixed-format Stenc documentation app.",
   };
   writeStyles(docsDir);
 
@@ -576,7 +576,7 @@ function writeStaticPages(docsDir, title) {
     renderLayout(
       site,
       null,
-      `<header class="document-header"><div class="kicker">ContextKit</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></header><section class="grid">${indexCards}</section>`,
+      `<header class="document-header"><div class="kicker">Stenc</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></header><section class="grid">${indexCards}</section>`,
     ),
   );
 
@@ -590,7 +590,7 @@ function writeStaticPages(docsDir, title) {
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">ContextKit</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><section class="grid">${cards || "<p>No documents yet.</p>"}</section>`,
+        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><section class="grid">${cards || "<p>No documents yet.</p>"}</section>`,
       ),
     );
     for (const doc of docs) {
@@ -613,7 +613,7 @@ function main() {
   writeGitignore(options.docsDir);
   writeStaticPages(options.docsDir, options.title);
 
-  console.log(`Prepared ContextKit static docs at ${options.docsDir}`);
+  console.log(`Prepared Stenc static docs at ${options.docsDir}`);
   console.log(`Run: cd ${options.projectRoot} && ./open-docs.sh`);
 }
 

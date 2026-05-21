@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PWD}"
-DOCS_DIR="docs/context-kit"
+DOCS_DIR="docs/stenc"
 PORT=""
 DRY_RUN=0
 
@@ -15,11 +15,11 @@ usage() {
   cat <<'EOF'
 Usage: ./open-docs.sh [options]
 
-Open a target project's ContextKit static docs and stop it with Enter.
+Open a target project's Stenc static docs and stop it with Enter.
 
 Options:
   --project-root <path>  Target repository root. Defaults to the current directory.
-  --docs-dir <path>      Docs app path inside --project-root. Defaults to docs/context-kit.
+  --docs-dir <path>      Docs app path inside --project-root. Defaults to docs/stenc.
   --port <number>        Preferred local port. Defaults to the first free port from 4321.
   --dry-run              Print resolved paths without starting the dev server.
   -h, --help             Show this help.
@@ -81,14 +81,14 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
 fi
 
 if [[ ! -f "${DOCS_PATH}/index.html" ]]; then
-  echo "ContextKit static docs not found: ${DOCS_PATH}" >&2
+  echo "Stenc static docs not found: ${DOCS_PATH}" >&2
   echo "Run setup first, for example:" >&2
-  echo "  context-kit install --docs-dir ${DOCS_DIR}" >&2
+  echo "  stenc install --docs-dir ${DOCS_DIR}" >&2
   exit 1
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "node is required to open the ContextKit static docs." >&2
+  echo "node is required to open the Stenc static docs." >&2
   exit 1
 fi
 
@@ -121,7 +121,7 @@ NODE
 fi
 
 URL="http://127.0.0.1:${PORT}/"
-LOG_FILE="${TMPDIR:-/tmp}/context-kit-open-docs-${PORT}.log"
+LOG_FILE="${TMPDIR:-/tmp}/stenc-open-docs-${PORT}.log"
 
 (
   cd "${DOCS_PATH}"
@@ -140,7 +140,7 @@ trap cleanup EXIT INT TERM
 
 for _ in $(seq 1 80); do
   if ! kill -0 "${SERVER_PID}" >/dev/null 2>&1; then
-    echo "ContextKit static server failed to start. Log: ${LOG_FILE}" >&2
+    echo "Stenc static server failed to start. Log: ${LOG_FILE}" >&2
     exit 1
   fi
   if curl -fsS "${URL}" >/dev/null 2>&1; then
@@ -150,7 +150,7 @@ for _ in $(seq 1 80); do
 done
 
 if ! curl -fsS "${URL}" >/dev/null 2>&1; then
-  echo "ContextKit static server did not become ready. Log: ${LOG_FILE}" >&2
+  echo "Stenc static server did not become ready. Log: ${LOG_FILE}" >&2
   exit 1
 fi
 
@@ -158,6 +158,6 @@ if command -v open >/dev/null 2>&1; then
   open "${URL}"
 fi
 
-echo "ContextKit docs running at ${URL}"
+echo "Stenc docs running at ${URL}"
 echo "Press Enter to stop."
 IFS= read -r _

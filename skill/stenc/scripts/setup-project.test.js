@@ -14,8 +14,8 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-test("prepares a fixed ContextKit web app backed by JSON documents", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-"));
+test("prepares a fixed Stenc web app backed by JSON documents", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-"));
 
   const result = spawnSync(
     process.execPath,
@@ -32,7 +32,7 @@ test("prepares a fixed ContextKit web app backed by JSON documents", () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
-  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
   const packageJson = JSON.parse(
     fs.readFileSync(path.join(docsRoot, "content", "site.json"), "utf8"),
   );
@@ -79,7 +79,7 @@ test("prepares a fixed ContextKit web app backed by JSON documents", () => {
 });
 
 test("uses Docs as the default site title", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-title-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-title-"));
 
   const result = spawnSync(
     process.execPath,
@@ -91,7 +91,7 @@ test("uses Docs as the default site title", () => {
 
   const siteJson = JSON.parse(
     fs.readFileSync(
-      path.join(projectRoot, "docs", "context-kit", "content", "site.json"),
+      path.join(projectRoot, "docs", "stenc", "content", "site.json"),
       "utf8",
     ),
   );
@@ -99,7 +99,7 @@ test("uses Docs as the default site title", () => {
 });
 
 test("can skip writing the target project open-docs script", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-no-open-"));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-no-open-"));
 
   const result = spawnSync(
     process.execPath,
@@ -118,8 +118,8 @@ test("can skip writing the target project open-docs script", () => {
 });
 
 test("renders Superpowers plan fields from structured JSON", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-render-plan-"));
-  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-plan-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
 
   let result = spawnSync(
     process.execPath,
@@ -136,7 +136,7 @@ test("renders Superpowers plan fields from structured JSON", () => {
     status: "draft",
     title: "Superpowers Plan",
     description: "Plan with official Superpowers sections.",
-    owner: "context-kit",
+    owner: "stenc",
     createdAt: "2026-05-19",
     updatedAt: "2026-05-19",
     links: {
@@ -173,7 +173,7 @@ test("renders Superpowers plan fields from structured JSON", () => {
       fileStructure: [
         {
           action: "Modify",
-          path: "skill/context-kit/scripts/setup-project.js",
+          path: "skill/stenc/scripts/setup-project.js",
           responsibility: "Render plan fields.",
         },
       ],
@@ -182,11 +182,11 @@ test("renders Superpowers plan fields from structured JSON", () => {
           id: "task-1",
           title: "Render steps",
           status: "todo",
-          surfaces: ["skill/context-kit/scripts/setup-project.js"],
+          surfaces: ["skill/stenc/scripts/setup-project.js"],
           files: [
             {
               action: "Modify",
-              path: "skill/context-kit/scripts/setup-project.js",
+              path: "skill/stenc/scripts/setup-project.js",
               role: "Renderer",
             },
           ],
@@ -195,7 +195,7 @@ test("renders Superpowers plan fields from structured JSON", () => {
               id: "step-1",
               title: "Run renderer test",
               status: "todo",
-              command: "node skill/context-kit/scripts/setup-project.test.js",
+              command: "node skill/stenc/scripts/setup-project.test.js",
               expected: "PASS",
               codeBlocks: [
                 {
@@ -217,7 +217,7 @@ test("renders Superpowers plan fields from structured JSON", () => {
       ],
       validation: [
         {
-          command: "node skill/context-kit/scripts/setup-project.test.js",
+          command: "node skill/stenc/scripts/setup-project.test.js",
           purpose: "Renderer regression test.",
         },
       ],
@@ -267,7 +267,7 @@ test("renders Superpowers plan fields from structured JSON", () => {
   assert.match(html, /Scope Check/);
   assert.match(html, /File Structure/);
   assert.match(html, /Run renderer test/);
-  assert.match(html, /node skill\/context-kit\/scripts\/setup-project\.test\.js/);
+  assert.match(html, /node skill\/stenc\/scripts\/setup-project\.test\.js/);
   assert.match(html, /Expected/);
   assert.match(html, /assert\.match\(html, \/Worker Instructions\/\);/);
   assert.match(html, /Execution Handoff/);
@@ -275,8 +275,8 @@ test("renders Superpowers plan fields from structured JSON", () => {
 });
 
 test("renders schemaVersion 1 plan string steps for compatibility", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "context-kit-project-render-v1-plan-"));
-  const docsRoot = path.join(projectRoot, "docs", "context-kit");
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-v1-plan-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
 
   let result = spawnSync(
     process.execPath,
@@ -293,7 +293,7 @@ test("renders schemaVersion 1 plan string steps for compatibility", () => {
     status: "draft",
     title: "Version 1 Plan",
     description: "Plan using the original string-step shape.",
-    owner: "context-kit",
+    owner: "stenc",
     createdAt: "2026-05-19",
     updatedAt: "2026-05-19",
     links: {
@@ -332,7 +332,7 @@ test("renders schemaVersion 1 plan string steps for compatibility", () => {
       ],
       validation: [
         {
-          command: "node skill/context-kit/scripts/setup-project.test.js",
+          command: "node skill/stenc/scripts/setup-project.test.js",
           purpose: "Renderer regression test.",
         },
       ],

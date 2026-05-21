@@ -2,16 +2,17 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VALIDATOR="${REPO_ROOT}/skill/context-kit/scripts/validate-context-kit-doc.js"
+VALIDATOR="${REPO_ROOT}/skill/stenc/scripts/validate-stenc-doc.js"
 
 node "${VALIDATOR}" \
-  "${REPO_ROOT}/skill/context-kit/templates" \
+  "${REPO_ROOT}/skill/stenc/templates" \
   "${REPO_ROOT}/examples" \
   "${REPO_ROOT}/examples-app/content"
 
-node "${REPO_ROOT}/skill/context-kit/scripts/validate-context-kit-doc.test.js"
-node "${REPO_ROOT}/skill/context-kit/scripts/setup-project.test.js"
-node "${REPO_ROOT}/bin/context-kit.test.js"
+node "${REPO_ROOT}/skill/stenc/scripts/validate-stenc-doc.test.js"
+node "${REPO_ROOT}/skill/stenc/scripts/setup-project.test.js"
+node "${REPO_ROOT}/bin/stenc.test.js"
+node "${REPO_ROOT}/scripts/bootstrap.test.js"
 node "${REPO_ROOT}/scripts/open-docs.test.js"
 node "${REPO_ROOT}/scripts/install.test.js"
 

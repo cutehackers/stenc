@@ -1,6 +1,6 @@
-# ContextKit JSON Field Contract
+# Stenc JSON Field Contract
 
-Each ContextKit source file is exactly one document artifact. Collection pages,
+Each Stenc source file is exactly one document artifact. Collection pages,
 navigation, and indexes are derived by the renderer from files on disk.
 
 ## Common Shape
@@ -36,7 +36,7 @@ All document types use the same top-level shape:
 Specs own canonical behavior, runtime, API, schema, or workflow contracts.
 
 `schemaVersion: 1` nested spec documents remain valid for compatibility with
-the original ContextKit JSON shape. New spec templates use `schemaVersion: 2`
+the original Stenc JSON shape. New spec templates use `schemaVersion: 2`
 and require the Superpowers coverage fields below.
 
 Required `body` fields:
@@ -102,7 +102,7 @@ Plans own execution order and validation flow. They should point to the spec
 that owns the durable product or runtime truth.
 
 `schemaVersion: 1` nested plan documents remain valid for compatibility with
-the original ContextKit JSON shape. New plan templates use `schemaVersion: 2`
+the original Stenc JSON shape. New plan templates use `schemaVersion: 2`
 and require the Superpowers coverage fields below.
 
 Required `links` fields:

@@ -7,16 +7,16 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
 
 function usage() {
-  console.log(`Usage: context-kit [install] [options]
+  console.log(`Usage: stenc [install] [options]
 
-Install the ContextKit Codex skill and prepare the current repository's docs app.
+Install the Stenc Codex skill and prepare the current repository's docs app.
 
 Run this from the target project root. The generated app defaults to
-docs/context-kit.
+docs/stenc.
 
 Options:
   --project-root <path>       Target project root. Defaults to the current directory.
-  --docs-dir <path>           Docs app path inside the target project. Defaults to docs/context-kit.
+  --docs-dir <path>           Docs app path inside the target project. Defaults to docs/stenc.
   --title <text>              Target docs app title. Defaults to "Docs".
   --skip-project-install      Deprecated compatibility flag.
   -h, --help                  Show this help.
