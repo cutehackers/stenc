@@ -15,10 +15,9 @@ human-readable view.
 
 ## Install
 
-Run this from the project where you want Stenc docs:
+Run this from the project where you want Stenc docs(from your **target-repo**):
 
 ```bash
-cd /path/to/target-repo
 curl -fsSL https://raw.githubusercontent.com/cutehackers/stenc/main/scripts/bootstrap.sh | bash
 ```
 
