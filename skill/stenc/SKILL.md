@@ -42,6 +42,23 @@ Markdown or MDX.
 node ~/.codex/skills/stenc/scripts/validate-stenc-doc.js path/to/doc.json
 ```
 
+7. Regenerate the styled static web pages from the target project root:
+
+```bash
+node ~/.codex/skills/stenc/scripts/setup-project.js \
+  --project-root "$(pwd)" \
+  --docs-dir docs/stenc
+```
+
+8. Verify that every JSON document has a matching styled web page:
+
+```bash
+node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
+```
+
+Do not call Stenc authoring complete until the JSON source and generated web
+page both exist and pass these checks.
+
 ## Target Project Setup
 
 When installing Stenc for a repository that should render Stenc docs,
@@ -76,6 +93,8 @@ target project root, run:
 ## Required Authoring Rules
 
 - Treat JSON as the source of truth.
+- Unless the user explicitly asks for a different language, write responses and
+  Stenc document content in the user's prompt language.
 - Keep `page.humanSummary` short and useful for page scanning.
 - Keep `page.agentSummary`, `links.sourceOfTruth`, `body.surfaces`,
   `body.validation`, and `body.agentInstructions` exact enough for an AI coding
@@ -86,6 +105,8 @@ target project root, run:
   execution handoff.
 - Put unresolved work in `body.openQuestions`.
 - Let the renderer derive indexes from `content/<collection>/*.json`.
+- After adding or editing any document JSON, regenerate the static web pages and
+  run `check-rendered-pages.js`.
 - Do not hide contract meaning in rendered-only UI.
 - Do not add Markdown, MDX imports, or per-document visual components.
 

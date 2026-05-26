@@ -36,7 +36,12 @@ JSON. There is no Markdown source and no MDX component layer.
    paragraphs.
 9. Put unknowns in `openQuestions`.
 10. Run the validator before considering the document ready.
-11. Run the docs app build when changing page rendering or generated app files.
+11. Regenerate the styled static web pages from the target project root:
+    `node ~/.codex/skills/stenc/scripts/setup-project.js --project-root "$(pwd)" --docs-dir docs/stenc`.
+12. Run the rendered-page check:
+    `node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc`.
+13. Do not call the document ready until both the JSON source and generated
+    styled web page exist.
 
 ## Common Structure
 
@@ -49,6 +54,9 @@ Every Stenc document includes:
 
 Do not put collection data, sidebars, or a list of all docs into a document
 artifact. The renderer derives those from `content/<collection>/*.json`.
+
+Unless the user explicitly requests another language, write Stenc document
+content in the same language as the user's prompt.
 
 Type-specific templates add contract, sequencing, rationale, or working-rule
 fields inside `body`.

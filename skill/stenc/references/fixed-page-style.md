@@ -47,6 +47,9 @@ Use these as follows:
 - Render collection indexes by scanning document files. Do not require a
   document to contain other documents.
 - Render pages using the selected `page.styleTemplate` value.
+- Every JSON document in `content/<collection>/` must have a matching generated
+  styled page at the predictable route before Stenc authoring is considered
+  complete.
 - Keep all routes predictable:
   - `/specs/<slug>/`
   - `/plans/<slug>/`

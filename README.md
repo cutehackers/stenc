@@ -79,6 +79,24 @@ Use the installed templates:
 Keep the template shape intact: top-level metadata fields plus `links`, `page`,
 and `body`.
 
+After adding or editing JSON, regenerate the styled web pages from the target
+project root:
+
+```bash
+node ~/.codex/skills/stenc/scripts/setup-project.js \
+  --project-root "$(pwd)" \
+  --docs-dir docs/stenc
+```
+
+Then verify that every JSON document has a matching generated page:
+
+```bash
+node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
+```
+
+Do not treat a Stenc document as complete if the JSON exists but the generated
+web page is missing.
+
 ## Validate
 
 From this repository root, validate the package:
@@ -91,6 +109,12 @@ Validate a single document:
 
 ```bash
 node ~/.codex/skills/stenc/scripts/validate-stenc-doc.js path/to/doc.json
+```
+
+Validate the rendered pages for a docs app:
+
+```bash
+node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
 ```
 
 ## Developing Stenc
