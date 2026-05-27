@@ -547,6 +547,34 @@ pre code { border: 0; background: transparent; color: inherit; padding: 0; white
 .operator-console .description, .operator-console .badge { color: #d7dee9; }
 .operator-console .badge { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.25); }
 .evidence-led .panel { border-left: 4px solid var(--accent-2); }
+.status-approved, .status-canonical { background: #e6f4ea; color: #137333; border-color: #ceead6; }
+.status-draft, .status-proposed { background: #fef7e0; color: #b06000; border-color: #feebc8; }
+.status-superseded { background: #f1f3f4; color: #5f6368; border-color: #dadce0; }
+.sorting-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 0.85rem; }
+.sorting-label { color: var(--muted); font-weight: 600; }
+.sort-btn { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--text); font-family: inherit; font-size: inherit; transition: all 0.2s ease; }
+.sort-btn:hover { background: #f5f7fa; border-color: var(--muted); }
+.sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.timeline-section { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 36px; }
+.timeline { position: relative; padding-left: 24px; margin-top: 20px; }
+.timeline::before { content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.timeline-item { position: relative; margin-bottom: 24px; }
+.timeline-item:last-child { margin-bottom: 0; }
+.timeline-marker { position: absolute; left: -24px; top: 6px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; background: var(--line); box-shadow: 0 0 0 2px var(--line); transition: background-color 0.2s ease; }
+.timeline-item:hover .timeline-marker { background: var(--accent); }
+.timeline-content { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+.timeline-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.timeline-meta { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+.timeline-date { color: var(--muted); font-family: monospace; }
+.timeline-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #fff; }
+.timeline-badge.spec { background: var(--accent); }
+.timeline-badge.plan { background: var(--accent-2); }
+.timeline-badge.decision { background: #8f3985; }
+.timeline-badge.agent-context { background: #e07a5f; }
+.timeline-title { font-size: 1.05rem; margin: 0; font-weight: 700; }
+.timeline-title a { text-decoration: none; color: var(--text); }
+.timeline-title a:hover { color: var(--accent); text-decoration: underline; }
+.timeline-desc { color: var(--muted); font-size: 0.88rem; margin: 0; }
 @media (max-width: 780px) {
   .shell { display: block; }
   .sidebar { height: auto; position: static; }
@@ -567,6 +595,57 @@ function writeStaticPages(docsDir, title) {
     COLLECTIONS.map((collection) => [collection.dir, readCollection(docsDir, collection)]),
   );
 
+  const allDocs = [];
+  for (const collection of COLLECTIONS) {
+    const docs = collectionDocs.get(collection.dir) || [];
+    for (const doc of docs) {
+      allDocs.push({
+        ...doc,
+        collectionLabel: collection.label,
+        collectionDir: collection.dir,
+        collectionDocType: collection.docType,
+      });
+    }
+  }
+
+  // Sort allDocs by updatedAt descending, then title ascending
+  allDocs.sort((left, right) => {
+    const dateOrder = String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""));
+    return dateOrder || String(left.title || "").localeCompare(String(right.title || ""));
+  });
+
+  const recentDocs = allDocs.slice(0, 10);
+  let timelineHtml = "";
+  if (recentDocs.length > 0) {
+    const timelineItems = recentDocs
+      .map((doc) => {
+        return `<div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-header">
+              <h4 class="timeline-title">
+                <a href="/${doc.collectionDir}/${doc.slug}/">${escapeHtml(doc.title)}</a>
+              </h4>
+              <div class="timeline-meta">
+                <span class="timeline-badge ${escapeHtml(doc.collectionDocType)}">${escapeHtml(doc.collectionLabel)}</span>
+                <span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span>
+                <span class="timeline-date">${escapeHtml(doc.updatedAt)}</span>
+              </div>
+            </div>
+            <p class="timeline-desc">${escapeHtml(doc.description)}</p>
+          </div>
+        </div>`;
+      })
+      .join("\n");
+
+    timelineHtml = `<section class="timeline-section">
+      <h2>Recent Updates</h2>
+      <div class="timeline">
+        ${timelineItems}
+      </div>
+    </section>`;
+  }
+
   const indexCards = COLLECTIONS.map((collection) => {
     const docs = collectionDocs.get(collection.dir) || [];
     return `<a class="panel" href="/${collection.dir}/"><h3>${collection.label}</h3><p>${docs.length} document(s)</p></a>`;
@@ -576,21 +655,58 @@ function writeStaticPages(docsDir, title) {
     renderLayout(
       site,
       null,
-      `<header class="document-header"><div class="kicker">Stenc</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></header><section class="grid">${indexCards}</section>`,
+      `<header class="document-header"><div class="kicker">Stenc</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></header><section class="grid">${indexCards}</section>${timelineHtml}`,
     ),
   );
 
   for (const collection of COLLECTIONS) {
     const docs = collectionDocs.get(collection.dir) || [];
     const cards = docs
-      .map((doc) => `<a class="panel" href="/${collection.dir}/${doc.slug}/"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge">${escapeHtml(doc.status)}</span><span class="badge">${escapeHtml(doc.owner)}</span></div></a>`)
+      .map((doc) => `<a class="panel" href="/${collection.dir}/${doc.slug}/" data-title="${escapeHtml(doc.title)}" data-updated="${escapeHtml(doc.updatedAt)}" data-created="${escapeHtml(doc.createdAt || doc.updatedAt)}"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span><span class="badge">Owner: ${escapeHtml(doc.owner)}</span><span class="badge date-badge">Updated: ${escapeHtml(doc.updatedAt)}</span></div></a>`)
       .join("");
+
+    const sortingControls = `<div class="sorting-controls">
+      <span class="sorting-label">Sort by:</span>
+      <button class="sort-btn active" data-sort="updated" data-order="desc">Last Updated</button>
+      <button class="sort-btn" data-sort="created" data-order="desc">Date Created</button>
+      <button class="sort-btn" data-sort="title" data-order="asc">Title</button>
+    </div>`;
+
+    const sortingScript = `<script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const grid = document.querySelector('.grid');
+        if (!grid) return;
+        const cards = Array.from(grid.querySelectorAll('.panel[data-updated]'));
+        const buttons = document.querySelectorAll('.sort-btn');
+        
+        buttons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const sortBy = btn.getAttribute('data-sort');
+            const order = btn.getAttribute('data-order');
+            
+            cards.sort((a, b) => {
+              const valA = a.getAttribute('data-' + sortBy) || '';
+              const valB = b.getAttribute('data-' + sortBy) || '';
+              
+              const cmp = valA.localeCompare(valB);
+              return order === 'desc' ? -cmp : cmp;
+            });
+            
+            cards.forEach(card => grid.appendChild(card));
+          });
+        });
+      });
+    </script>`;
+
     writeFile(
       path.join(docsDir, collection.dir, "index.html"),
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><section class="grid">${cards || "<p>No documents yet.</p>"}</section>`,
+        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${sortingControls}<section class="grid">${cards || "<p>No documents yet.</p>"}</section>${sortingScript}`,
       ),
     );
     for (const doc of docs) {
