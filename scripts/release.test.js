@@ -22,7 +22,8 @@ function runGit(cwd, args) {
   return result;
 }
 
-function copyRepoFixture(version = "0.3.0") {
+function copyRepoFixture(version = "0.3.0", options = {}) {
+  const { createReleaseDocs = true, createChangelog = true } = options;
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-release-"));
   const fixtureRoot = path.join(tempRoot, "repo");
   fs.cpSync(REPO_ROOT, fixtureRoot, {
@@ -35,14 +36,25 @@ function copyRepoFixture(version = "0.3.0") {
   });
 
   fs.mkdirSync(path.join(fixtureRoot, "docs", "releases"), { recursive: true });
-  fs.writeFileSync(
-    path.join(fixtureRoot, "docs", "releases", `v${version}.md`),
-    `# Stenc v${version}\n\n## Migration\n\nRun stenc migrate when needed.\n`,
-  );
-  fs.writeFileSync(
-    path.join(fixtureRoot, "CHANGELOG.md"),
-    `# Changelog\n\n## v${version}\n\n- Add release tooling test fixture.\n`,
-  );
+  const fixtureReleaseNote = path.join(fixtureRoot, "docs", "releases", `v${version}.md`);
+  const fixtureChangelog = path.join(fixtureRoot, "CHANGELOG.md");
+
+  if (createReleaseDocs) {
+    fs.writeFileSync(
+      fixtureReleaseNote,
+      `# Stenc v${version}\n\n## Migration\n\nRun stenc migrate when needed.\n`,
+    );
+  } else if (fs.existsSync(fixtureReleaseNote)) {
+    fs.rmSync(fixtureReleaseNote);
+  }
+  if (createChangelog) {
+    fs.writeFileSync(
+      fixtureChangelog,
+      `# Changelog\n\n## v${version}\n\n- Add release tooling test fixture.\n`,
+    );
+  } else if (fs.existsSync(fixtureChangelog)) {
+    fs.rmSync(fixtureChangelog);
+  }
 
   runGit(fixtureRoot, ["init"]);
   runGit(fixtureRoot, ["branch", "-M", "main"]);
@@ -72,8 +84,30 @@ test("release dry-run reports planned version without changing files or tags", (
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /version=0\.3\.0/);
   assert.match(result.stdout, /tag=v0\.3\.0/);
+  assert.match(result.stdout, /releaseNoteAction=exists/);
+  assert.match(result.stdout, /changelogAction=exists/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, "0.2.0");
   assert.equal(run("git", ["tag", "--list", "v0.3.0"], { cwd: fixtureRoot }).stdout, "");
+  assert.equal(run("git", ["status", "--short"], { cwd: fixtureRoot }).stdout, "");
+});
+
+test("release dry-run reports generated docs without writing them", () => {
+  const fixtureRoot = copyRepoFixture("0.3.0", {
+    createReleaseDocs: false,
+    createChangelog: false,
+  });
+
+  const result = run("bash", ["scripts/release.sh", "0.3.0", "--dry-run"], {
+    cwd: fixtureRoot,
+    env: releaseEnv(),
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /releaseNoteAction=create/);
+  assert.match(result.stdout, /changelogAction=create/);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, "docs", "releases", "v0.3.0.md")), false);
+  assert.equal(fs.existsSync(path.join(fixtureRoot, "CHANGELOG.md")), false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, "0.2.0");
   assert.equal(run("git", ["status", "--short"], { cwd: fixtureRoot }).stdout, "");
 });
 
@@ -109,17 +143,50 @@ test("release refuses to run from a dirty working tree", () => {
   assert.equal(run("git", ["tag", "--list", "v0.3.0"], { cwd: fixtureRoot }).stdout, "");
 });
 
-test("release requires a matching changelog and release note", () => {
-  const fixtureRoot = copyRepoFixture("0.3.0");
-  fs.rmSync(path.join(fixtureRoot, "docs", "releases", "v0.3.0.md"));
-  runGit(fixtureRoot, ["add", "."]);
-  runGit(fixtureRoot, ["commit", "-m", "remove release note"]);
+test("release creates changelog and release note when missing", () => {
+  const fixtureRoot = copyRepoFixture("0.3.0", {
+    createReleaseDocs: false,
+    createChangelog: false,
+  });
 
   const result = run("bash", ["scripts/release.sh", "0.3.0"], {
     cwd: fixtureRoot,
     env: releaseEnv(),
   });
 
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /release note not found/);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /releaseNoteAction=create/);
+  assert.match(result.stdout, /changelogAction=create/);
+  assert.match(
+    fs.readFileSync(path.join(fixtureRoot, "docs", "releases", "v0.3.0.md"), "utf8"),
+    /# Stenc v0\.3\.0/,
+  );
+  assert.match(fs.readFileSync(path.join(fixtureRoot, "CHANGELOG.md"), "utf8"), /## v0\.3\.0/);
+  const committedFiles = run("git", ["show", "--pretty=", "--name-only", "HEAD"], { cwd: fixtureRoot }).stdout;
+  assert.match(committedFiles, /CHANGELOG\.md/);
+  assert.match(committedFiles, /docs\/releases\/v0\.3\.0\.md/);
+  assert.equal(run("git", ["status", "--short"], { cwd: fixtureRoot }).stdout, "");
+});
+
+test("release inserts a missing changelog section and preserves an existing release note", () => {
+  const fixtureRoot = copyRepoFixture("0.3.0", {
+    createChangelog: false,
+  });
+  fs.writeFileSync(path.join(fixtureRoot, "CHANGELOG.md"), "# Changelog\n\n## v0.2.0\n\n- Older release.\n");
+  runGit(fixtureRoot, ["add", "."]);
+  runGit(fixtureRoot, ["commit", "-m", "add older changelog"]);
+
+  const result = run("bash", ["scripts/release.sh", "0.3.0"], {
+    cwd: fixtureRoot,
+    env: releaseEnv(),
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /releaseNoteAction=exists/);
+  assert.match(result.stdout, /changelogAction=insert-section/);
+  assert.match(fs.readFileSync(path.join(fixtureRoot, "CHANGELOG.md"), "utf8"), /## v0\.3\.0[\s\S]+## v0\.2\.0/);
+  assert.match(
+    fs.readFileSync(path.join(fixtureRoot, "docs", "releases", "v0.3.0.md"), "utf8"),
+    /Run stenc migrate when needed\./,
+  );
 });

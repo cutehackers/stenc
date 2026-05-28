@@ -7,14 +7,16 @@
 #   ./scripts/release.sh 0.2.0
 #   ./scripts/release.sh 0.2.0 --push
 #
-# Before running a release, prepare:
-#   CHANGELOG.md
-#   docs/releases/vX.Y.Z.md
+# Release notes:
+#   - CHANGELOG.md is created when missing.
+#   - A missing ## vX.Y.Z section is inserted automatically.
+#   - docs/releases/vX.Y.Z.md is created when missing.
+#   - Existing release notes are preserved.
 #
 # What this script does:
 #   - requires a clean working tree;
 #   - validates MAJOR.MINOR.PATCH version input;
-#   - checks CHANGELOG.md and docs/releases/vX.Y.Z.md exist for the release;
+#   - creates or updates CHANGELOG.md and docs/releases/vX.Y.Z.md;
 #   - synchronizes package.json and package-lock.json versions;
 #   - runs ./scripts/validate.sh, npm test, and git diff --check;
 #   - creates chore(release): vX.Y.Z;
@@ -36,6 +38,10 @@ Usage: ./scripts/release.sh <version> [options]
 
 Prepare a Stenc release by synchronizing package versions, running release
 checks, creating a release commit, and creating an annotated Git tag.
+
+CHANGELOG.md and docs/releases/vX.Y.Z.md are generated automatically when
+missing. Existing release notes are preserved, and missing CHANGELOG sections
+are inserted for the release version.
 
 Options:
   --dry-run              Print the planned release without changing files.
@@ -111,15 +117,31 @@ if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
   exit 1
 fi
 
-if [[ ! -f "${RELEASE_NOTE}" ]]; then
-  echo "release note not found: ${RELEASE_NOTE}" >&2
-  exit 1
-fi
+node - "${VERSION}" "${REPO_ROOT}" inspect <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
 
-if [[ ! -f "${CHANGELOG}" ]] || ! grep -q "## ${TAG}" "${CHANGELOG}"; then
-  echo "CHANGELOG.md must contain a ## ${TAG} section." >&2
-  exit 1
-fi
+const [version, repoRoot] = process.argv.slice(2);
+const tag = `v${version}`;
+const releaseNotePath = path.join(repoRoot, "docs", "releases", `${tag}.md`);
+const changelogPath = path.join(repoRoot, "CHANGELOG.md");
+
+function hasChangelogSection(content) {
+  return content
+    .split(/\r?\n/)
+    .some((line) => line.trim() === `## ${tag}`);
+}
+
+const releaseNoteAction = fs.existsSync(releaseNotePath) ? "exists" : "create";
+let changelogAction = "create";
+if (fs.existsSync(changelogPath)) {
+  const changelog = fs.readFileSync(changelogPath, "utf8");
+  changelogAction = hasChangelogSection(changelog) ? "exists" : "insert-section";
+}
+
+console.log(`releaseNoteAction=${releaseNoteAction}`);
+console.log(`changelogAction=${changelogAction}`);
+NODE
 
 echo "version=${VERSION}"
 echo "tag=${TAG}"
@@ -132,15 +154,87 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   exit 0
 fi
 
-node - "${VERSION}" "${REPO_ROOT}" <<'NODE'
+node - "${VERSION}" "${REPO_ROOT}" write <<'NODE'
 const fs = require("node:fs");
 const path = require("node:path");
 
 const [version, repoRoot] = process.argv.slice(2);
+const tag = `v${version}`;
+
+function hasChangelogSection(content) {
+  return content
+    .split(/\r?\n/)
+    .some((line) => line.trim() === `## ${tag}`);
+}
 
 function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
+
+function releaseNoteBody() {
+  return [
+    `# Stenc ${tag}`,
+    "",
+    "## Summary",
+    "",
+    `Release Stenc ${tag}.`,
+    "",
+    "## Changes",
+    "",
+    "See [CHANGELOG.md](../../CHANGELOG.md) for the release change list.",
+    "",
+    "## Migration",
+    "",
+    "No migration steps are recorded for this release.",
+    "",
+  ].join("\n");
+}
+
+function changelogSection() {
+  return [
+    `## ${tag}`,
+    "",
+    "### Changed",
+    "",
+    `- Prepare Stenc ${tag} release.`,
+    "",
+    "### Migration",
+    "",
+    "- No migration steps are recorded for this release.",
+    "",
+  ].join("\n");
+}
+
+function ensureReleaseDocs() {
+  const releaseNotePath = path.join(repoRoot, "docs", "releases", `${tag}.md`);
+  const changelogPath = path.join(repoRoot, "CHANGELOG.md");
+
+  fs.mkdirSync(path.dirname(releaseNotePath), { recursive: true });
+  if (!fs.existsSync(releaseNotePath)) {
+    fs.writeFileSync(releaseNotePath, releaseNoteBody());
+  }
+
+  if (!fs.existsSync(changelogPath)) {
+    fs.writeFileSync(changelogPath, `# Changelog\n\n${changelogSection()}`);
+    return;
+  }
+
+  const changelog = fs.readFileSync(changelogPath, "utf8");
+  if (hasChangelogSection(changelog)) return;
+
+  const lines = changelog.replace(/\s*$/, "\n").split("\n");
+  if (lines[0] && lines[0].trim() === "# Changelog") {
+    let insertAt = 1;
+    while (insertAt < lines.length && lines[insertAt].trim() === "") insertAt += 1;
+    lines.splice(insertAt, 0, "", changelogSection().trimEnd(), "");
+    fs.writeFileSync(changelogPath, `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`);
+    return;
+  }
+
+  fs.writeFileSync(changelogPath, `# Changelog\n\n${changelogSection()}\n${changelog.trimEnd()}\n`);
+}
+
+ensureReleaseDocs();
 
 const packageJsonPath = path.join(repoRoot, "package.json");
 const packageLockPath = path.join(repoRoot, "package-lock.json");
@@ -161,7 +255,7 @@ bash -lc "${VALIDATE_COMMAND}"
 bash -lc "${TEST_COMMAND}"
 git diff --check
 
-git add -- package.json package-lock.json
+git add -- package.json package-lock.json CHANGELOG.md "${RELEASE_NOTE}"
 git commit -m "chore(release): ${TAG}"
 git tag -a "${TAG}" -m "Stenc ${TAG}"
 

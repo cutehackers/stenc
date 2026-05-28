@@ -123,23 +123,18 @@ Useful repo commands:
 
 ## Releasing Stenc
 
-Before releasing, update:
-
-```text
-CHANGELOG.md
-docs/releases/vX.Y.Z.md
-```
-
-Then run the release script from a clean working tree:
+Run the release script from a clean working tree:
 
 ```bash
 ./scripts/release.sh 0.2.0 --dry-run
 ./scripts/release.sh 0.2.0
 ```
 
-The script synchronizes `package.json` and `package-lock.json`, runs the
-validation commands, creates `chore(release): vX.Y.Z`, and creates an annotated
-Git tag. It pushes only when `--push` is supplied.
+The script creates missing `CHANGELOG.md` and `docs/releases/vX.Y.Z.md`
+entries, preserves existing release notes, synchronizes `package.json` and
+`package-lock.json`, runs the validation commands, creates
+`chore(release): vX.Y.Z`, and creates an annotated Git tag. It pushes only when
+`--push` is supplied.
 
 Main paths:
 
