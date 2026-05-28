@@ -201,6 +201,69 @@ function validateCodeBlocks(entries, errors, prefix) {
   });
 }
 
+function validateFacts(entries, errors, prefix) {
+  if (entries === undefined) return;
+  if (!Array.isArray(entries)) {
+    errors.push(`${prefix}facts must be an array`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "label", errors, `${prefix}facts[${index}].`);
+    requireString(entry, "value", errors, `${prefix}facts[${index}].`);
+  });
+}
+
+function validateSupportingLinks(entries, errors, prefix) {
+  if (entries === undefined) return;
+  if (!Array.isArray(entries)) {
+    errors.push(`${prefix}links must be an array`);
+    return;
+  }
+  entries.forEach((entry, index) => {
+    requireString(entry, "label", errors, `${prefix}links[${index}].`);
+    requireString(entry, "target", errors, `${prefix}links[${index}].`);
+    requireString(entry, "purpose", errors, `${prefix}links[${index}].`);
+  });
+}
+
+function validateSupportingStep(step, errors, prefix) {
+  if (!isPlainObject(step)) {
+    errors.push(`${prefix.slice(0, -1)} must be an object`);
+    return;
+  }
+  requireString(step, "id", errors, prefix);
+  requireString(step, "title", errors, prefix);
+  requireString(step, "status", errors, prefix);
+  const hasInstruction = isNonEmptyString(step.instruction);
+  const hasCommand = isNonEmptyString(step.command);
+  const hasExpected = isNonEmptyString(step.expected);
+  if ("instruction" in step) requireString(step, "instruction", errors, prefix);
+  if ("command" in step) requireString(step, "command", errors, prefix);
+  if ("expected" in step) requireString(step, "expected", errors, prefix);
+  validateCodeBlocks(step.codeBlocks, errors, prefix);
+  const hasCodeBlocks = Array.isArray(step.codeBlocks) && step.codeBlocks.length > 0;
+  if (hasCommand && !hasExpected) {
+    errors.push(`${prefix}expected must be a non-empty string when command is present`);
+  }
+  if (hasExpected && !hasCommand) {
+    errors.push(`${prefix}command must be a non-empty string when expected is present`);
+  }
+  if (!hasInstruction && !hasCommand && !hasCodeBlocks) {
+    errors.push(`${prefix.slice(0, -1)} must include instruction, command, or codeBlocks`);
+  }
+}
+
+function validateSupportingSteps(entries, errors, prefix) {
+  if (entries === undefined) return;
+  if (!Array.isArray(entries)) {
+    errors.push(`${prefix}steps must be an array`);
+    return;
+  }
+  entries.forEach((step, index) => {
+    validateSupportingStep(step, errors, `${prefix}steps[${index}].`);
+  });
+}
+
 function validateNamedPurposeEntries(entries, errors, field) {
   if (!Array.isArray(entries)) {
     errors.push(`body.${field} must be an array`);
@@ -390,16 +453,23 @@ function validateImplementationHandoff(handoff, errors, prefix = "body.implement
   requireStringArray(handoff, "notes", errors, prefix);
 }
 
-function validateSupportingSections(entries, errors) {
+function validateSupportingSections(entries, errors, prefix = "body.supportingSections.") {
   if (!Array.isArray(entries)) {
-    errors.push("body.supportingSections must be an array");
+    errors.push(`${prefix.slice(0, -1)} must be an array`);
     return;
   }
   entries.forEach((entry, index) => {
-    requireString(entry, "heading", errors, `body.supportingSections[${index}].`);
-    requireString(entry, "content", errors, `body.supportingSections[${index}].`);
-    requireStringArray(entry, "items", errors, `body.supportingSections[${index}].`);
-    validateCodeBlocks(entry.codeBlocks, errors, `body.supportingSections[${index}].`);
+    const entryPrefix = `${prefix.slice(0, -1)}[${index}].`;
+    requireString(entry, "heading", errors, entryPrefix);
+    requireString(entry, "content", errors, entryPrefix);
+    requireStringArray(entry, "items", errors, entryPrefix);
+    validateFacts(entry.facts, errors, entryPrefix);
+    validateSupportingLinks(entry.links, errors, entryPrefix);
+    validateSupportingSteps(entry.steps, errors, entryPrefix);
+    validateCodeBlocks(entry.codeBlocks, errors, entryPrefix);
+    if (entry?.subSections !== undefined) {
+      validateSupportingSections(entry.subSections, errors, `${entryPrefix}subSections.`);
+    }
   });
 }
 

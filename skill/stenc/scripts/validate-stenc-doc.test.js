@@ -459,6 +459,71 @@ test("accepts Superpowers design spec content without flattening sections", () =
   assert.match(result.stdout, /Stenc validation passed/);
 });
 
+test("accepts extended supporting sections with bounded nested structure", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-extended-supporting-"));
+  const spec = validSuperpowersSpec();
+  spec.body.supportingSections = [
+    {
+      heading: "Migration Runbook",
+      content: "Preserve legacy runbook structure without user-defined components.",
+      items: ["Keep source data in JSON", "Render through fixed Stenc primitives"],
+      facts: [
+        {
+          label: "Owner",
+          value: "Platform Team",
+        },
+      ],
+      links: [
+        {
+          label: "Source runbook",
+          target: "https://wiki.internal/runbook",
+          purpose: "Original source document",
+        },
+      ],
+      steps: [
+        {
+          id: "step-1",
+          title: "Back up the database",
+          status: "todo",
+          instruction: "Run the backup before migration.",
+          command: "pg_dump app > backup.sql",
+          expected: "backup.sql exists and checksum verification passes.",
+          codeBlocks: [
+            {
+              language: "bash",
+              content: "sha256sum backup.sql",
+            },
+          ],
+        },
+      ],
+      codeBlocks: [],
+      subSections: [
+        {
+          heading: "Rollback",
+          content: "Rollback is represented as a nested section, not a custom component.",
+          items: ["Restore DNS", "Recheck queue drain"],
+          facts: [
+            {
+              label: "Allowed Window",
+              value: "30 minutes",
+            },
+          ],
+          links: [],
+          steps: [],
+          codeBlocks: [],
+          subSections: [],
+        },
+      ],
+    },
+  ];
+  writeJson(path.join(dir, "extended.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Stenc validation passed/);
+});
+
 test("accepts Superpowers implementation plan content without flattening steps", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-superpowers-plan-"));
   writeJson(path.join(dir, "superpowers.plan.json"), validSuperpowersPlan());
@@ -543,6 +608,53 @@ test("rejects Superpowers plan steps without actionable content or expected comm
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /must include instruction, command, or codeBlocks/);
   assert.match(result.stderr, /expected must be a non-empty string when command is present/);
+});
+
+test("rejects malformed extended supporting sections", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-bad-supporting-"));
+  const spec = validSuperpowersSpec();
+  spec.body.supportingSections = [
+    {
+      heading: "Broken Section",
+      content: "This section has malformed optional fields.",
+      items: ["Invalid optional structures"],
+      facts: [{ label: "", value: "Platform Team" }],
+      links: [{ label: "Runbook", target: "", purpose: "Original source" }],
+      steps: [
+        {
+          id: "step-empty",
+          title: "Missing actionable content",
+          status: "todo",
+          codeBlocks: [],
+        },
+        {
+          id: "step-command",
+          title: "Missing expected output",
+          status: "todo",
+          command: "npm test",
+        },
+      ],
+      codeBlocks: [],
+      subSections: [
+        {
+          heading: "",
+          content: "Nested heading is invalid.",
+          items: ["Nested validation should include the recursive path."],
+          codeBlocks: [],
+        },
+      ],
+    },
+  ];
+  writeJson(path.join(dir, "bad-supporting.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /facts\[0\]\.label must be a non-empty string/);
+  assert.match(result.stderr, /links\[0\]\.target must be a non-empty string/);
+  assert.match(result.stderr, /steps\[0\] must include instruction, command, or codeBlocks/);
+  assert.match(result.stderr, /steps\[1\]\.expected must be a non-empty string when command is present/);
+  assert.match(result.stderr, /subSections\[0\]\.heading must be a non-empty string/);
 });
 
 test("rejects Superpowers plans with a drifted worker header", () => {
