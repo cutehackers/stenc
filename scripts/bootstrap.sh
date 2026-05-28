@@ -17,6 +17,7 @@ Install Stenc into the current project without manually downloading the
 Stenc repository or passing a local repository path.
 
 Options are forwarded to `stenc install`:
+  --project-root <path>       Target project root. Defaults to the current directory.
   --docs-dir <path>           Docs app path inside the current project.
                               Defaults to docs/stenc.
   --title <text>              Target docs app title. Defaults to "Docs".
@@ -27,6 +28,8 @@ Advanced environment overrides:
   STENC_REPO            Git repository to clone.
   STENC_REF             Git ref to fetch. Defaults to main.
   STENC_CACHE_DIR       Cache directory. Defaults to ~/.cache/stenc.
+  STENC_BIN_DIR         Directory for the stenc command. Defaults to a writable
+                        PATH directory, then ~/.local/bin.
 EOF
 }
 

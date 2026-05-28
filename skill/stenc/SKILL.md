@@ -73,7 +73,9 @@ This installs the Codex skill and creates `docs/stenc` in one pass. If
 `--title` is omitted on a new setup, the generated app uses `Docs`; reruns
 preserve the existing `content/site.json` title unless `--title` is supplied.
 The installer caches the Stenc repository under `~/.cache/stenc`, so users do
-not need to pass a local Stenc repository path.
+not need to pass a local Stenc repository path. It also installs a `stenc`
+command into a writable PATH directory when possible; if that is not available,
+it writes `~/.local/bin/stenc` and prints the PATH line to add.
 
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:

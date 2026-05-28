@@ -52,7 +52,9 @@ test("bootstrap installs into the current project without a local repo path", ()
   const sourceRepo = path.join(tempRoot, "source");
   const cacheRoot = path.join(tempRoot, "cache");
   const skillsRoot = path.join(tempRoot, "skills");
+  const binRoot = path.join(tempRoot, "bin");
   const projectRoot = path.join(tempRoot, "target-project");
+  fs.mkdirSync(binRoot);
   fs.mkdirSync(projectRoot);
   copyRepoFixture(sourceRepo);
 
@@ -60,7 +62,9 @@ test("bootstrap installs into the current project without a local repo path", ()
     cwd: projectRoot,
     env: {
       ...process.env,
+      PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
       CODEX_SKILLS_DIR: skillsRoot,
+      STENC_BIN_DIR: binRoot,
       STENC_CACHE_DIR: cacheRoot,
       STENC_REPO: sourceRepo,
     },
@@ -69,6 +73,18 @@ test("bootstrap installs into the current project without a local repo path", ()
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")), true);
   assert.equal(fs.existsSync(path.join(projectRoot, "docs", "stenc", "index.html")), true);
+  assert.equal(fs.existsSync(path.join(binRoot, "stenc")), true);
+
+  const commandResult = run("stenc", ["--help"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+      CODEX_SKILLS_DIR: skillsRoot,
+    },
+  });
+  assert.equal(commandResult.status, 0, commandResult.stderr || commandResult.stdout);
+  assert.match(commandResult.stdout, /Usage: stenc/);
 
   const siteJson = JSON.parse(
     fs.readFileSync(

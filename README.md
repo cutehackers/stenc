@@ -21,14 +21,18 @@ Run this from the project where you want Stenc docs(from your **target-repo**):
 curl -fsSL https://raw.githubusercontent.com/cutehackers/stenc/main/scripts/bootstrap.sh | bash
 ```
 
-That command does two things:
+That command does three things:
 
 - installs the Stenc Codex skill into `~/.codex/skills/stenc`
+- installs the `stenc` command into a writable PATH directory when possible
 - creates `docs/stenc` and `./open-docs.sh` in the target project
 
 The default docs app title is `Docs`. The installer keeps Stenc itself in
 `~/.cache/stenc`, so you do not need to download the repository or pass a
 local repository path.
+
+If your shell does not have a writable PATH directory, the installer writes the
+command to `~/.local/bin/stenc` and prints the PATH line to add.
 
 To set a title in the same one-command install:
 

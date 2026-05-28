@@ -12,6 +12,7 @@ const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
 
 test("install can prepare the target project's Stenc docs app once", () => {
   const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const binRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-bin-"));
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-install-project-"));
 
   const result = spawnSync(
@@ -27,13 +28,22 @@ test("install can prepare the target project's Stenc docs app once", () => {
     {
       cwd: REPO_ROOT,
       encoding: "utf8",
-      env: { ...process.env, CODEX_SKILLS_DIR: skillsRoot },
+      env: {
+        ...process.env,
+        PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+        CODEX_SKILLS_DIR: skillsRoot,
+        STENC_BIN_DIR: binRoot,
+      },
     },
   );
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(
     fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(binRoot, "stenc")),
     true,
   );
   assert.equal(
@@ -53,6 +63,7 @@ test("install can prepare the target project's Stenc docs app once", () => {
 
 test("install can prepare a target project with default project install", () => {
   const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
+  const binRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-bin-"));
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-install-default-"));
 
   const result = spawnSync(
@@ -65,11 +76,27 @@ test("install can prepare a target project with default project install", () => 
     {
       cwd: REPO_ROOT,
       encoding: "utf8",
-      env: { ...process.env, CODEX_SKILLS_DIR: skillsRoot },
+      env: {
+        ...process.env,
+        PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+        CODEX_SKILLS_DIR: skillsRoot,
+        STENC_BIN_DIR: binRoot,
+      },
     },
   );
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  const commandResult = spawnSync("stenc", ["--help"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+      CODEX_SKILLS_DIR: skillsRoot,
+    },
+  });
+  assert.equal(commandResult.status, 0, commandResult.stderr || commandResult.stdout);
+  assert.match(commandResult.stdout, /Usage: stenc/);
   assert.equal(
     fs.existsSync(
       path.join(projectRoot, "docs", "stenc", "index.html"),
