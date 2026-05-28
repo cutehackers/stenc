@@ -8,6 +8,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
+const INITIAL_PACKAGE_VERSION = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8")).version;
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -86,7 +87,7 @@ test("release dry-run reports planned version without changing files or tags", (
   assert.match(result.stdout, /tag=v0\.3\.0/);
   assert.match(result.stdout, /releaseNoteAction=exists/);
   assert.match(result.stdout, /changelogAction=exists/);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, "0.2.0");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, INITIAL_PACKAGE_VERSION);
   assert.equal(run("git", ["tag", "--list", "v0.3.0"], { cwd: fixtureRoot }).stdout, "");
   assert.equal(run("git", ["status", "--short"], { cwd: fixtureRoot }).stdout, "");
 });
@@ -107,7 +108,7 @@ test("release dry-run reports generated docs without writing them", () => {
   assert.match(result.stdout, /changelogAction=create/);
   assert.equal(fs.existsSync(path.join(fixtureRoot, "docs", "releases", "v0.3.0.md")), false);
   assert.equal(fs.existsSync(path.join(fixtureRoot, "CHANGELOG.md")), false);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, "0.2.0");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(fixtureRoot, "package.json"), "utf8")).version, INITIAL_PACKAGE_VERSION);
   assert.equal(run("git", ["status", "--short"], { cwd: fixtureRoot }).stdout, "");
 });
 
