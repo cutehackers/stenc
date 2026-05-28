@@ -16,6 +16,7 @@ node "${REPO_ROOT}/bin/stenc.test.js"
 node "${REPO_ROOT}/scripts/bootstrap.test.js"
 node "${REPO_ROOT}/scripts/open-docs.test.js"
 node "${REPO_ROOT}/scripts/install.test.js"
+node "${REPO_ROOT}/scripts/release.test.js"
 
 if [[ ! -f "${REPO_ROOT}/examples-app/index.html" ]]; then
   "${REPO_ROOT}/scripts/setup-examples-app.sh"
