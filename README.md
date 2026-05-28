@@ -80,45 +80,6 @@ stenc migrate --docs-dir stenc
 stenc migrate --docs-dir stenc --dry-run
 ```
 
-## Add Docs
-
-Add one JSON file per document:
-
-```text
-docs/stenc/content/
-  specs/*.spec.json
-  plans/*.plan.json
-  decisions/*.decision.json
-  agent-context/*.agent-context.json
-```
-
-Use the installed templates:
-
-```text
-~/.codex/skills/stenc/templates/
-```
-
-Keep the template shape intact: top-level metadata fields plus `links`, `page`,
-and `body`.
-
-After adding or editing JSON, regenerate the styled web pages from the target
-project root:
-
-```bash
-node ~/.codex/skills/stenc/scripts/setup-project.js \
-  --project-root "$(pwd)" \
-  --docs-dir docs/stenc
-```
-
-Then verify that every JSON document has a matching generated page:
-
-```bash
-node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
-```
-
-Do not treat a Stenc document as complete if the JSON exists but the generated
-web page is missing.
-
 ## Validate
 
 From this repository root, validate the package:
