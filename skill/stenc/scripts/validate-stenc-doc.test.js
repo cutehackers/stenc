@@ -657,6 +657,32 @@ test("rejects malformed extended supporting sections", () => {
   assert.match(result.stderr, /subSections\[0\]\.heading must be a non-empty string/);
 });
 
+test("rejects unsupported supporting section control fields", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-supporting-control-"));
+  const spec = validSuperpowersSpec();
+  spec.body.supportingSections = [
+    {
+      heading: "Layout Controlled Section",
+      content: "Supporting sections must stay data-only.",
+      items: ["No user-defined component system"],
+      component: "RunbookCard",
+      layout: "timeline",
+      variant: "warning",
+      kind: "runbook",
+      codeBlocks: [],
+    },
+  ];
+  writeJson(path.join(dir, "control.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /body\.supportingSections\[0\]\.component is not supported/);
+  assert.match(result.stderr, /body\.supportingSections\[0\]\.layout is not supported/);
+  assert.match(result.stderr, /body\.supportingSections\[0\]\.variant is not supported/);
+  assert.match(result.stderr, /body\.supportingSections\[0\]\.kind is not supported/);
+});
+
 test("rejects Superpowers plans with a drifted worker header", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-worker-header-"));
   const plan = validSuperpowersPlan();

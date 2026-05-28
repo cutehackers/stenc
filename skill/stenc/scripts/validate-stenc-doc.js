@@ -17,6 +17,16 @@ const VALID_STATUSES = new Set([
   "superseded",
 ]);
 const VALID_SCHEMA_VERSIONS = new Set([1, 2]);
+const SUPPORTING_SECTION_FIELDS = new Set([
+  "heading",
+  "content",
+  "items",
+  "facts",
+  "links",
+  "steps",
+  "codeBlocks",
+  "subSections",
+]);
 
 const REQUIRED_TOP_LEVEL_FIELDS = [
   "schemaVersion",
@@ -264,6 +274,17 @@ function validateSupportingSteps(entries, errors, prefix) {
   });
 }
 
+function validateSupportingSectionFields(entry, errors, prefix) {
+  if (!isPlainObject(entry)) return;
+  for (const field of Object.keys(entry)) {
+    if (!SUPPORTING_SECTION_FIELDS.has(field)) {
+      errors.push(
+        `${prefix}${field} is not supported; allowed fields: ${Array.from(SUPPORTING_SECTION_FIELDS).join(", ")}`,
+      );
+    }
+  }
+}
+
 function validateNamedPurposeEntries(entries, errors, field) {
   if (!Array.isArray(entries)) {
     errors.push(`body.${field} must be an array`);
@@ -460,6 +481,7 @@ function validateSupportingSections(entries, errors, prefix = "body.supportingSe
   }
   entries.forEach((entry, index) => {
     const entryPrefix = `${prefix.slice(0, -1)}[${index}].`;
+    validateSupportingSectionFields(entry, errors, entryPrefix);
     requireString(entry, "heading", errors, entryPrefix);
     requireString(entry, "content", errors, entryPrefix);
     requireStringArray(entry, "items", errors, entryPrefix);
