@@ -1,6 +1,6 @@
 {
   "name": "stenc",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Installable Codex skill for agent-readable spec, plan, decision, and context documents.",
   "bin": {

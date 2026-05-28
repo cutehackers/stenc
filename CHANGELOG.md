@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.2
+
+### Changed
+
+- Prepare Stenc v0.2.2 release.
+
+### Migration
+
+- No migration steps are recorded for this release.
+
 ## v0.2.1
 
 ### Changed
