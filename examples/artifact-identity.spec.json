@@ -131,6 +131,49 @@
         "heading": "Reviewer Calibration",
         "content": "Only flag identity wording that could change runtime behavior or confuse artifact ownership.",
         "items": ["Completeness", "Consistency", "Clarity", "Scope"],
+        "facts": [
+          {
+            "label": "Decision Owner",
+            "value": "rail-runtime"
+          },
+          {
+            "label": "Identity Source",
+            "value": "Persisted artifact handle"
+          }
+        ],
+        "links": [
+          {
+            "label": "Canonical spec",
+            "target": "docs/SPEC.md",
+            "purpose": "Defines durable artifact identity rules."
+          },
+          {
+            "label": "Architecture",
+            "target": "docs/ARCHITECTURE.md",
+            "purpose": "Explains artifact persistence and result projection boundaries."
+          }
+        ],
+        "steps": [
+          {
+            "id": "review-step-1",
+            "title": "Check resume authority",
+            "status": "todo",
+            "instruction": "Confirm resume and retry wording names artifact handles, not request files.",
+            "codeBlocks": []
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "Nested Review Detail",
+            "content": "Use nested sections for legacy outline detail that has no native Stenc field.",
+            "items": ["Keep canonical rules in body.contracts first."],
+            "facts": [],
+            "links": [],
+            "steps": [],
+            "subSections": [],
+            "codeBlocks": []
+          }
+        ],
         "codeBlocks": []
       }
     ],

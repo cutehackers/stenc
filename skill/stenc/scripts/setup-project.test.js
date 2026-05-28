@@ -353,23 +353,29 @@ test("renders extended supporting section fields recursively", () => {
           heading: "Migration Runbook",
           content: "Render the runbook outline.",
           items: ["Use fixed Stenc primitives."],
-          facts: [{ label: "Owner", value: "Platform Team" }],
-          links: [{ label: "Source runbook", target: "https://wiki.internal/runbook", purpose: "Original source" }],
+          facts: [{ label: "Owner <img src=x onerror=alert(1)>", value: "Platform <strong>Team</strong>" }],
+          links: [
+            {
+              label: "Source <runbook>",
+              target: "https://wiki.internal/runbook?<unsafe>",
+              purpose: "Original <source> document",
+            },
+          ],
           steps: [
             {
               id: "step-1",
-              title: "Back up database",
+              title: "Back <up> database",
               status: "todo",
-              command: "pg_dump app > backup.sql",
-              expected: "backup.sql exists.",
+              command: "pg_dump app > backup.sql && echo <done>",
+              expected: "backup.sql exists & checksum <passes>.",
             },
           ],
           codeBlocks: [],
           subSections: [
             {
-              heading: "Rollback",
-              content: "Restore the previous deployment.",
-              items: ["Restore DNS"],
+              heading: "Rollback <path>",
+              content: "Restore the <previous> deployment.",
+              items: ["Restore <DNS>"],
               facts: [],
               links: [],
               steps: [],
@@ -392,15 +398,18 @@ test("renders extended supporting section fields recursively", () => {
 
   const html = fs.readFileSync(path.join(docsRoot, "specs", "supporting", "index.html"), "utf8");
   assert.match(html, /Migration Runbook/);
-  assert.match(html, /Owner/);
-  assert.match(html, /Platform Team/);
-  assert.match(html, /Source runbook/);
-  assert.match(html, /https:\/\/wiki\.internal\/runbook/);
-  assert.match(html, /Back up database/);
-  assert.match(html, /pg_dump app &gt; backup\.sql/);
-  assert.match(html, /backup\.sql exists\./);
-  assert.match(html, /Rollback/);
-  assert.match(html, /Restore the previous deployment\./);
+  assert.match(html, /Owner &lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(html, /Platform &lt;strong&gt;Team&lt;\/strong&gt;/);
+  assert.match(html, /Source &lt;runbook&gt;/);
+  assert.match(html, /https:\/\/wiki\.internal\/runbook\?&lt;unsafe&gt;/);
+  assert.match(html, /Back &lt;up&gt; database/);
+  assert.match(html, /pg_dump app &gt; backup\.sql &amp;&amp; echo &lt;done&gt;/);
+  assert.match(html, /backup\.sql exists &amp; checksum &lt;passes&gt;\./);
+  assert.match(html, /Rollback &lt;path&gt;/);
+  assert.match(html, /Restore the &lt;previous&gt; deployment\./);
+  assert.match(html, /Restore &lt;DNS&gt;/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+  assert.doesNotMatch(html, /<strong>Team<\/strong>/);
 });
 
 test("renders schemaVersion 1 plan string steps for compatibility", () => {
