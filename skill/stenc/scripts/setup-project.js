@@ -369,6 +369,39 @@ function renderPlanStep(step, index) {
   return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
 }
 
+function renderFacts(facts) {
+  const values = toList(facts);
+  if (values.length === 0) return "";
+  return renderTable(
+    ["Label", "Value"],
+    values.map((fact) => `<tr><td>${escapeHtml(fact.label)}</td><td>${escapeHtml(fact.value)}</td></tr>`),
+  );
+}
+
+function renderSupportingLinks(links) {
+  const values = toList(links);
+  if (values.length === 0) return "";
+  return renderTable(
+    ["Label", "Target", "Purpose"],
+    values.map(
+      (link) =>
+        `<tr><td>${escapeHtml(link.label)}</td><td><code>${escapeHtml(link.target)}</code></td><td>${escapeHtml(link.purpose)}</td></tr>`,
+    ),
+  );
+}
+
+function renderSupportingStep(step, index) {
+  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
+}
+
+function renderSupportingSection(section, depth = 0) {
+  const headingLevel = Math.min(3 + depth, 6);
+  const childSections = toList(section.subSections)
+    .map((subSection) => renderSupportingSection(subSection, depth + 1))
+    .join("");
+  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+}
+
 function renderDocument(doc, collection) {
   const links = doc.links || {};
   const page = doc.page || {};
@@ -488,7 +521,7 @@ function renderDocument(doc, collection) {
   }
   if (toList(body.supportingSections).length > 0) {
     parts.push(`<h2>Supporting Sections</h2><div class="stack">${body.supportingSections
-      .map((section) => `<section class="panel"><h3>${escapeHtml(section.heading)}</h3><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${codeBlocks(section.codeBlocks)}</section>`)
+      .map((section) => renderSupportingSection(section))
       .join("")}</div>`);
   }
   parts.push(`<h2>Open Questions</h2>${toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>"}</article>`);
@@ -534,6 +567,8 @@ h6 { color: var(--muted); font-size: 0.78rem; letter-spacing: 0; margin: 12px 0 
 .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 18px; }
 .stack { display: grid; gap: 14px; }
 .step-list { display: grid; gap: 12px; }
+.nested-sections { margin-top: 14px; }
+.supporting-section .supporting-section { background: #fbfcfd; }
 .step { border: 1px solid var(--line); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
 .list { margin: 0; padding-left: 1.15rem; }
 .table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; width: 100%; }

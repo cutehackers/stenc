@@ -274,6 +274,135 @@ test("renders Superpowers plan fields from structured JSON", () => {
   assert.match(html, /No Placeholders/);
 });
 
+test("renders extended supporting section fields recursively", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-supporting-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "supporting.spec.json"), {
+    schemaVersion: 2,
+    docType: "spec",
+    id: "spec:supporting",
+    slug: "supporting",
+    status: "draft",
+    title: "Supporting Sections",
+    description: "Spec with extended supporting sections.",
+    owner: "stenc",
+    createdAt: "2026-05-27",
+    updatedAt: "2026-05-27",
+    links: {
+      sourceOfTruth: ["docs/superpowers/specs/2026-05-27-supporting-sections-extension-design.md"],
+      relatedPlans: [],
+      relatedDecisions: [],
+    },
+    page: {
+      humanSummary: "Humans inspect extended supporting section content.",
+      agentSummary: "Agents read facts, links, steps, and nested sections from JSON.",
+      styleTemplate: "task-first",
+    },
+    body: {
+      goal: "Render bounded supporting section extensions.",
+      problem: "Legacy document outlines need facts, links, steps, and nested sections.",
+      scope: { in: ["Supporting section rendering"], out: ["Custom components"] },
+      architecture: { summary: "Static renderer uses fixed primitives.", flow: ["Read JSON", "Render sections"] },
+      requirements: [
+        {
+          id: "REQ-1",
+          title: "Render extension fields",
+          detail: "The renderer must show the bounded extension fields.",
+          acceptanceCriteria: ["Facts, links, steps, and nested subsections are visible."],
+        },
+      ],
+      approaches: [
+        {
+          name: "Bounded outline",
+          tradeoffs: ["More structure", "No custom visual components"],
+          recommendation: "Use fixed renderer primitives.",
+        },
+      ],
+      components: [
+        {
+          name: "Renderer",
+          responsibility: "Render supporting section extensions.",
+          interfaces: ["renderDocument(doc, collection)"],
+          dependencies: ["Node.js"],
+        },
+      ],
+      dataFlow: ["JSON document", "Static renderer", "Styled HTML"],
+      errorHandling: [{ case: "Unsafe text", behavior: "Escape HTML before rendering." }],
+      contracts: [{ name: "Section contract", rules: ["Only facts, links, steps, and subSections are added."] }],
+      surfaces: [{ path: "skill/stenc/scripts/setup-project.js", role: "Renderer", owner: "stenc" }],
+      testingStrategy: [{ command: "node skill/stenc/scripts/setup-project.test.js", expected: "PASS" }],
+      validation: [{ command: "node skill/stenc/scripts/setup-project.test.js", purpose: "Renderer regression coverage." }],
+      agentInstructions: ["Read JSON source before editing renderer behavior."],
+      reviewChecklist: ["No user-defined component system is introduced."],
+      selfReviewChecks: [{ name: "Scope", purpose: "Confirm only four fields are rendered." }],
+      implementationHandoff: {
+        planLocation: "docs/superpowers/plans/2026-05-27-supporting-sections-extension.md",
+        requiredSkill: "superpowers:writing-plans",
+        notes: ["Keep renderer deterministic."],
+      },
+      supportingSections: [
+        {
+          heading: "Migration Runbook",
+          content: "Render the runbook outline.",
+          items: ["Use fixed Stenc primitives."],
+          facts: [{ label: "Owner", value: "Platform Team" }],
+          links: [{ label: "Source runbook", target: "https://wiki.internal/runbook", purpose: "Original source" }],
+          steps: [
+            {
+              id: "step-1",
+              title: "Back up database",
+              status: "todo",
+              command: "pg_dump app > backup.sql",
+              expected: "backup.sql exists.",
+            },
+          ],
+          codeBlocks: [],
+          subSections: [
+            {
+              heading: "Rollback",
+              content: "Restore the previous deployment.",
+              items: ["Restore DNS"],
+              facts: [],
+              links: [],
+              steps: [],
+              codeBlocks: [],
+              subSections: [],
+            },
+          ],
+        },
+      ],
+      openQuestions: [],
+    },
+  });
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(path.join(docsRoot, "specs", "supporting", "index.html"), "utf8");
+  assert.match(html, /Migration Runbook/);
+  assert.match(html, /Owner/);
+  assert.match(html, /Platform Team/);
+  assert.match(html, /Source runbook/);
+  assert.match(html, /https:\/\/wiki\.internal\/runbook/);
+  assert.match(html, /Back up database/);
+  assert.match(html, /pg_dump app &gt; backup\.sql/);
+  assert.match(html, /backup\.sql exists\./);
+  assert.match(html, /Rollback/);
+  assert.match(html, /Restore the previous deployment\./);
+});
+
 test("renders schemaVersion 1 plan string steps for compatibility", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-v1-plan-"));
   const docsRoot = path.join(projectRoot, "docs", "stenc");
