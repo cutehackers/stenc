@@ -32,15 +32,19 @@ JSON. There is no Markdown source and no MDX component layer.
    header, checkbox tracking syntax, scope check, file structure, task files,
    step instructions, code blocks, run commands, expected output, no-placeholder
    guidance, self-review checks, and execution handoff as structured objects.
-8. Keep normative behavior in explicit arrays and objects, not prose-only
+8. When converting existing `spec.md` or `plan.md` documents, map content into
+   Stenc core fields first. Use `body.supportingSections` only for remaining
+   legacy outline sections, section-level facts, source links,
+   runbook/checklist steps, and nested heading structures.
+9. Keep normative behavior in explicit arrays and objects, not prose-only
    paragraphs.
-9. Put unknowns in `openQuestions`.
-10. Run the validator before considering the document ready.
-11. Regenerate the styled static web pages from the target project root:
+10. Put unknowns in `openQuestions`.
+11. Run the validator before considering the document ready.
+12. Regenerate the styled static web pages from the target project root:
     `node ~/.codex/skills/stenc/scripts/setup-project.js --project-root "$(pwd)" --docs-dir docs/stenc`.
-12. Run the rendered-page check:
+13. Run the rendered-page check:
     `node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc`.
-13. Do not call the document ready until both the JSON source and generated
+14. Do not call the document ready until both the JSON source and generated
     styled web page exist.
 
 ## Common Structure
@@ -65,6 +69,17 @@ Specs and plans intentionally include fields that mirror Superpowers outputs so
 conversion does not drop content that matters to agentic execution. Do not
 collapse those sections into a single summary string when the source has
 structured requirements, task steps, code examples, commands, or review gates.
+
+Use `body.supportingSections` for bounded user-defined outlines. The only
+optional extension fields are `facts`, `links`, `steps`, and `subSections`. Do
+not add visual control fields such as `component`, `layout`, `variant`, or
+`kind`.
+
+When converting existing `spec.md` or `plan.md` documents, map content into
+Stenc core fields first. Use `body.supportingSections` only for remaining
+legacy outline sections, section-level facts, source links, runbook/checklist
+steps, and nested heading structures. Markdown is an input to conversion, not
+a Stenc document source.
 
 ## Document Types
 

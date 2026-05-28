@@ -41,6 +41,15 @@ Use these as follows:
   `body.executionHandoff`, and plan `body.supportingSections` without
   collapsing code blocks, commands, expected output, or no-placeholder guidance
   into plain text.
+- Render extended supporting section fields with fixed primitives: `facts` as
+  a two-column table, `links` as a label/target/purpose table, `steps` as step
+  panels, and `subSections` as nested supporting-section panels. Do not let
+  source JSON choose custom components or layout variants.
+- Rendered pages should make converted legacy outline sections visible, but
+  the renderer must not infer core Stenc semantics from arbitrary supporting
+  sections. Authors are responsible for putting requirements, validation,
+  surfaces, slices, and agent instructions in their native core fields before
+  using supporting sections.
 - Render `body.scope.in` and `body.scope.out` side by side on wide screens and
   stacked on mobile.
 - Render `body.surfaces` as a table with `path`, `role`, and `owner` columns.

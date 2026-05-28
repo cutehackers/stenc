@@ -95,6 +95,29 @@ Optional spec fields:
 
 - `architecture.flow`
 - `supportingSections[].codeBlocks`
+- `supportingSections[].facts[].label`
+- `supportingSections[].facts[].value`
+- `supportingSections[].links[].label`
+- `supportingSections[].links[].target`
+- `supportingSections[].links[].purpose`
+- `supportingSections[].steps[].id`
+- `supportingSections[].steps[].title`
+- `supportingSections[].steps[].status`
+- `supportingSections[].steps[].instruction`
+- `supportingSections[].steps[].command`
+- `supportingSections[].steps[].expected`
+- `supportingSections[].steps[].codeBlocks`
+- `supportingSections[].subSections[]`
+
+`supportingSections` supports only four optional extension fields: `facts`,
+`links`, `steps`, and `subSections`. These fields preserve user-defined
+document outlines without introducing user-defined components, layouts,
+variants, kinds, or renderer hooks.
+
+When Stenc already has a dedicated body field for a concept, authors must use
+that dedicated field first. Use `body.supportingSections` only for bounded
+legacy outline content or supporting material that does not fit the core
+schema.
 
 ## Plan Body
 
@@ -170,10 +193,27 @@ Optional plan fields:
 - `slices[].steps[].expected`
 - `slices[].steps[].codeBlocks`
 - `supportingSections[].codeBlocks`
+- `supportingSections[].facts[].label`
+- `supportingSections[].facts[].value`
+- `supportingSections[].links[].label`
+- `supportingSections[].links[].target`
+- `supportingSections[].links[].purpose`
+- `supportingSections[].steps[].id`
+- `supportingSections[].steps[].title`
+- `supportingSections[].steps[].status`
+- `supportingSections[].steps[].instruction`
+- `supportingSections[].steps[].command`
+- `supportingSections[].steps[].expected`
+- `supportingSections[].steps[].codeBlocks`
+- `supportingSections[].subSections[]`
 
 Each `slices[].steps[]` entry must include actionable content through a
 non-empty `instruction`, a `command` with matching `expected`, or at least one
 non-empty code block. Empty `codeBlocks` alone is not actionable.
+
+Each `supportingSections[].steps[]` entry follows the same actionable-content
+rule. If a supporting step has `command`, it must also have `expected`; if it
+has `expected`, it must also have `command`.
 
 ## Decision Body
 

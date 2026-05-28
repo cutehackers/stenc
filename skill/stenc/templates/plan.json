@@ -109,6 +109,10 @@
         "heading": "No Placeholders",
         "content": "Every step must contain the actual content an engineer needs.",
         "items": ["TBD"],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "subSections": [],
         "codeBlocks": []
       }
     ],

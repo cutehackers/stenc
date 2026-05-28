@@ -103,6 +103,10 @@
         "heading": "TBD",
         "content": "TBD",
         "items": ["TBD"],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "subSections": [],
         "codeBlocks": []
       }
     ],

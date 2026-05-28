@@ -103,6 +103,12 @@ target project root, run:
   has structured requirements, alternatives, task files, code blocks, commands,
   expected output, review gates, worker instructions, scope checks, or
   execution handoff.
+- Use only `facts`, `links`, `steps`, and `subSections` when extending
+  `body.supportingSections`; do not create user-defined components or layout
+  fields.
+- When converting existing spec or plan Markdown, fill native Stenc body fields
+  first and use `body.supportingSections` only for bounded legacy outline
+  content that has no dedicated core field.
 - Put unresolved work in `body.openQuestions`.
 - Let the renderer derive indexes from `content/<collection>/*.json`.
 - After adding or editing any document JSON, regenerate the static web pages and
