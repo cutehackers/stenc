@@ -1,4 +1,28 @@
 #!/usr/bin/env bash
+#
+# Stenc release helper.
+#
+# Usage:
+#   ./scripts/release.sh 0.2.0 --dry-run
+#   ./scripts/release.sh 0.2.0
+#   ./scripts/release.sh 0.2.0 --push
+#
+# Before running a release, prepare:
+#   CHANGELOG.md
+#   docs/releases/vX.Y.Z.md
+#
+# What this script does:
+#   - requires a clean working tree;
+#   - validates MAJOR.MINOR.PATCH version input;
+#   - checks CHANGELOG.md and docs/releases/vX.Y.Z.md exist for the release;
+#   - synchronizes package.json and package-lock.json versions;
+#   - runs ./scripts/validate.sh, npm test, and git diff --check;
+#   - creates chore(release): vX.Y.Z;
+#   - creates annotated tag vX.Y.Z;
+#   - pushes the current branch and tag only when --push is supplied.
+#
+# This script does not publish npm packages and does not run target-project
+# migrations. Existing target projects should run `stenc migrate` separately.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
