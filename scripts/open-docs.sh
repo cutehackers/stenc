@@ -7,7 +7,7 @@ DOCS_DIR="docs/stenc"
 PORT=""
 DRY_RUN=0
 
-if [[ -f "${SCRIPT_DIR}/${DOCS_DIR}/index.html" ]]; then
+if [[ -d "${SCRIPT_DIR}/${DOCS_DIR}" ]]; then
   PROJECT_ROOT="${SCRIPT_DIR}"
 fi
 
@@ -80,15 +80,38 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   exit 0
 fi
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required to open the Stenc static docs." >&2
+  exit 1
+fi
+
+STENC_SKILLS_ROOT="${CODEX_SKILLS_DIR:-${HOME}/.codex/skills}"
+DEFAULT_STENC_SETUP_PROJECT_JS="${STENC_SKILLS_ROOT}/stenc/scripts/setup-project.js"
+if [[ -f "${SCRIPT_DIR}/../skill/stenc/scripts/setup-project.js" ]]; then
+  DEFAULT_STENC_SETUP_PROJECT_JS="${SCRIPT_DIR}/../skill/stenc/scripts/setup-project.js"
+fi
+STENC_SETUP_PROJECT_JS="${STENC_SETUP_PROJECT_JS:-${DEFAULT_STENC_SETUP_PROJECT_JS}}"
+if [[ ! -f "${STENC_SETUP_PROJECT_JS}" ]]; then
+  echo "Stenc renderer not found: ${STENC_SETUP_PROJECT_JS}" >&2
+  echo "Install Stenc first: stenc install --docs-dir ${DOCS_DIR}" >&2
+  exit 1
+fi
+
+node "${STENC_SETUP_PROJECT_JS}" \
+  --project-root "${PROJECT_ROOT}" \
+  --docs-dir "${DOCS_DIR}" \
+  --render-only \
+  --skip-open-docs-script
+
+if [[ "${STENC_OPEN_DOCS_PRECHECK_ONLY:-0}" -eq 1 ]]; then
+  echo "Stenc docs regenerated at ${DOCS_PATH}"
+  exit 0
+fi
+
 if [[ ! -f "${DOCS_PATH}/index.html" ]]; then
   echo "Stenc static docs not found: ${DOCS_PATH}" >&2
   echo "Run setup first, for example:" >&2
   echo "  stenc install --docs-dir ${DOCS_DIR}" >&2
-  exit 1
-fi
-
-if ! command -v node >/dev/null 2>&1; then
-  echo "node is required to open the Stenc static docs." >&2
   exit 1
 fi
 

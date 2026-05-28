@@ -70,9 +70,10 @@ curl -fsSL https://raw.githubusercontent.com/cutehackers/stenc/main/scripts/boot
 ```
 
 This installs the Codex skill and creates `docs/stenc` in one pass. If
-`--title` is omitted, the generated app uses `Docs`. The installer caches the
-Stenc repository under `~/.cache/stenc`, so users do not need to pass
-a local Stenc repository path.
+`--title` is omitted on a new setup, the generated app uses `Docs`; reruns
+preserve the existing `content/site.json` title unless `--title` is supplied.
+The installer caches the Stenc repository under `~/.cache/stenc`, so users do
+not need to pass a local Stenc repository path.
 
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:
@@ -89,6 +90,20 @@ target project root, run:
 ```bash
 ./open-docs.sh
 ```
+
+`open-docs.sh` regenerates generated HTML/CSS before serving. Existing target
+repositories that already committed generated Stenc pages should run this
+one-time migration from the target project root:
+
+```bash
+stenc migrate
+./open-docs.sh
+```
+
+Use `stenc migrate --docs-dir <path>` for custom docs locations and
+`stenc migrate --dry-run` to preview without writing `.gitignore` or changing
+the Git index. Only `stenc migrate` may remove generated artifacts from the Git
+index; install, setup, and open-docs must not run Git mutation commands.
 
 ## Required Authoring Rules
 

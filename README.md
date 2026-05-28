@@ -56,7 +56,29 @@ After install, open the generated docs from the target project root:
 ```
 
 `open-docs.sh` starts a small local server, opens the docs in your browser, and
-stops the server when you press Enter.
+stops the server when you press Enter. It regenerates the static HTML/CSS before
+serving, so collaborators do not need generated pages committed to Git.
+
+## Migrate Existing Docs
+
+If an existing repository already committed generated Stenc HTML/CSS, run the
+one-time migration from the target project root:
+
+```bash
+stenc migrate
+./open-docs.sh
+```
+
+`stenc migrate` refreshes `docs/stenc/.gitignore` and removes generated pages
+from the Git index with `git rm --cached`; local files remain on disk. It does
+not touch JSON sources under `docs/stenc/content`.
+
+For custom docs locations:
+
+```bash
+stenc migrate --docs-dir stenc
+stenc migrate --docs-dir stenc --dry-run
+```
 
 ## Add Docs
 

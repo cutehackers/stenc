@@ -7,6 +7,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
 
 function writeJson(filePath, value) {
@@ -75,7 +76,49 @@ test("prepares a fixed Stenc web app backed by JSON documents", () => {
   );
 
   const gitignore = fs.readFileSync(path.join(docsRoot, ".gitignore"), "utf8");
-  assert.match(gitignore, /generated static pages/);
+  assert.match(gitignore, /Stenc generated static pages/);
+  assert.match(gitignore, /\/index\.html/);
+  assert.match(gitignore, /\/styles\.css/);
+  assert.match(gitignore, /\/specs\//);
+  assert.match(gitignore, /\/plans\//);
+  assert.match(gitignore, /\/decisions\//);
+  assert.match(gitignore, /\/agent-context\//);
+  assert.doesNotMatch(gitignore, /\/content\//);
+});
+
+test("generated open-docs uses CODEX_SKILLS_DIR to find the renderer", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-open-docs-codex-dir-"));
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-skills-"));
+  const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-home-"));
+  fs.cpSync(path.join(REPO_ROOT, "skill", "stenc"), path.join(skillsRoot, "stenc"), {
+    recursive: true,
+  });
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--title", "Project Docs"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  fs.rmSync(path.join(docsRoot, "index.html"), { force: true });
+  fs.rmSync(path.join(docsRoot, "styles.css"), { force: true });
+
+  const openDocsResult = spawnSync("bash", [path.join(projectRoot, "open-docs.sh")], {
+    cwd: os.tmpdir(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CODEX_SKILLS_DIR: skillsRoot,
+      HOME: homeRoot,
+      STENC_OPEN_DOCS_PRECHECK_ONLY: "1",
+    },
+  });
+
+  assert.equal(openDocsResult.status, 0, openDocsResult.stderr || openDocsResult.stdout);
+  assert.equal(fs.existsSync(path.join(docsRoot, "index.html")), true);
+  assert.equal(fs.existsSync(path.join(docsRoot, "styles.css")), true);
 });
 
 test("uses Docs as the default site title", () => {
@@ -96,6 +139,93 @@ test("uses Docs as the default site title", () => {
     ),
   );
   assert.equal(siteJson.title, "Docs");
+});
+
+test("preserves an existing site title when --title is omitted", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-preserve-title-"));
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--title", "Project Docs", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const siteJson = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, "docs", "stenc", "content", "site.json"), "utf8"),
+  );
+  assert.equal(siteJson.title, "Project Docs");
+});
+
+test("removes stale generated document routes when source JSON is deleted", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-stale-route-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const specPath = path.join(docsRoot, "content", "specs", "old.spec.json");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(specPath, {
+    schemaVersion: 2,
+    docType: "spec",
+    id: "spec:old",
+    slug: "old",
+    status: "draft",
+    title: "Old Spec",
+    description: "Spec that will be removed.",
+    owner: "stenc",
+    createdAt: "2026-05-28",
+    updatedAt: "2026-05-28",
+    links: { sourceOfTruth: ["docs/stenc/content/specs/old.spec.json"] },
+    page: {
+      humanSummary: "Old rendered page.",
+      agentSummary: "Old rendered page.",
+      styleTemplate: "task-first",
+    },
+    body: {
+      goal: "Render old page.",
+      problem: "Old page exists.",
+      scope: { in: ["Render"], out: [] },
+      requirements: [],
+      approaches: [],
+      components: [],
+      dataFlow: [],
+      errorHandling: [],
+      testingStrategy: [],
+      validation: [],
+      agentInstructions: ["Render."],
+      openQuestions: [],
+    },
+  });
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(fs.existsSync(path.join(docsRoot, "specs", "old", "index.html")), true);
+
+  fs.rmSync(specPath);
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(fs.existsSync(path.join(docsRoot, "specs", "old", "index.html")), false);
+  assert.equal(fs.existsSync(path.join(docsRoot, "specs", "index.html")), true);
 });
 
 test("can skip writing the target project open-docs script", () => {

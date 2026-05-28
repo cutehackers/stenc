@@ -2,6 +2,10 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  generatedArtifactPaths,
+  generatedGitignoreText,
+} = require("./generated-artifacts");
 
 const COLLECTIONS = [
   { dir: "specs", label: "Specs", docType: "spec", suffix: ".spec.json" },
@@ -15,6 +19,7 @@ const COLLECTIONS = [
   },
 ];
 const STYLE_TEMPLATES = new Set(["task-first", "operator-console", "evidence-led"]);
+const DEFAULT_SITE_DESCRIPTION = "Fixed-format Stenc documentation app.";
 
 function usage() {
   console.log(`Usage: setup-project.js [options]
@@ -28,6 +33,7 @@ Options:
   --skip-install         Deprecated no-op kept for installer compatibility.
   --skip-open-docs-script
                         Do not write ./open-docs.sh in the target project root.
+  --render-only         Regenerate generated static pages without rewriting source data.
   -h, --help             Show this help.
 `);
 }
@@ -37,6 +43,8 @@ function parseArgs(argv) {
     projectRoot: process.cwd(),
     docsDir: "docs/stenc",
     title: null,
+    hasTitle: false,
+    renderOnly: false,
     skipOpenDocsScript: false,
   };
 
@@ -47,6 +55,10 @@ function parseArgs(argv) {
       process.exit(0);
     }
     if (arg === "--skip-install") continue;
+    if (arg === "--render-only") {
+      options.renderOnly = true;
+      continue;
+    }
     if (arg === "--skip-open-docs-script") {
       options.skipOpenDocsScript = true;
       continue;
@@ -61,7 +73,10 @@ function parseArgs(argv) {
       index += 1;
       if (arg === "--project-root") options.projectRoot = value;
       if (arg === "--docs-dir") options.docsDir = value;
-      if (arg === "--title") options.title = value;
+      if (arg === "--title") {
+        options.title = value;
+        options.hasTitle = true;
+      }
       continue;
     }
     throw new Error(`unknown option: ${arg}`);
@@ -69,7 +84,6 @@ function parseArgs(argv) {
 
   options.projectRoot = path.resolve(options.projectRoot);
   options.docsDir = path.resolve(options.projectRoot, options.docsDir);
-  options.title = options.title || "Docs";
   return options;
 }
 
@@ -112,6 +126,15 @@ function readJsonIfPresent(filePath) {
   }
 }
 
+function resolveSiteTitle(docsDir, options) {
+  if (options.hasTitle) return options.title;
+  const existing = readJsonIfPresent(path.join(docsDir, "content", "site.json"));
+  if (existing && typeof existing.title === "string" && existing.title.trim()) {
+    return existing.title;
+  }
+  return "Docs";
+}
+
 function removeFrameworkArtifacts(docsDir) {
   for (const target of [
     `${"a"}stro.config.mjs`,
@@ -127,12 +150,13 @@ function removeFrameworkArtifacts(docsDir) {
 }
 
 function writeGitignore(docsDir) {
-  writeFile(
-    path.join(docsDir, ".gitignore"),
-    `# generated static pages
-*.log
-`,
-  );
+  writeFile(path.join(docsDir, ".gitignore"), generatedGitignoreText());
+}
+
+function removeGeneratedArtifacts(docsDir) {
+  for (const artifactPath of generatedArtifactPaths(docsDir)) {
+    fs.rmSync(artifactPath, { recursive: true, force: true });
+  }
 }
 
 function writeOpenDocsScript(projectRoot, docsDir) {
@@ -209,15 +233,34 @@ if [[ "\${DRY_RUN}" -eq 1 ]]; then
   exit 0
 fi
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required to open the Stenc static docs." >&2
+  exit 1
+fi
+
+STENC_SKILLS_ROOT="\${CODEX_SKILLS_DIR:-\${HOME}/.codex/skills}"
+STENC_SETUP_PROJECT_JS="\${STENC_SETUP_PROJECT_JS:-\${STENC_SKILLS_ROOT}/stenc/scripts/setup-project.js}"
+if [[ ! -f "\${STENC_SETUP_PROJECT_JS}" ]]; then
+  echo "Stenc renderer not found: \${STENC_SETUP_PROJECT_JS}" >&2
+  echo "Install Stenc first: stenc install --docs-dir \${DOCS_DIR}" >&2
+  exit 1
+fi
+
+node "\${STENC_SETUP_PROJECT_JS}" \
+  --project-root "\${PROJECT_ROOT}" \
+  --docs-dir "\${DOCS_DIR}" \
+  --render-only \
+  --skip-open-docs-script
+
+if [[ "\${STENC_OPEN_DOCS_PRECHECK_ONLY:-0}" -eq 1 ]]; then
+  echo "Stenc docs regenerated at \${DOCS_PATH}"
+  exit 0
+fi
+
 if [[ ! -f "\${DOCS_PATH}/index.html" ]]; then
   echo "Stenc static docs not found: \${DOCS_PATH}" >&2
   echo "Run setup first, for example:" >&2
   echo "  stenc install --docs-dir \${DOCS_DIR}" >&2
-  exit 1
-fi
-
-if ! command -v node >/dev/null 2>&1; then
-  echo "node is required to open the Stenc static docs." >&2
   exit 1
 fi
 
@@ -288,10 +331,16 @@ IFS= read -r _
 }
 
 function writeAppData(docsDir, title) {
-  writeJson(path.join(docsDir, "content", "site.json"), {
-    title,
-    description: "Fixed-format Stenc documentation app.",
-  });
+  const sitePath = path.join(docsDir, "content", "site.json");
+  const existing = readJsonIfPresent(sitePath);
+  const site = existing && typeof existing === "object" && !Array.isArray(existing)
+    ? { ...existing }
+    : {};
+  site.title = title;
+  if (typeof site.description !== "string" || !site.description.trim()) {
+    site.description = DEFAULT_SITE_DESCRIPTION;
+  }
+  writeJson(sitePath, site);
 
   for (const collection of COLLECTIONS) {
     ensureDirectory(path.join(docsDir, "content", collection.dir));
@@ -622,7 +671,7 @@ pre code { border: 0; background: transparent; color: inherit; padding: 0; white
 function writeStaticPages(docsDir, title) {
   const site = readJsonIfPresent(path.join(docsDir, "content", "site.json")) || {
     title,
-    description: "Fixed-format Stenc documentation app.",
+    description: DEFAULT_SITE_DESCRIPTION,
   };
   writeStyles(docsDir);
 
@@ -756,13 +805,17 @@ function writeStaticPages(docsDir, title) {
 function main() {
   const options = parseArgs(process.argv.slice(2));
   ensureDirectory(options.docsDir);
-  removeFrameworkArtifacts(options.docsDir);
-  if (!options.skipOpenDocsScript) {
-    writeOpenDocsScript(options.projectRoot, options.docsDir);
+  const siteTitle = resolveSiteTitle(options.docsDir, options);
+  if (!options.renderOnly) {
+    removeFrameworkArtifacts(options.docsDir);
+    if (!options.skipOpenDocsScript) {
+      writeOpenDocsScript(options.projectRoot, options.docsDir);
+    }
+    writeAppData(options.docsDir, siteTitle);
+    writeGitignore(options.docsDir);
   }
-  writeAppData(options.docsDir, options.title);
-  writeGitignore(options.docsDir);
-  writeStaticPages(options.docsDir, options.title);
+  removeGeneratedArtifacts(options.docsDir);
+  writeStaticPages(options.docsDir, siteTitle);
 
   console.log(`Prepared Stenc static docs at ${options.docsDir}`);
   console.log(`Run: cd ${options.projectRoot} && ./open-docs.sh`);
