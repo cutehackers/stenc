@@ -12,6 +12,15 @@ The source contract is structured JSON. The generated fixed web interface
 renders that JSON as consistent pages. Do not author Stenc documents as
 Markdown or MDX.
 
+## Product Values
+
+- Keep document meaning agent-readable through explicit JSON fields.
+- Keep pages human-friendly through consistent fixed rendering.
+- Keep generation deterministic and reproducible from source.
+- Keep authoring dependency-light and installable across target repositories.
+- When Stenc itself grows, add validator-known bounded primitives instead of
+  Markdown parsing, MDX, raw HTML, or per-document component systems.
+
 ## Quick Start
 
 1. Choose exactly one document type:
