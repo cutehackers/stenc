@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.3.1
+
+### Added
+
+- Add `stenc --version`, `stenc -v`, and `stenc version` so bootstrap users can
+  inspect the installed Stenc release.
+
+### Changed
+
+- Document version checking in the README and Stenc skill entrypoint.
+
+### Migration
+
+- No migration steps are recorded for this release.
+
 ## v0.3.0
 
 ### Added
