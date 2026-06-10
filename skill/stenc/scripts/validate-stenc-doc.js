@@ -28,15 +28,20 @@ const SUPPORTING_SECTION_FIELDS = new Set([
   "codeBlocks",
   "subSections",
 ]);
-const RICH_BLOCK_TYPES = new Set(["paragraph", "callout", "quote", "table"]);
+const RICH_BLOCK_TYPES = new Set(["paragraph", "callout", "quote", "table", "media", "taskList", "diagram"]);
 const INLINE_SPAN_TYPES = new Set(["text", "strong", "emphasis", "code", "link", "kbd", "mark"]);
 const CALLOUT_TONES = new Set(["neutral", "info", "success", "warning", "danger"]);
+const DIAGRAM_LANGUAGES = new Set(["mermaid", "dot", "plain"]);
+const TASK_LIST_ITEM_FIELDS = new Set(["label", "checked"]);
 
 const RICH_BLOCK_FIELDS = {
   paragraph: new Set(["type", "spans"]),
   callout: new Set(["type", "tone", "title", "body"]),
   quote: new Set(["type", "text", "source"]),
   table: new Set(["type", "columns", "rows"]),
+  media: new Set(["type", "src", "alt", "caption"]),
+  taskList: new Set(["type", "items"]),
+  diagram: new Set(["type", "language", "title", "source"]),
 };
 
 const INLINE_SPAN_FIELDS = {
@@ -361,6 +366,18 @@ function isSafeLinkTarget(target) {
   return /^[A-Za-z0-9._~!$&'()*+,;=:@/-]+(?:#[A-Za-z0-9._~!$&'()*+,;=:@/-]+)?$/u.test(trimmed);
 }
 
+function isSafeMediaSrc(src) {
+  if (!isNonEmptyString(src)) return false;
+  if (/[\u0000-\u001f\u007f]/u.test(src)) return false;
+  const trimmed = src.trim();
+  if (trimmed !== src) return false;
+  if (!trimmed.startsWith("assets/")) return false;
+  if (trimmed.includes("\\") || trimmed.includes("://")) return false;
+  if (/^(javascript|data|file):/iu.test(trimmed)) return false;
+  if (trimmed.split("/").some((part) => part === "" || part === "." || part === "..")) return false;
+  return /^[A-Za-z0-9._~!$&'()*+,;=:@/-]+$/u.test(trimmed);
+}
+
 function validateInlineSpans(spans, errors, prefix) {
   if (!Array.isArray(spans) || spans.length === 0) {
     errors.push(`${prefix}spans must be a non-empty array`);
@@ -412,6 +429,26 @@ function validateRichTable(block, errors, prefix) {
   });
 }
 
+function validateTaskListItems(items, errors, prefix) {
+  if (!Array.isArray(items) || items.length === 0) {
+    errors.push(`${prefix}items must be a non-empty array`);
+    return;
+  }
+
+  items.forEach((item, index) => {
+    const itemPrefix = `${prefix}items[${index}].`;
+    if (!isPlainObject(item)) {
+      errors.push(`${itemPrefix.slice(0, -1)} must be an object`);
+      return;
+    }
+    validateAllowedFields(item, TASK_LIST_ITEM_FIELDS, errors, itemPrefix);
+    requireString(item, "label", errors, itemPrefix);
+    if (typeof item.checked !== "boolean") {
+      errors.push(`${itemPrefix}checked must be a boolean`);
+    }
+  });
+}
+
 function validateRichBlock(block, errors, prefix) {
   if (!isPlainObject(block)) {
     errors.push(`${prefix.slice(0, -1)} must be an object`);
@@ -440,6 +477,25 @@ function validateRichBlock(block, errors, prefix) {
   }
   if (block.type === "table") {
     validateRichTable(block, errors, prefix);
+  }
+  if (block.type === "media") {
+    requireString(block, "src", errors, prefix);
+    requireString(block, "alt", errors, prefix);
+    if ("caption" in block) requireString(block, "caption", errors, prefix);
+    if (!isSafeMediaSrc(block.src)) {
+      errors.push(`${prefix}src must be a safe media source under assets/`);
+    }
+  }
+  if (block.type === "taskList") {
+    validateTaskListItems(block.items, errors, prefix);
+  }
+  if (block.type === "diagram") {
+    requireString(block, "language", errors, prefix);
+    if (isNonEmptyString(block.language) && !DIAGRAM_LANGUAGES.has(block.language)) {
+      errors.push(`${prefix}language must be one of: ${Array.from(DIAGRAM_LANGUAGES).join(", ")}`);
+    }
+    requireString(block, "title", errors, prefix);
+    requireString(block, "source", errors, prefix);
   }
 }
 
@@ -771,6 +827,10 @@ function validateSliceFiles(entries, errors, fieldPath) {
 function validatePlanStep(step, errors, prefix) {
   if (!isPlainObject(step)) {
     errors.push(`${prefix.slice(0, -1)} must be an object`);
+    return;
+  }
+  if (step.type === "taskList") {
+    errors.push(`${prefix.slice(0, -1)} must be a plan step, not a taskList block`);
     return;
   }
   validateAllowedFields(step, PLAN_STEP_FIELDS, errors, prefix);

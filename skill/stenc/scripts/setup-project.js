@@ -191,6 +191,25 @@ function removeGeneratedArtifacts(docsDir) {
   }
 }
 
+function copyDirectoryContents(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) return;
+  ensureDirectory(targetDir);
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectoryContents(sourcePath, targetPath);
+    } else if (entry.isFile()) {
+      ensureDirectory(path.dirname(targetPath));
+      fs.copyFileSync(sourcePath, targetPath);
+    }
+  }
+}
+
+function copyContentAssets(docsDir) {
+  copyDirectoryContents(path.join(docsDir, "content", "assets"), path.join(docsDir, "assets"));
+}
+
 function writeOpenDocsScript(projectRoot, docsDir) {
   const relativeDocsDir = path.relative(projectRoot, docsDir) || ".";
   const docsDirDefault = relativeDocsDir.startsWith("..") ? docsDir : relativeDocsDir;
@@ -327,7 +346,7 @@ fi
 URL="http://127.0.0.1:\${PORT}/"
 (
   cd "\${DOCS_PATH}"
-  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=process.cwd();const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let file=path.join(root,decodeURIComponent(url.pathname));if(!file.startsWith(root)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}"
+  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=process.cwd();const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let pathname;try{pathname=decodeURIComponent(url.pathname);}catch(_error){res.writeHead(400);res.end('Bad request');return;}let file=path.resolve(root,'.'+pathname);const relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}"
 ) &
 SERVER_PID=$!
 
@@ -470,7 +489,33 @@ function renderRichTable(block) {
   );
 }
 
-function renderSupportingBlock(block) {
+function mediaGeneratedSrc(src) {
+  return `../../${escapeHtml(src)}`;
+}
+
+function mediaSourceExists(block, context) {
+  if (!context?.docsDir) return false;
+  return fs.existsSync(path.join(context.docsDir, "content", block.src));
+}
+
+function renderMediaBlock(block, context) {
+  if (!mediaSourceExists(block, context)) {
+    return `<figure class="rich-block rich-media missing-media"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+  }
+  return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+}
+
+function renderTaskListBlock(block) {
+  return `<ul class="rich-block rich-task-list">${toList(block.items)
+    .map((item) => `<li><span class="task-check" aria-hidden="true">${item.checked ? "x" : ""}</span><span>${escapeHtml(item.label)}</span></li>`)
+    .join("")}</ul>`;
+}
+
+function renderDiagramBlock(block) {
+  return `<figure class="rich-block rich-diagram"><figcaption><span class="badge">${escapeHtml(block.language)}</span><strong>${escapeHtml(block.title)}</strong></figcaption><pre><code>${escapeHtml(block.source)}</code></pre></figure>`;
+}
+
+function renderSupportingBlock(block, context = {}) {
   if (block.type === "paragraph") {
     return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
   }
@@ -481,13 +526,16 @@ function renderSupportingBlock(block) {
     return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
   }
   if (block.type === "table") return renderRichTable(block);
+  if (block.type === "media") return renderMediaBlock(block, context);
+  if (block.type === "taskList") return renderTaskListBlock(block);
+  if (block.type === "diagram") return renderDiagramBlock(block);
   return "";
 }
 
-function renderSupportingBlocks(blocks) {
+function renderSupportingBlocks(blocks, context = {}) {
   const values = toList(blocks);
   if (values.length === 0) return "";
-  return `<div class="rich-blocks">${values.map(renderSupportingBlock).join("")}</div>`;
+  return `<div class="rich-blocks">${values.map((block) => renderSupportingBlock(block, context)).join("")}</div>`;
 }
 
 function renderPlanStep(step, index) {
@@ -522,15 +570,15 @@ function renderSupportingStep(step, index) {
   return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
 }
 
-function renderSupportingSection(section, depth = 0) {
+function renderSupportingSection(section, depth = 0, context = {}) {
   const headingLevel = Math.min(3 + depth, 6);
   const childSections = toList(section.subSections)
-    .map((subSection) => renderSupportingSection(subSection, depth + 1))
+    .map((subSection) => renderSupportingSection(subSection, depth + 1, context))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
-function renderDocument(doc, collection) {
+function renderDocument(doc, collection, context = {}) {
   const links = doc.links || {};
   const page = doc.page || {};
   const body = doc.body || {};
@@ -649,7 +697,7 @@ function renderDocument(doc, collection) {
   }
   if (toList(body.supportingSections).length > 0) {
     parts.push(`<h2>Supporting Sections</h2><div class="stack">${body.supportingSections
-      .map((section) => renderSupportingSection(section))
+      .map((section) => renderSupportingSection(section, 0, context))
       .join("")}</div>`);
   }
   parts.push(`<h2>Open Questions</h2>${toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>"}</article>`);
@@ -716,6 +764,17 @@ mark { border-radius: 4px; background: #fff1a8; color: inherit; padding: 0.05rem
 .rich-quote { border-left: 4px solid var(--line); color: var(--muted); padding-left: 14px; }
 .rich-quote blockquote { margin: 0; }
 .rich-quote figcaption { margin-top: 8px; font-size: 0.85rem; }
+.rich-media { display: grid; gap: 8px; }
+.rich-media img { border: 1px solid var(--line); border-radius: var(--radius); display: block; height: auto; max-width: 100%; }
+.rich-media figcaption { color: var(--muted); font-size: 0.86rem; }
+.missing-media { border: 1px dashed #b42318; border-radius: var(--radius); background: #fff7f7; padding: 12px; }
+.missing-media strong { color: #b42318; display: block; margin-bottom: 6px; }
+.rich-task-list { display: grid; gap: 8px; list-style: none; padding-left: 0; }
+.rich-task-list li { align-items: center; display: grid; gap: 8px; grid-template-columns: 18px minmax(0, 1fr); }
+.task-check { align-items: center; border: 1px solid var(--line); border-radius: 4px; display: inline-flex; height: 18px; justify-content: center; width: 18px; }
+.rich-diagram { display: grid; gap: 8px; }
+.rich-diagram figcaption { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.rich-diagram strong { font-size: 0.95rem; }
 .command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
 .code-stack { display: grid; gap: 10px; margin-top: 10px; }
 pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }
@@ -767,6 +826,7 @@ function writeStaticPages(docsDir, title) {
     description: DEFAULT_SITE_DESCRIPTION,
   };
   writeStyles(docsDir);
+  copyContentAssets(docsDir);
 
   const collectionDocs = new Map(
     COLLECTIONS.map((collection) => [collection.dir, readCollection(docsDir, collection)]),
@@ -889,7 +949,7 @@ function writeStaticPages(docsDir, title) {
     for (const doc of docs) {
       writeFile(
         documentPagePath(docsDir, collection.dir, doc.slug),
-        renderLayout(site, doc.title, renderDocument(doc, collection)),
+        renderLayout(site, doc.title, renderDocument(doc, collection, { docsDir })),
       );
     }
   }

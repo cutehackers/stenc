@@ -109,10 +109,10 @@ Scale up은 extension hook을 여는 방식이 아니라 renderer-owned primitiv
 1. Phase 1 plan은 `paragraph`, `callout`, `quote`, `table`만 구현한다.
 2. Phase 1에서 validator/renderer helper와 hostile HTML escaping tests를 먼저 안정화한다.
 3. Phase 2 plan은 Phase 1 helper 위에 `media`와 `taskList`만 추가한다.
-4. Phase 2 전에 `docs/DECISIONS.md`의 media asset root 결정을 accepted 또는 explicitly deferred로 정리한다.
+4. Phase 2는 accepted decision `D-2026-06-10-003`에 따라 media asset root를 `docs/stenc/content/assets/`로 고정한다.
 5. Phase 2에서 asset root, copy behavior, generated URL, and missing-asset failure path를 별도 acceptance criterion으로 검증한다.
 6. Phase 3 plan은 rendered diagram이 아니라 escaped source panel만 구현한다.
-7. rendered Mermaid나 richer nested spans는 `docs/DECISIONS.md`의 사용자 결정이 정리된 뒤 별도 spec 또는 follow-up phase로 다룬다.
+7. rendered Mermaid나 richer nested spans는 accepted decisions `D-2026-06-10-001`과 `D-2026-06-10-002`에 따라 이번 rollout 밖의 별도 spec 또는 follow-up phase로 다룬다.
 
 ## Proposed JSON Shape
 
@@ -332,7 +332,7 @@ Rendering rules:
 
 ## Phase 2: Asset And Checklist Blocks
 
-Phase 2 adds common Markdown expressions that need policy decisions around files and checklist semantics.
+Phase 2 adds common Markdown expressions that need deterministic local file policy and read-only checklist semantics.
 
 ### Block: `media`
 
@@ -366,7 +366,7 @@ Rendering rules:
 
 Asset policy:
 
-- Recommended Phase 2 source location is `docs/stenc/content/assets/`; this remains a pending decision until `docs/DECISIONS.md` records it as accepted or deferred for Phase 2.
+- Phase 2 source assets live under the fixed root `docs/stenc/content/assets/` as accepted in `D-2026-06-10-003`.
 - `media.src` is written relative to the docs app `content/` directory and must start with `assets/`.
 - For the example `src: "assets/stenc-flow.png"`, the source file is `<docsDir>/content/assets/stenc-flow.png`.
 - The renderer copies `<docsDir>/content/assets/**` to generated `<docsDir>/assets/**`.
@@ -421,11 +421,11 @@ Rendering rules:
 - Tests prove `taskList` does not replace plan `slices[].steps[]`.
 - `taskList` is valid only under `body.supportingSections[].blocks`; it is not valid under `body.slices[]` or as a replacement for `body.slices[].steps[]`.
 - `check-rendered-pages.test.js` covers present and missing media assets.
-- References define the accepted or explicitly deferred asset-root policy before examples use media.
+- References define the accepted fixed asset-root policy before examples use media.
 
 ## Phase 3: Diagram Source Blocks
 
-Phase 3 addresses Mermaid and diagram fences. The first implementation should preserve diagram source safely before introducing any client-side rendering.
+Phase 3 addresses Mermaid and diagram fences. The accepted baseline preserves diagram source safely and does not introduce client-side rendering.
 
 ### Block: `diagram`
 
@@ -461,7 +461,7 @@ Rendering rules:
 
 - Initial renderer displays a fixed diagram-source panel with language badge and code block.
 - No client-side Mermaid runtime is required for Phase 3 baseline.
-- Future rendered-diagram support must be an explicit follow-up decision and must work offline.
+- Future rendered-diagram support must be a separate follow-up decision and must work offline.
 
 ### Phase 3 Acceptance Criteria
 
@@ -469,7 +469,7 @@ Rendering rules:
 - Renderer shows diagram source safely and visibly.
 - No script execution or remote dependency is introduced.
 - Documentation explains that rendered diagrams are a later enhancement, not part of the baseline.
-- Follow-up rendered diagram work requires an explicit decision because it changes dependency and runtime posture.
+- Follow-up rendered diagram work requires a new explicit decision because it changes dependency and runtime posture.
 
 ## Rejected Approaches
 
@@ -653,7 +653,7 @@ Validator:
 Renderer:
 
 - Renders image alt text and caption.
-- Copies `content/assets/**` to generated `assets/**` when the accepted Phase 2 asset-root decision is in force.
+- Copies `content/assets/**` to generated `assets/**` using the accepted fixed Phase 2 asset root.
 - Produces a visible missing-asset state.
 - Renders task list as read-only.
 - `check-rendered-pages.js` fails when a referenced media source asset is absent.
@@ -693,7 +693,7 @@ Expected:
 - Value check: every accepted primitive preserves JSON source of truth, fixed renderer ownership, and dependency-light validation.
 - Boundary check: every rejected approach stays rejected in validator tests, not only in prose.
 - Handoff check: the rollout plan names exact implementation surfaces and phase gates.
-- Decision check: table cell spans, callout nested spans, rendered diagrams, and asset-root policy remain visible in `docs/DECISIONS.md` until approved or rejected.
+- Decision check: table cell spans, callout nested spans, rendered diagrams, and asset-root policy are resolved in `docs/DECISIONS.md` and reflected in the phase contract.
 
 ## Rollout Plan
 
@@ -751,7 +751,7 @@ Done when:
 
 ## Open Questions
 
-- Should `table` cells remain plain strings indefinitely, or should a later phase allow `spans` inside cells?
-- Should `callout.body` eventually support `spans`, or is plain text enough for Stenc's operational style?
-- Should rendered Mermaid diagrams be considered after Phase 3, or should diagram source panels remain the permanent Stenc behavior?
-- Should the fixed media asset root stay `docs/stenc/content/assets/`, or should installed target repos be allowed to configure a different source-owned asset root later?
+- Should a future spec add table cell spans after real documents prove plain escaped strings are insufficient?
+- Should a future spec add callout body spans after real documents prove plain escaped strings are insufficient?
+- Should a future spec add rendered Mermaid diagrams after source panels prove useful and an offline deterministic renderer is selected?
+- Should a future spec add configurable source-owned asset roots after real target repositories prove `docs/stenc/content/assets/` is insufficient?

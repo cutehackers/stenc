@@ -15,6 +15,9 @@ cp "${REPO_ROOT}/examples/artifact-identity.spec.json" \
   "${APP_DIR}/content/specs/artifact-identity.spec.json"
 cp "${REPO_ROOT}/examples/stenc-adoption.plan.json" \
   "${APP_DIR}/content/plans/stenc-adoption.plan.json"
+mkdir -p "${APP_DIR}/content/assets"
+cp "${REPO_ROOT}/examples/content/assets/stenc-flow.svg" \
+  "${APP_DIR}/content/assets/stenc-flow.svg"
 
 node "${REPO_ROOT}/skill/stenc/scripts/setup-project.js" \
   --project-root "${REPO_ROOT}" \

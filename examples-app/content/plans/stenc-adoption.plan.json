@@ -171,6 +171,13 @@
             "tone": "info",
             "title": "JSON remains the source",
             "body": "Generated pages are reproducible views, not the document source."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              { "label": "Keep executable work in body.slices[].steps", "checked": true },
+              { "label": "Use taskList only for supporting checklist context", "checked": false }
+            ]
           }
         ],
         "codeBlocks": []

@@ -120,6 +120,19 @@
             "tone": "info",
             "title": "JSON remains the source",
             "body": "Generated pages are reproducible views, not the document source."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              { "label": "Update source JSON", "checked": false },
+              { "label": "Regenerate fixed pages", "checked": false }
+            ]
+          },
+          {
+            "type": "diagram",
+            "language": "plain",
+            "title": "Source flow",
+            "source": "JSON -> Validate -> Render"
           }
         ],
         "subSections": [],

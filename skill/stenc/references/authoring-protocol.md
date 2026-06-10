@@ -94,8 +94,19 @@ supporting material that needs richer scanning than a plain string.
 - Convert admonitions to `callout` blocks with a fixed `tone`.
 - Convert blockquotes to `quote` blocks.
 - Convert pipe tables to `table.columns` and `table.rows` arrays.
+- Convert Markdown images to `media` blocks only when the asset is local under
+  `docs/stenc/content/assets/`; write `src` as `assets/...`.
+- Convert Markdown checkbox lists to read-only `taskList` blocks only when they
+  are supporting checklists. Do not replace plan `body.slices[].steps[]`.
 - Do not preserve Markdown syntax for the renderer to parse later.
 - Do not add `component`, `layout`, `variant`, `kind`, or visual-control fields.
+
+### Diagram Fence Conversion
+
+Convert Markdown diagram fences to `diagram` blocks by copying the fence
+language into `language`, giving the diagram a concise `title`, and copying the
+body into `source`. The renderer shows source text only. Do not add Mermaid CDN
+scripts or client runtime execution.
 
 ## Document Types
 

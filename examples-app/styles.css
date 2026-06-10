@@ -55,6 +55,17 @@ mark { border-radius: 4px; background: #fff1a8; color: inherit; padding: 0.05rem
 .rich-quote { border-left: 4px solid var(--line); color: var(--muted); padding-left: 14px; }
 .rich-quote blockquote { margin: 0; }
 .rich-quote figcaption { margin-top: 8px; font-size: 0.85rem; }
+.rich-media { display: grid; gap: 8px; }
+.rich-media img { border: 1px solid var(--line); border-radius: var(--radius); display: block; height: auto; max-width: 100%; }
+.rich-media figcaption { color: var(--muted); font-size: 0.86rem; }
+.missing-media { border: 1px dashed #b42318; border-radius: var(--radius); background: #fff7f7; padding: 12px; }
+.missing-media strong { color: #b42318; display: block; margin-bottom: 6px; }
+.rich-task-list { display: grid; gap: 8px; list-style: none; padding-left: 0; }
+.rich-task-list li { align-items: center; display: grid; gap: 8px; grid-template-columns: 18px minmax(0, 1fr); }
+.task-check { align-items: center; border: 1px solid var(--line); border-radius: 4px; display: inline-flex; height: 18px; justify-content: center; width: 18px; }
+.rich-diagram { display: grid; gap: 8px; }
+.rich-diagram figcaption { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.rich-diagram strong { font-size: 0.95rem; }
 .command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
 .code-stack { display: grid; gap: 10px; margin-top: 10px; }
 pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }

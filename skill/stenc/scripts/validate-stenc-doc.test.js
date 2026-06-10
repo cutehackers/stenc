@@ -374,6 +374,37 @@ function addPhase1Blocks(spec) {
   return spec;
 }
 
+function addPhase2Blocks(spec) {
+  addPhase1Blocks(spec);
+  spec.body.supportingSections[0].blocks.push(
+    {
+      type: "media",
+      src: "assets/stenc-flow.svg",
+      alt: "Stenc JSON to rendered page flow",
+      caption: "Local assets stay under the fixed Stenc content asset root.",
+    },
+    {
+      type: "taskList",
+      items: [
+        { label: "Validate JSON source", checked: true },
+        { label: "Render fixed page", checked: false },
+      ],
+    },
+  );
+  return spec;
+}
+
+function addPhase3Blocks(spec) {
+  addPhase2Blocks(spec);
+  spec.body.supportingSections[0].blocks.push({
+    type: "diagram",
+    language: "mermaid",
+    title: "Stenc render flow",
+    source: "flowchart LR\n  JSON --> Validator\n  Validator --> Renderer\n  Renderer --> HTML",
+  });
+  return spec;
+}
+
 function validSuperpowersPlan() {
   const plan = validSinglePlan();
   plan.id = "plan:2026-05-19-superpowers-coverage";
@@ -575,6 +606,28 @@ test("accepts Phase 1 rich Markdown primitives in supporting section blocks", ()
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-phase1-"));
   const spec = addPhase1Blocks(validSuperpowersSpec());
   writeJson(path.join(dir, "rich-phase1.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Stenc validation passed/);
+});
+
+test("accepts Phase 2 media and task list supporting blocks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-phase2-"));
+  const spec = addPhase2Blocks(validSuperpowersSpec());
+  writeJson(path.join(dir, "rich-phase2.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Stenc validation passed/);
+});
+
+test("accepts Phase 3 diagram source supporting blocks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-phase3-"));
+  const spec = addPhase3Blocks(validSuperpowersSpec());
+  writeJson(path.join(dir, "rich-phase3.spec.json"), spec);
 
   const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
 
@@ -869,6 +922,49 @@ test("rejects rich table rows whose cell count does not match columns", () => {
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /blocks\[3\]\.rows\[0\] must have 3 cells/);
+});
+
+test("rejects unsafe media paths and malformed task list items", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-phase2-invalid-"));
+  const mediaSpec = addPhase2Blocks(validSuperpowersSpec());
+  mediaSpec.slug = "rich-media-invalid";
+  mediaSpec.id = "spec:rich-media-invalid";
+  mediaSpec.body.supportingSections[0].blocks[4].src = "../secret.svg";
+  mediaSpec.body.supportingSections[0].blocks[5].items[0].checked = "yes";
+  mediaSpec.body.supportingSections[0].blocks[5].items[0].owner = "not allowed";
+  writeJson(path.join(dir, "rich-media-invalid.spec.json"), mediaSpec);
+
+  const placementPlan = validSuperpowersPlan();
+  placementPlan.slug = "rich-task-placement";
+  placementPlan.id = "plan:rich-task-placement";
+  placementPlan.body.slices[0].steps = [
+    { type: "taskList", items: [{ label: "Not here", checked: false }] },
+  ];
+  writeJson(path.join(dir, "rich-task-placement.plan.json"), placementPlan);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /blocks\[4\]\.src must be a safe media source under assets\//);
+  assert.match(result.stderr, /blocks\[5\]\.items\[0\]\.checked must be a boolean/);
+  assert.match(result.stderr, /blocks\[5\]\.items\[0\]\.owner is not supported; allowed fields: label, checked/);
+  assert.match(result.stderr, /body\.slices\[0\]\.steps\[0\] must be a plan step, not a taskList block/);
+});
+
+test("rejects malformed diagram source blocks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-diagram-invalid-"));
+  const spec = addPhase3Blocks(validSuperpowersSpec());
+  spec.body.supportingSections[0].blocks[6].language = "plantuml";
+  spec.body.supportingSections[0].blocks[6].source = "";
+  spec.body.supportingSections[0].blocks[6].runtime = "mermaid";
+  writeJson(path.join(dir, "rich-diagram-invalid.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /blocks\[6\]\.language must be one of: mermaid, dot, plain/);
+  assert.match(result.stderr, /blocks\[6\]\.source must be a non-empty string/);
+  assert.match(result.stderr, /blocks\[6\]\.runtime is not supported; allowed fields: type, language, title, source/);
 });
 
 test("rejects malformed rich link targets that are outside the allowlist", () => {

@@ -10,6 +10,16 @@ const test = require("node:test");
 const REPO_ROOT = path.resolve(__dirname, "..");
 const SCRIPT_PATH = path.join(REPO_ROOT, "scripts", "open-docs.sh");
 
+test("open-docs server uses resolved path containment and image MIME types", () => {
+  const script = fs.readFileSync(SCRIPT_PATH, "utf8");
+
+  assert.match(script, /path\.resolve\(root,'\.'\+pathname\)/);
+  assert.match(script, /path\.relative\(root,file\)/);
+  assert.match(script, /image\/svg\+xml/);
+  assert.match(script, /image\/png/);
+  assert.doesNotMatch(script, /path\.join\(root,decodeURIComponent/);
+});
+
 test("open-docs defaults to the current project and docs/stenc", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-open-docs-"));
   const docsRoot = path.join(projectRoot, "docs", "stenc");

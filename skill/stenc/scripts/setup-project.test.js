@@ -134,7 +134,14 @@ test("prepares a fixed Stenc web app backed by JSON documents", () => {
   assert.match(gitignore, /\/plans\//);
   assert.match(gitignore, /\/decisions\//);
   assert.match(gitignore, /\/agent-context\//);
+  assert.match(gitignore, /\/assets\//);
   assert.doesNotMatch(gitignore, /\/content\//);
+  const openDocsScript = fs.readFileSync(path.join(projectRoot, "open-docs.sh"), "utf8");
+  assert.match(openDocsScript, /image\/svg\+xml/);
+  assert.match(openDocsScript, /image\/png/);
+  assert.match(openDocsScript, /path\.resolve\(root,'\.'\+pathname\)/);
+  assert.match(openDocsScript, /path\.relative\(root,file\)/);
+  assert.doesNotMatch(openDocsScript, /path\.join\(root,decodeURIComponent/);
 });
 
 test("generated open-docs uses CODEX_SKILLS_DIR to find the renderer", () => {
@@ -277,6 +284,40 @@ test("removes stale generated document routes when source JSON is deleted", () =
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(fs.existsSync(path.join(docsRoot, "specs", "old", "index.html")), false);
   assert.equal(fs.existsSync(path.join(docsRoot, "specs", "index.html")), true);
+});
+
+test("removes stale generated assets without deleting source assets", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-stale-assets-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "assets"), { recursive: true });
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "assets", "source.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg"/>',
+  );
+  fs.writeFileSync(
+    path.join(docsRoot, "assets", "stale.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg"/>',
+  );
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  assert.equal(fs.existsSync(path.join(docsRoot, "content", "assets", "source.svg")), true);
+  assert.equal(fs.existsSync(path.join(docsRoot, "assets", "source.svg")), true);
+  assert.equal(fs.existsSync(path.join(docsRoot, "assets", "stale.svg")), false);
 });
 
 test("can skip writing the target project open-docs script", () => {
@@ -709,6 +750,127 @@ test("renders Phase 1 rich supporting blocks with escaped fixed output", () => {
   assert.match(html, /Source &lt;file&gt;/);
   assert.match(html, /Need &lt;one&gt;/);
   assert.match(html, /Inline &lt;code&gt;/);
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+});
+
+test("renders Phase 2 media and task lists with copied local assets", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-rich-phase2-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>',
+  );
+
+  writeJson(path.join(docsRoot, "content", "specs", "rich-phase2.spec.json"), minimalSpec({
+    id: "spec:rich-phase2",
+    slug: "rich-phase2",
+    title: "Rich Phase 2",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Assets",
+          content: "Media and task lists are fixed renderer primitives.",
+          items: [],
+          blocks: [
+            {
+              type: "media",
+              src: "assets/stenc-flow.svg",
+              alt: "Flow <diagram>",
+              caption: "Copy <local> asset.",
+            },
+            {
+              type: "taskList",
+              items: [
+                { label: "Validate <source>", checked: true },
+                { label: "Render page", checked: false },
+              ],
+            },
+          ],
+          codeBlocks: [],
+        },
+      ],
+    },
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(path.join(docsRoot, "specs", "rich-phase2", "index.html"), "utf8");
+  assert.match(html, /rich-media/);
+  assert.match(html, /src="\.\.\/\.\.\/assets\/stenc-flow\.svg"/);
+  assert.match(html, /alt="Flow &lt;diagram&gt;"/);
+  assert.match(html, /Copy &lt;local&gt; asset\./);
+  assert.match(html, /rich-task-list/);
+  assert.match(html, /task-check/);
+  assert.match(html, /Validate &lt;source&gt;/);
+  assert.match(html, /Render page/);
+  assert.equal(fs.existsSync(path.join(docsRoot, "assets", "stenc-flow.svg")), true);
+  assert.doesNotMatch(html, /<local>/);
+  assert.doesNotMatch(html, /<input/);
+});
+
+test("renders Phase 3 diagram source panels without runtime execution", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-rich-phase3-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "rich-phase3.spec.json"), minimalSpec({
+    id: "spec:rich-phase3",
+    slug: "rich-phase3",
+    title: "Rich Phase 3",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Diagram",
+          content: "Diagram fences become source panels.",
+          items: [],
+          blocks: [
+            {
+              type: "diagram",
+              language: "mermaid",
+              title: "Unsafe <diagram>",
+              source: "flowchart LR\n  JSON --> Renderer\n  Renderer --> HTML<script>alert(1)</script>",
+            },
+          ],
+          codeBlocks: [],
+        },
+      ],
+    },
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(path.join(docsRoot, "specs", "rich-phase3", "index.html"), "utf8");
+  assert.match(html, /rich-diagram/);
+  assert.match(html, /Unsafe &lt;diagram&gt;/);
+  assert.match(html, /HTML&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /mermaid\.initialize/);
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
 });
 

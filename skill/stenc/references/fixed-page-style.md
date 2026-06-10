@@ -70,11 +70,18 @@ Use these as follows:
 
 The renderer owns all visual treatment for `supportingSections[].blocks`.
 Authors provide only typed data. The renderer may use badges, callout borders,
-inline code, keyboard tokens, marks, quote panels, and fixed tables, but source
-JSON must not choose custom layouts, components, icons, colors, or variants.
+inline code, keyboard tokens, marks, quote panels, fixed tables, media figures,
+read-only checklist rows, and diagram source panels, but source JSON must not
+choose custom layouts, components, icons, colors, or variants.
 
-All block text, span text, link targets, quote sources, table headers, and table
-cells are escaped before rendering.
+All block text, span text, link targets, quote sources, table headers, table
+cells, media alt text, captions, checklist labels, diagram titles, and diagram
+source text are escaped before rendering.
+
+Media renders from local generated assets copied from
+`docs/stenc/content/assets/`. Missing media is visible in the rendered page and
+fails the rendered-page check. Diagram blocks show source text only; no Mermaid,
+DOT, CDN, or client runtime is executed by the fixed renderer.
 
 ## Page Style
 

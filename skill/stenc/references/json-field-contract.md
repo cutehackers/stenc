@@ -132,6 +132,15 @@ Phase 1 block types:
 - `quote`: `{ "type": "quote", "text": "...", "source": "optional source" }`
 - `table`: `{ "type": "table", "columns": ["..."], "rows": [["..."]] }`
 
+Phase 2 block types:
+
+- `media`: `{ "type": "media", "src": "assets/...", "alt": "...", "caption": "optional caption" }`
+- `taskList`: `{ "type": "taskList", "items": [{ "label": "...", "checked": false }] }`
+
+Phase 3 block type:
+
+- `diagram`: `{ "type": "diagram", "language": "mermaid | dot | plain", "title": "...", "source": "..." }`
+
 Paragraph span types:
 
 - `text`, `strong`, `emphasis`, `code`, `kbd`, and `mark` require `type` and `text`.
@@ -146,6 +155,19 @@ are rejected.
 Table cells and callout bodies are plain escaped strings in Phase 1. Do not
 put Markdown syntax, nested spans, alignment syntax, or raw HTML in those
 fields and expect it to render semantically.
+
+Media sources are local only. `media.src` is relative to the docs app
+`content/` directory, must start with `assets/`, and resolves to a source file
+under `docs/stenc/content/assets/`. The renderer copies source assets to the
+generated `docs/stenc/assets/` directory. Generated assets are derived
+artifacts; source assets under `content/assets/` are not generated artifacts.
+
+Task lists are read-only supporting material. They do not replace
+`body.slices[].steps[]` in plan documents and do not persist user interaction.
+
+Diagram blocks render escaped source text in a fixed panel. The renderer does
+not execute Mermaid, DOT, scripts, remote dependencies, or client-side diagram
+runtime. Rendered diagrams require a separate accepted decision.
 
 When Stenc already has a dedicated body field for a concept, authors must use
 that dedicated field first. Use `body.supportingSections` only for bounded

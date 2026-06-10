@@ -135,6 +135,13 @@ index; install, setup, and open-docs must not run Git mutation commands.
 - Use `body.supportingSections[].blocks` only for validator-known rich
   primitives. Do not put Markdown syntax, raw HTML, custom layout fields, or
   per-document components in block data.
+- Use `media` blocks only for local assets under `docs/stenc/content/assets/`;
+  write `src` as `assets/...`. Generated `docs/stenc/assets/` files are derived
+  renderer output.
+- Use `taskList` blocks only for read-only supporting checklists. Do not
+  replace plan `body.slices[].steps[]`.
+- Use `diagram` blocks as escaped source panels only. Do not add Mermaid, DOT,
+  CDN, script, or client-side diagram execution.
 - When converting existing spec or plan Markdown, fill native Stenc body fields
   first and use `body.supportingSections` only for bounded legacy outline
   content that has no dedicated core field.

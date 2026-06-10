@@ -176,6 +176,25 @@
             "tone": "info",
             "title": "JSON remains the source",
             "body": "Generated pages are reproducible views, not the document source."
+          },
+          {
+            "type": "media",
+            "src": "assets/stenc-flow.svg",
+            "alt": "Stenc JSON validation and rendering flow",
+            "caption": "Media assets are local source files under content/assets."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              { "label": "Validate structured JSON", "checked": true },
+              { "label": "Regenerate fixed pages", "checked": false }
+            ]
+          },
+          {
+            "type": "diagram",
+            "language": "mermaid",
+            "title": "Artifact authority flow",
+            "source": "flowchart LR\n  JSON --> Validator\n  Validator --> Renderer\n  Renderer --> HTML"
           }
         ],
         "subSections": [

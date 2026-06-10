@@ -37,6 +37,57 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function isSafeMediaSrc(src) {
+  if (typeof src !== "string" || src.trim().length === 0) return false;
+  if (/[\u0000-\u001f\u007f]/u.test(src)) return false;
+  const trimmed = src.trim();
+  if (trimmed !== src) return false;
+  if (!trimmed.startsWith("assets/")) return false;
+  if (trimmed.includes("\\") || trimmed.includes("://")) return false;
+  if (/^(javascript|data|file):/iu.test(trimmed)) return false;
+  if (trimmed.split("/").some((part) => part === "" || part === "." || part === "..")) return false;
+  return /^[A-Za-z0-9._~!$&'()*+,;=:@/-]+$/u.test(trimmed);
+}
+
+function collectMediaSourcesFromSections(sections, sources = []) {
+  if (!Array.isArray(sections)) return sources;
+  for (const section of sections) {
+    if (!section || typeof section !== "object" || Array.isArray(section)) continue;
+    if (Array.isArray(section.blocks)) {
+      for (const block of section.blocks) {
+        if (block && typeof block === "object" && !Array.isArray(block) && block.type === "media") {
+          sources.push(block.src);
+        }
+      }
+    }
+    collectMediaSourcesFromSections(section.subSections, sources);
+  }
+  return sources;
+}
+
+function checkMediaAssets(absoluteDocsDir, jsonPath, doc, html, pageRelativePath, errors) {
+  const jsonRelativePath = path.relative(absoluteDocsDir, jsonPath);
+  const sources = collectMediaSourcesFromSections(doc.body?.supportingSections);
+  for (const src of sources) {
+    if (!isSafeMediaSrc(src)) {
+      errors.push(`${jsonRelativePath}: invalid media source: ${String(src)}`);
+      continue;
+    }
+    const sourceAssetPath = path.join(absoluteDocsDir, "content", src);
+    if (!fs.existsSync(sourceAssetPath)) {
+      errors.push(`${jsonRelativePath}: missing media asset: content/${src}`);
+    }
+    const generatedAssetPath = path.join(absoluteDocsDir, src);
+    if (!fs.existsSync(generatedAssetPath)) {
+      errors.push(`${jsonRelativePath}: missing generated media asset: ${src}`);
+    }
+    const expectedRenderedSrc = escapeHtml(`../../${src}`);
+    if (!html.includes(`src="${expectedRenderedSrc}"`)) {
+      errors.push(`${jsonRelativePath}: rendered page does not include media source ${expectedRenderedSrc}: ${pageRelativePath}`);
+    }
+  }
+}
+
 function checkRenderedPages(docsDir) {
   const errors = [];
   const absoluteDocsDir = path.resolve(docsDir);
@@ -88,6 +139,7 @@ function checkRenderedPages(docsDir) {
       if (doc.title && !html.includes(escapeHtml(doc.title))) {
         errors.push(`rendered page does not include document title: ${pageRelativePath}`);
       }
+      checkMediaAssets(absoluteDocsDir, jsonPath, doc, html, pageRelativePath, errors);
     }
   }
 

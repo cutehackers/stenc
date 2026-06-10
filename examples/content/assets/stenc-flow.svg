@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" role="img" aria-label="Stenc render flow">
+  <rect width="640" height="240" fill="#f3f5f7"/>
+  <rect x="40" y="80" width="140" height="80" rx="8" fill="#ffffff" stroke="#dfe4ec"/>
+  <rect x="250" y="80" width="140" height="80" rx="8" fill="#ffffff" stroke="#dfe4ec"/>
+  <rect x="460" y="80" width="140" height="80" rx="8" fill="#ffffff" stroke="#dfe4ec"/>
+  <path d="M180 120h70M390 120h70" stroke="#11645d" stroke-width="4" fill="none"/>
+  <text x="110" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#172033">JSON</text>
+  <text x="320" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#172033">Validate</text>
+  <text x="530" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#172033">Render</text>
+</svg>
