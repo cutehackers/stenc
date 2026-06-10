@@ -327,6 +327,53 @@ function validSuperpowersSpec() {
   return spec;
 }
 
+function addPhase1Blocks(spec) {
+  spec.body.supportingSections = [
+    {
+      heading: "Rich Markdown Primitive Notes",
+      content: "Blocks preserve rich supporting content without Markdown parsing.",
+      items: ["Core fields remain authoritative."],
+      blocks: [
+        {
+          type: "paragraph",
+          spans: [
+            { type: "text", text: "Run " },
+            { type: "code", text: "./scripts/validate.sh" },
+            { type: "text", text: " and inspect " },
+            {
+              type: "link",
+              text: "the spec",
+              target: "docs/superpowers/specs/2026-06-10-stenc-rich-markdown-primitives-design.md",
+            },
+            { type: "text", text: "." },
+          ],
+        },
+        {
+          type: "callout",
+          tone: "warning",
+          title: "Do not add Markdown source",
+          body: "The source stays structured JSON.",
+        },
+        {
+          type: "quote",
+          text: "Markdown is an input to conversion, not a Stenc document source.",
+          source: "skill/stenc/references/authoring-protocol.md",
+        },
+        {
+          type: "table",
+          columns: ["Markdown Need", "Stenc Primitive", "Phase"],
+          rows: [
+            ["Inline code", "paragraph.spans[].code", "1"],
+            ["Admonition", "callout", "1"],
+          ],
+        },
+      ],
+      codeBlocks: [],
+    },
+  ];
+  return spec;
+}
+
 function validSuperpowersPlan() {
   const plan = validSinglePlan();
   plan.id = "plan:2026-05-19-superpowers-coverage";
@@ -524,6 +571,17 @@ test("accepts extended supporting sections with bounded nested structure", () =>
   assert.match(result.stdout, /Stenc validation passed/);
 });
 
+test("accepts Phase 1 rich Markdown primitives in supporting section blocks", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-phase1-"));
+  const spec = addPhase1Blocks(validSuperpowersSpec());
+  writeJson(path.join(dir, "rich-phase1.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Stenc validation passed/);
+});
+
 test("accepts Superpowers implementation plan content without flattening steps", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-superpowers-plan-"));
   writeJson(path.join(dir, "superpowers.plan.json"), validSuperpowersPlan());
@@ -657,6 +715,20 @@ test("rejects malformed extended supporting sections", () => {
   assert.match(result.stderr, /subSections\[0\]\.heading must be a non-empty string/);
 });
 
+test("rejects unknown rich block and inline span types", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-unknown-"));
+  const spec = addPhase1Blocks(validSuperpowersSpec());
+  spec.body.supportingSections[0].blocks.push({ type: "accordion", title: "Hidden" });
+  spec.body.supportingSections[0].blocks[0].spans.push({ type: "underline", text: "not allowed" });
+  writeJson(path.join(dir, "rich-unknown.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /blocks\[4\]\.type must be one of: paragraph, callout, quote, table/);
+  assert.match(result.stderr, /blocks\[0\]\.spans\[5\]\.type must be one of: text, strong, emphasis, code, link, kbd, mark/);
+});
+
 test("rejects unsupported supporting section control fields", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-supporting-control-"));
   const spec = validSuperpowersSpec();
@@ -681,6 +753,138 @@ test("rejects unsupported supporting section control fields", () => {
   assert.match(result.stderr, /body\.supportingSections\[0\]\.layout is not supported/);
   assert.match(result.stderr, /body\.supportingSections\[0\]\.variant is not supported/);
   assert.match(result.stderr, /body\.supportingSections\[0\]\.kind is not supported/);
+});
+
+test("rejects unknown keys in rich blocks and spans", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-keys-"));
+  const spec = addPhase1Blocks(validSuperpowersSpec());
+  spec.body.supportingSections[0].blocks[0].layout = "hero";
+  spec.body.supportingSections[0].blocks[0].spans[1].style = "loud";
+  spec.body.supportingSections[0].blocks[3].align = "center";
+  writeJson(path.join(dir, "rich-keys.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /blocks\[0\]\.layout is not supported; allowed fields: type, spans/);
+  assert.match(result.stderr, /blocks\[0\]\.spans\[1\]\.style is not supported; allowed fields: type, text/);
+  assert.match(result.stderr, /blocks\[3\]\.align is not supported; allowed fields: type, columns, rows/);
+});
+
+test("rejects unknown keys outside rich blocks and spans", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-unknown-keys-"));
+  const spec = validSuperpowersSpec();
+  spec.component = "DocCard";
+  spec.page.layout = "hero";
+  spec.links.preview = "docs/preview.html";
+  spec.body.mdx = "import Bad from './Bad.mdx'";
+  spec.body.supportingSections[0].facts = [{ label: "Owner", value: "stenc", component: "FactCard" }];
+  spec.body.supportingSections[0].links = [
+    { label: "Source", target: "docs/spec.md", purpose: "Reference", layout: "button" },
+  ];
+  spec.body.supportingSections[0].steps = [
+    {
+      id: "step-1",
+      title: "Check",
+      status: "todo",
+      instruction: "Check source contract.",
+      html: "<div>bad</div>",
+    },
+  ];
+  spec.body.supportingSections[0].codeBlocks = [
+    { language: "bash", content: "npm test", mdx: "<Command />" },
+  ];
+  writeJson(path.join(dir, "unknown-keys.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /component is not supported; allowed fields: schemaVersion, docType, id, slug, status, title, description, owner, createdAt, updatedAt, links, page, body/);
+  assert.match(result.stderr, /page\.layout is not supported; allowed fields: humanSummary, agentSummary, styleTemplate/);
+  assert.match(result.stderr, /links\.preview is not supported/);
+  assert.match(result.stderr, /body\.mdx is not supported/);
+  assert.match(result.stderr, /facts\[0\]\.component is not supported; allowed fields: label, value/);
+  assert.match(result.stderr, /links\[0\]\.layout is not supported; allowed fields: label, target, purpose/);
+  assert.match(result.stderr, /steps\[0\]\.html is not supported; allowed fields: id, title, status, instruction, command, expected, codeBlocks/);
+  assert.match(result.stderr, /codeBlocks\[0\]\.mdx is not supported; allowed fields: language, content/);
+});
+
+test("rejects unsafe rich link targets and empty rich tables", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-safety-"));
+  const invalidTargets = [
+    "javascript:alert(1)",
+    "data:text/html,<b>bad</b>",
+    "file:///tmp/secret",
+    "//example.com/protocol-relative",
+    "/etc/passwd",
+    " docs/spec.md",
+    "docs/spec.md ",
+    "docs/spec.md\u0000",
+    "https:example.com",
+    "docs/spec with space.md",
+  ];
+  invalidTargets.forEach((target, index) => {
+    const spec = addPhase1Blocks(validSuperpowersSpec());
+    spec.slug = `rich-link-safety-${index}`;
+    spec.id = `spec:rich-link-safety-${index}`;
+    spec.body.supportingSections[0].blocks[0].spans.push({
+      type: "link",
+      text: "bad",
+      target,
+    });
+    writeJson(path.join(dir, `rich-link-safety-${index}.spec.json`), spec);
+  });
+  const emptyTableSpec = addPhase1Blocks(validSuperpowersSpec());
+  emptyTableSpec.slug = "rich-empty-table";
+  emptyTableSpec.id = "spec:rich-empty-table";
+  emptyTableSpec.body.supportingSections[0].blocks[3].rows = [];
+  writeJson(path.join(dir, "rich-empty-table.spec.json"), emptyTableSpec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /target must be a safe link target/);
+  assert.match(result.stderr, /blocks\[3\]\.rows must be a non-empty array/);
+});
+
+test("rejects slugs that can escape generated document routes", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-slug-"));
+  const spec = validSuperpowersSpec();
+  spec.slug = "../../../escaped-route";
+  writeJson(path.join(dir, "unsafe-slug.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /slug must contain only lowercase letters, numbers, and hyphens/);
+});
+
+test("rejects rich table rows whose cell count does not match columns", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-table-width-"));
+  const spec = addPhase1Blocks(validSuperpowersSpec());
+  spec.body.supportingSections[0].blocks[3].rows = [["Inline code"]];
+  writeJson(path.join(dir, "rich-table-width.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /blocks\[3\]\.rows\[0\] must have 3 cells/);
+});
+
+test("rejects malformed rich link targets that are outside the allowlist", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-rich-link-allowlist-"));
+  ["https:example.com", "docs/spec with space.md"].forEach((target, index) => {
+    const spec = addPhase1Blocks(validSuperpowersSpec());
+    spec.slug = `rich-link-allowlist-${index}`;
+    spec.id = `spec:rich-link-allowlist-${index}`;
+    spec.body.supportingSections[0].blocks[0].spans[3].target = target;
+    writeJson(path.join(dir, `rich-link-allowlist-${index}.spec.json`), spec);
+  });
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /target must be a safe link target/);
 });
 
 test("rejects Superpowers plans with a drifted worker header", () => {

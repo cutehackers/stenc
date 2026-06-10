@@ -41,6 +41,20 @@ h6 { color: var(--muted); font-size: 0.78rem; letter-spacing: 0; margin: 12px 0 
 .table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; width: 100%; }
 .table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
 .table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+.rich-blocks { display: grid; gap: 12px; margin-top: 14px; }
+.rich-block { margin: 0; }
+.rich-paragraph { line-height: 1.7; }
+kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: #fff; color: var(--text); font: 0.85em ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 0.08rem 0.32rem; }
+mark { border-radius: 4px; background: #fff1a8; color: inherit; padding: 0.05rem 0.2rem; }
+.rich-callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
+.rich-callout h4 { color: var(--text); margin-top: 0; text-transform: none; }
+.tone-info { border-left-color: #2b6cb0; }
+.tone-success { border-left-color: #137333; }
+.tone-warning { border-left-color: #b06000; }
+.tone-danger { border-left-color: #b42318; }
+.rich-quote { border-left: 4px solid var(--line); color: var(--muted); padding-left: 14px; }
+.rich-quote blockquote { margin: 0; }
+.rich-quote figcaption { margin-top: 8px; font-size: 0.85rem; }
 .command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
 .code-stack { display: grid; gap: 10px; margin-top: 10px; }
 pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }

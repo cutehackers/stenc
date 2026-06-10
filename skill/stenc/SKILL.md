@@ -129,9 +129,12 @@ index; install, setup, and open-docs must not run Git mutation commands.
   has structured requirements, alternatives, task files, code blocks, commands,
   expected output, review gates, worker instructions, scope checks, or
   execution handoff.
-- Use only `facts`, `links`, `steps`, and `subSections` when extending
-  `body.supportingSections`; do not create user-defined components or layout
-  fields.
+- Use only `facts`, `links`, `steps`, `blocks`, and `subSections` when
+  extending `body.supportingSections`; do not create user-defined components
+  or layout fields.
+- Use `body.supportingSections[].blocks` only for validator-known rich
+  primitives. Do not put Markdown syntax, raw HTML, custom layout fields, or
+  per-document components in block data.
 - When converting existing spec or plan Markdown, fill native Stenc body fields
   first and use `body.supportingSections` only for bounded legacy outline
   content that has no dedicated core field.

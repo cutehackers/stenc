@@ -43,8 +43,9 @@ Use these as follows:
   into plain text.
 - Render extended supporting section fields with fixed primitives: `facts` as
   a two-column table, `links` as a label/target/purpose table, `steps` as step
-  panels, and `subSections` as nested supporting-section panels. Do not let
-  source JSON choose custom components or layout variants.
+  panels, `blocks` as validator-known rich primitives, and `subSections` as
+  nested supporting-section panels. Do not let source JSON choose custom
+  components or layout variants.
 - Rendered pages should make converted legacy outline sections visible, but
   the renderer must not infer core Stenc semantics from arbitrary supporting
   sections. Authors are responsible for putting requirements, validation,
@@ -64,6 +65,16 @@ Use these as follows:
   - `/plans/<slug>/`
   - `/decisions/<slug>/`
   - `/agent-context/<slug>/`
+
+## Rich Supporting Blocks
+
+The renderer owns all visual treatment for `supportingSections[].blocks`.
+Authors provide only typed data. The renderer may use badges, callout borders,
+inline code, keyboard tokens, marks, quote panels, and fixed tables, but source
+JSON must not choose custom layouts, components, icons, colors, or variants.
+
+All block text, span text, link targets, quote sources, table headers, and table
+cells are escaped before rendering.
 
 ## Page Style
 

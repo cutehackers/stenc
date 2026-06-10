@@ -112,6 +112,22 @@
         "facts": [],
         "links": [],
         "steps": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              { "type": "text", "text": "Run " },
+              { "type": "code", "text": "./scripts/validate.sh" },
+              { "type": "text", "text": " before publishing." }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "JSON remains the source",
+            "body": "Generated pages are reproducible views, not the document source."
+          }
+        ],
         "subSections": [],
         "codeBlocks": []
       }

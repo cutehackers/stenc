@@ -31,6 +31,10 @@ All document types use the same top-level shape:
 }
 ```
 
+`slug` must contain only lowercase letters, numbers, and hyphens. It is used as
+the generated route segment, so path separators, dots, whitespace, uppercase
+letters, and URL-like values are rejected.
+
 ## Spec Body
 
 Specs own canonical behavior, runtime, API, schema, or workflow contracts.
@@ -107,12 +111,41 @@ Optional spec fields:
 - `supportingSections[].steps[].command`
 - `supportingSections[].steps[].expected`
 - `supportingSections[].steps[].codeBlocks`
+- `supportingSections[].blocks`
 - `supportingSections[].subSections[]`
 
-`supportingSections` supports only four optional extension fields: `facts`,
-`links`, `steps`, and `subSections`. These fields preserve user-defined
-document outlines without introducing user-defined components, layouts,
-variants, kinds, or renderer hooks.
+`supportingSections` supports only five optional extension fields: `facts`,
+`links`, `steps`, `blocks`, and `subSections`. These fields preserve
+user-defined document outlines without introducing user-defined components,
+layouts, variants, kinds, or renderer hooks.
+
+### Supporting Section Blocks
+
+`supportingSections[].blocks` is optional and ordered. Blocks render after
+`content`, `items`, `facts`, `links`, `steps`, and `codeBlocks`, and before
+nested `subSections`.
+
+Phase 1 block types:
+
+- `paragraph`: `{ "type": "paragraph", "spans": [...] }`
+- `callout`: `{ "type": "callout", "tone": "neutral | info | success | warning | danger", "title": "...", "body": "..." }`
+- `quote`: `{ "type": "quote", "text": "...", "source": "optional source" }`
+- `table`: `{ "type": "table", "columns": ["..."], "rows": [["..."]] }`
+
+Paragraph span types:
+
+- `text`, `strong`, `emphasis`, `code`, `kbd`, and `mark` require `type` and `text`.
+- `link` requires `type`, `text`, and `target`.
+
+Safe link targets are `https://...`, `http://...`, `mailto:...`, `#anchor`,
+`./relative`, `../relative`, or repo-style relative paths such as
+`docs/spec.md`. `javascript:`, `data:`, `file:`, protocol-relative URLs,
+absolute filesystem paths, control characters, and whitespace-wrapped values
+are rejected.
+
+Table cells and callout bodies are plain escaped strings in Phase 1. Do not
+put Markdown syntax, nested spans, alignment syntax, or raw HTML in those
+fields and expect it to render semantically.
 
 When Stenc already has a dedicated body field for a concept, authors must use
 that dedicated field first. Use `body.supportingSections` only for bounded
@@ -205,6 +238,7 @@ Optional plan fields:
 - `supportingSections[].steps[].command`
 - `supportingSections[].steps[].expected`
 - `supportingSections[].steps[].codeBlocks`
+- `supportingSections[].blocks`
 - `supportingSections[].subSections[]`
 
 Each `slices[].steps[]` entry must include actionable content through a

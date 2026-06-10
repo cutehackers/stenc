@@ -157,6 +157,22 @@
         "heading": "No Placeholders",
         "content": "Every step must contain concrete content, commands, or expected output before execution.",
         "items": ["No TBD values in executable steps", "No similar-to references", "No command without expected output"],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              { "type": "text", "text": "Run " },
+              { "type": "code", "text": "./scripts/validate.sh" },
+              { "type": "text", "text": " before publishing." }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "JSON remains the source",
+            "body": "Generated pages are reproducible views, not the document source."
+          }
+        ],
         "codeBlocks": []
       }
     ],

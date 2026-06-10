@@ -15,6 +15,57 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function minimalSpec(overrides = {}) {
+  return {
+    schemaVersion: 2,
+    docType: "spec",
+    id: "spec:minimal",
+    slug: "minimal",
+    status: "draft",
+    title: "Minimal Spec",
+    description: "Minimal spec for renderer tests.",
+    owner: "stenc",
+    createdAt: "2026-06-10",
+    updatedAt: "2026-06-10",
+    links: {
+      sourceOfTruth: ["docs/SPEC.md"],
+      relatedPlans: [],
+      relatedDecisions: [],
+    },
+    page: {
+      humanSummary: "Minimal.",
+      agentSummary: "Minimal.",
+      styleTemplate: "task-first",
+    },
+    body: {
+      goal: "Render a minimal spec.",
+      problem: "Renderer safety needs regression coverage.",
+      scope: { in: ["Rendering"], out: ["Markdown"] },
+      architecture: { summary: "Render JSON.", flow: ["Read JSON", "Write HTML"] },
+      requirements: [],
+      approaches: [],
+      components: [],
+      dataFlow: [],
+      errorHandling: [],
+      contracts: [],
+      surfaces: [],
+      testingStrategy: [],
+      validation: [],
+      agentInstructions: ["Render safely."],
+      reviewChecklist: [],
+      selfReviewChecks: [],
+      implementationHandoff: {
+        planLocation: "docs/superpowers/plans/YYYY-MM-DD-topic.md",
+        requiredSkill: "superpowers:writing-plans",
+        notes: ["Keep renderer fail-closed."],
+      },
+      supportingSections: [],
+      openQuestions: [],
+    },
+    ...overrides,
+  };
+}
+
 test("prepares a fixed Stenc web app backed by JSON documents", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-"));
 
@@ -540,6 +591,195 @@ test("renders extended supporting section fields recursively", () => {
   assert.match(html, /Restore &lt;DNS&gt;/);
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
   assert.doesNotMatch(html, /<strong>Team<\/strong>/);
+});
+
+test("renders Phase 1 rich supporting blocks with escaped fixed output", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-render-rich-phase1-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "rich-phase1.spec.json"), {
+    schemaVersion: 2,
+    docType: "spec",
+    id: "spec:rich-phase1",
+    slug: "rich-phase1",
+    status: "draft",
+    title: "Rich Phase 1",
+    description: "Spec with rich Phase 1 blocks.",
+    owner: "stenc",
+    createdAt: "2026-06-10",
+    updatedAt: "2026-06-10",
+    links: {
+      sourceOfTruth: ["docs/superpowers/specs/2026-06-10-stenc-rich-markdown-primitives-design.md"],
+      relatedPlans: [],
+      relatedDecisions: [],
+    },
+    page: {
+      humanSummary: "Humans inspect rich blocks.",
+      agentSummary: "Agents read typed rich blocks.",
+      styleTemplate: "task-first",
+    },
+    body: {
+      goal: "Render rich Phase 1 blocks.",
+      problem: "Markdown-era content needs typed JSON primitives.",
+      scope: { in: ["Phase 1 blocks"], out: ["Markdown parsing"] },
+      architecture: {
+        summary: "Fixed renderer maps typed JSON to HTML.",
+        flow: ["Read JSON", "Render blocks"],
+      },
+      requirements: [],
+      approaches: [],
+      components: [],
+      dataFlow: [],
+      errorHandling: [],
+      contracts: [],
+      surfaces: [],
+      testingStrategy: [],
+      validation: [],
+      agentInstructions: ["Read JSON."],
+      reviewChecklist: [],
+      selfReviewChecks: [],
+      implementationHandoff: {
+        planLocation: "docs/superpowers/plans/2026-06-10-stenc-rich-markdown-primitives-implementation.md",
+        requiredSkill: "superpowers:writing-plans",
+        notes: ["Keep output escaped."],
+      },
+      supportingSections: [
+        {
+          heading: "Blocks",
+          content: "Render after content and items.",
+          items: ["Before nested sections"],
+          blocks: [
+            {
+              type: "paragraph",
+              spans: [
+                { type: "text", text: "Use <json>" },
+                { type: "strong", text: " source" },
+                { type: "emphasis", text: " only" },
+                { type: "code", text: "./scripts/validate.sh && echo <done>" },
+                { type: "kbd", text: "Cmd+K" },
+                { type: "mark", text: "fixed renderer" },
+                { type: "link", text: "spec <link>", target: "docs/spec.md" },
+              ],
+            },
+            {
+              type: "callout",
+              tone: "danger",
+              title: "Unsafe <title>",
+              body: "Escape <script>alert(1)</script>.",
+            },
+            { type: "quote", text: "Quote <body>", source: "Source <file>" },
+            { type: "table", columns: ["Need <one>", "Phase"], rows: [["Inline <code>", "1"]] },
+          ],
+          codeBlocks: [],
+        },
+      ],
+      openQuestions: [],
+    },
+  });
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(path.join(docsRoot, "specs", "rich-phase1", "index.html"), "utf8");
+  assert.match(html, /rich-block rich-paragraph/);
+  assert.match(html, /Use &lt;json&gt;/);
+  assert.match(html, /<strong> source<\/strong>/);
+  assert.match(html, /<em> only<\/em>/);
+  assert.match(html, /\.\/scripts\/validate\.sh &amp;&amp; echo &lt;done&gt;/);
+  assert.match(html, /<kbd>Cmd\+K<\/kbd>/);
+  assert.match(html, /<mark>fixed renderer<\/mark>/);
+  assert.match(html, /href="docs\/spec\.md"/);
+  assert.match(html, /spec &lt;link&gt;/);
+  assert.match(html, /rich-callout tone-danger/);
+  assert.match(html, /Unsafe &lt;title&gt;/);
+  assert.match(html, /Escape &lt;script&gt;alert\(1\)&lt;\/script&gt;\./);
+  assert.match(html, /rich-quote/);
+  assert.match(html, /Quote &lt;body&gt;/);
+  assert.match(html, /Source &lt;file&gt;/);
+  assert.match(html, /Need &lt;one&gt;/);
+  assert.match(html, /Inline &lt;code&gt;/);
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+});
+
+test("refuses to render rich links with unsafe targets", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unsafe-rich-link-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "unsafe-link.spec.json"), minimalSpec({
+    id: "spec:unsafe-link",
+    slug: "unsafe-link",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Unsafe Link",
+          content: "Renderer must fail closed.",
+          items: ["Unsafe href"],
+          blocks: [
+            {
+              type: "paragraph",
+              spans: [{ type: "link", text: "bad", target: "javascript:alert(1)" }],
+            },
+          ],
+          codeBlocks: [],
+        },
+      ],
+    },
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unsafe rich link target/);
+});
+
+test("refuses document slugs that would write outside the generated route directory", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unsafe-slug-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "unsafe-slug.spec.json"), minimalSpec({
+    id: "spec:unsafe-slug",
+    slug: "../../../escaped-route",
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unsafe document slug/);
+  assert.equal(fs.existsSync(path.join(projectRoot, "escaped-route", "index.html")), false);
 });
 
 test("renders schemaVersion 1 plan string steps for compatibility", () => {

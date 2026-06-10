@@ -117,6 +117,38 @@ function toList(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+function isSafeSlug(value) {
+  return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+function isSafeLinkTarget(target) {
+  if (typeof target !== "string" || target.trim().length === 0) return false;
+  if (/[\u0000-\u001f\u007f]/u.test(target)) return false;
+  const trimmed = target.trim();
+  if (trimmed !== target) return false;
+  if (trimmed.startsWith("//")) return false;
+  if (trimmed.startsWith("/")) return false;
+  if (/^(javascript|data|file):/iu.test(trimmed)) return false;
+  if (/^(https?:\/\/|mailto:|#|\.\/|\.\.\/)/iu.test(trimmed)) return true;
+  if (trimmed.includes(":")) return false;
+  return /^[A-Za-z0-9._~!$&'()*+,;=:@/-]+(?:#[A-Za-z0-9._~!$&'()*+,;=:@/-]+)?$/u.test(trimmed);
+}
+
+function documentHref(collectionDir, slug) {
+  if (!isSafeSlug(slug)) throw new Error(`unsafe document slug: ${slug}`);
+  return `/${collectionDir}/${slug}/`;
+}
+
+function documentPagePath(docsDir, collectionDir, slug) {
+  if (!isSafeSlug(slug)) throw new Error(`unsafe document slug: ${slug}`);
+  const routeRoot = path.resolve(docsDir, collectionDir);
+  const pagePath = path.resolve(routeRoot, slug, "index.html");
+  if (!pagePath.startsWith(`${routeRoot}${path.sep}`)) {
+    throw new Error(`unsafe document slug: ${slug}`);
+  }
+  return pagePath;
+}
+
 function readJsonIfPresent(filePath) {
   if (!fs.existsSync(filePath)) return null;
   try {
@@ -411,6 +443,53 @@ function renderTable(headers, rows) {
     .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
 }
 
+function renderInlineSpans(spans) {
+  return toList(spans).map((span) => {
+    const text = escapeHtml(span.text);
+    if (span.type === "strong") return `<strong>${text}</strong>`;
+    if (span.type === "emphasis") return `<em>${text}</em>`;
+    if (span.type === "code") return `<code>${text}</code>`;
+    if (span.type === "kbd") return `<kbd>${text}</kbd>`;
+    if (span.type === "mark") return `<mark>${text}</mark>`;
+    if (span.type === "link") {
+      if (!isSafeLinkTarget(span.target)) {
+        throw new Error(`unsafe rich link target: ${span.target}`);
+      }
+      return `<a href="${escapeHtml(span.target)}">${text}</a>`;
+    }
+    return text;
+  }).join("");
+}
+
+function renderRichTable(block) {
+  return renderTable(
+    toList(block.columns),
+    toList(block.rows).map((row) =>
+      `<tr>${toList(row).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
+    ),
+  );
+}
+
+function renderSupportingBlock(block) {
+  if (block.type === "paragraph") {
+    return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
+  }
+  if (block.type === "callout") {
+    return `<aside class="rich-block rich-callout tone-${escapeHtml(block.tone)}"><h4>${escapeHtml(block.title)}</h4><p>${escapeHtml(block.body)}</p></aside>`;
+  }
+  if (block.type === "quote") {
+    return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
+  }
+  if (block.type === "table") return renderRichTable(block);
+  return "";
+}
+
+function renderSupportingBlocks(blocks) {
+  const values = toList(blocks);
+  if (values.length === 0) return "";
+  return `<div class="rich-blocks">${values.map(renderSupportingBlock).join("")}</div>`;
+}
+
 function renderPlanStep(step, index) {
   if (typeof step === "string") {
     return `<section class="step"><div class="meta"><span class="badge">step-${index + 1}</span></div><p>${escapeHtml(step)}</p></section>`;
@@ -448,7 +527,7 @@ function renderSupportingSection(section, depth = 0) {
   const childSections = toList(section.subSections)
     .map((subSection) => renderSupportingSection(subSection, depth + 1))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
 function renderDocument(doc, collection) {
@@ -623,6 +702,20 @@ h6 { color: var(--muted); font-size: 0.78rem; letter-spacing: 0; margin: 12px 0 
 .table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; width: 100%; }
 .table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
 .table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+.rich-blocks { display: grid; gap: 12px; margin-top: 14px; }
+.rich-block { margin: 0; }
+.rich-paragraph { line-height: 1.7; }
+kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: #fff; color: var(--text); font: 0.85em ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 0.08rem 0.32rem; }
+mark { border-radius: 4px; background: #fff1a8; color: inherit; padding: 0.05rem 0.2rem; }
+.rich-callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
+.rich-callout h4 { color: var(--text); margin-top: 0; text-transform: none; }
+.tone-info { border-left-color: #2b6cb0; }
+.tone-success { border-left-color: #137333; }
+.tone-warning { border-left-color: #b06000; }
+.tone-danger { border-left-color: #b42318; }
+.rich-quote { border-left: 4px solid var(--line); color: var(--muted); padding-left: 14px; }
+.rich-quote blockquote { margin: 0; }
+.rich-quote figcaption { margin-top: 8px; font-size: 0.85rem; }
 .command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
 .code-stack { display: grid; gap: 10px; margin-top: 10px; }
 pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }
@@ -708,7 +801,7 @@ function writeStaticPages(docsDir, title) {
           <div class="timeline-content">
             <div class="timeline-header">
               <h4 class="timeline-title">
-                <a href="/${doc.collectionDir}/${doc.slug}/">${escapeHtml(doc.title)}</a>
+                <a href="${documentHref(doc.collectionDir, doc.slug)}">${escapeHtml(doc.title)}</a>
               </h4>
               <div class="timeline-meta">
                 <span class="timeline-badge ${escapeHtml(doc.collectionDocType)}">${escapeHtml(doc.collectionLabel)}</span>
@@ -746,7 +839,7 @@ function writeStaticPages(docsDir, title) {
   for (const collection of COLLECTIONS) {
     const docs = collectionDocs.get(collection.dir) || [];
     const cards = docs
-      .map((doc) => `<a class="panel" href="/${collection.dir}/${doc.slug}/" data-title="${escapeHtml(doc.title)}" data-updated="${escapeHtml(doc.updatedAt)}" data-created="${escapeHtml(doc.createdAt || doc.updatedAt)}"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span><span class="badge">Owner: ${escapeHtml(doc.owner)}</span><span class="badge date-badge">Updated: ${escapeHtml(doc.updatedAt)}</span></div></a>`)
+      .map((doc) => `<a class="panel" href="${documentHref(collection.dir, doc.slug)}" data-title="${escapeHtml(doc.title)}" data-updated="${escapeHtml(doc.updatedAt)}" data-created="${escapeHtml(doc.createdAt || doc.updatedAt)}"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span><span class="badge">Owner: ${escapeHtml(doc.owner)}</span><span class="badge date-badge">Updated: ${escapeHtml(doc.updatedAt)}</span></div></a>`)
       .join("");
 
     const sortingControls = `<div class="sorting-controls">
@@ -795,7 +888,7 @@ function writeStaticPages(docsDir, title) {
     );
     for (const doc of docs) {
       writeFile(
-        path.join(docsDir, collection.dir, doc.slug, "index.html"),
+        documentPagePath(docsDir, collection.dir, doc.slug),
         renderLayout(site, doc.title, renderDocument(doc, collection)),
       );
     }

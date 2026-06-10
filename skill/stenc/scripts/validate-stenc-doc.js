@@ -24,9 +24,30 @@ const SUPPORTING_SECTION_FIELDS = new Set([
   "facts",
   "links",
   "steps",
+  "blocks",
   "codeBlocks",
   "subSections",
 ]);
+const RICH_BLOCK_TYPES = new Set(["paragraph", "callout", "quote", "table"]);
+const INLINE_SPAN_TYPES = new Set(["text", "strong", "emphasis", "code", "link", "kbd", "mark"]);
+const CALLOUT_TONES = new Set(["neutral", "info", "success", "warning", "danger"]);
+
+const RICH_BLOCK_FIELDS = {
+  paragraph: new Set(["type", "spans"]),
+  callout: new Set(["type", "tone", "title", "body"]),
+  quote: new Set(["type", "text", "source"]),
+  table: new Set(["type", "columns", "rows"]),
+};
+
+const INLINE_SPAN_FIELDS = {
+  text: new Set(["type", "text"]),
+  strong: new Set(["type", "text"]),
+  emphasis: new Set(["type", "text"]),
+  code: new Set(["type", "text"]),
+  link: new Set(["type", "text", "target"]),
+  kbd: new Set(["type", "text"]),
+  mark: new Set(["type", "text"]),
+};
 
 const REQUIRED_TOP_LEVEL_FIELDS = [
   "schemaVersion",
@@ -43,6 +64,14 @@ const REQUIRED_TOP_LEVEL_FIELDS = [
   "page",
   "body",
 ];
+const TOP_LEVEL_FIELDS = new Set(REQUIRED_TOP_LEVEL_FIELDS);
+const PAGE_FIELDS = new Set(["humanSummary", "agentSummary", "styleTemplate"]);
+const LINK_FIELDS = {
+  spec: new Set(["sourceOfTruth", "relatedPlans", "relatedDecisions"]),
+  plan: new Set(["sourceOfTruth", "relatedSpec"]),
+  decision: new Set(["sourceOfTruth", "relatedSpec"]),
+  "agent-context": new Set(["sourceOfTruth", "requiredReading"]),
+};
 
 const REQUIRED_BODY_FIELDS = {
   1: {
@@ -149,6 +178,43 @@ const REQUIRED_BODY_FIELDS = {
   ],
   },
 };
+const BODY_FIELDS = Object.fromEntries(
+  Object.entries(REQUIRED_BODY_FIELDS[2]).map(([docType, fields]) => [docType, new Set(fields)]),
+);
+
+const CODE_BLOCK_FIELDS = new Set(["language", "content"]);
+const FACT_FIELDS = new Set(["label", "value"]);
+const SUPPORTING_LINK_FIELDS = new Set(["label", "target", "purpose"]);
+const SUPPORTING_STEP_FIELDS = new Set([
+  "id",
+  "title",
+  "status",
+  "instruction",
+  "command",
+  "expected",
+  "codeBlocks",
+]);
+const SCOPE_FIELDS = new Set(["in", "out"]);
+const VALIDATION_ENTRY_FIELDS = new Set(["command", "purpose"]);
+const TESTING_STRATEGY_FIELDS = new Set(["command", "expected"]);
+const SURFACE_FIELDS = new Set(["path", "role", "owner"]);
+const REQUIREMENT_FIELDS = new Set(["id", "title", "detail", "acceptanceCriteria"]);
+const APPROACH_FIELDS = new Set(["name", "tradeoffs", "recommendation"]);
+const COMPONENT_FIELDS = new Set(["name", "responsibility", "interfaces", "dependencies"]);
+const ERROR_HANDLING_FIELDS = new Set(["case", "behavior"]);
+const CONTRACT_FIELDS = new Set(["name", "rules"]);
+const NAMED_PURPOSE_FIELDS = new Set(["name", "purpose"]);
+const IMPLEMENTATION_HANDOFF_FIELDS = new Set(["planLocation", "requiredSkill", "notes"]);
+const WORKER_INSTRUCTIONS_FIELDS = new Set(["requiredSubSkills", "trackingSyntax", "note"]);
+const SCOPE_CHECK_FIELDS = new Set(["assessment", "decomposition"]);
+const FILE_STRUCTURE_FIELDS = new Set(["action", "path", "responsibility"]);
+const SLICE_FIELDS = new Set(["id", "title", "status", "surfaces", "files", "steps", "doneWhen"]);
+const SLICE_FILE_FIELDS = new Set(["action", "path", "role", "lines"]);
+const PLAN_STEP_FIELDS = SUPPORTING_STEP_FIELDS;
+const RISK_FIELDS = new Set(["risk", "mitigation"]);
+const EXECUTION_HANDOFF_FIELDS = new Set(["defaultPath", "options"]);
+const EXECUTION_HANDOFF_OPTION_FIELDS = new Set(["label", "description", "requiredSkill"]);
+const DECISION_OPTION_FIELDS = new Set(["option", "outcome"]);
 
 const COLLECTION_CONTRACTS = {
   specs: { docType: "spec", suffix: ".spec.json" },
@@ -187,6 +253,10 @@ function isStringArray(value) {
   return Array.isArray(value) && value.every(isNonEmptyString);
 }
 
+function isSafeSlug(value) {
+  return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
 function requireString(object, field, errors, prefix = "") {
   if (!isNonEmptyString(object?.[field])) {
     errors.push(`${prefix}${field} must be a non-empty string`);
@@ -206,6 +276,7 @@ function validateCodeBlocks(entries, errors, prefix) {
     return;
   }
   entries.forEach((block, index) => {
+    validateAllowedFields(block, CODE_BLOCK_FIELDS, errors, `${prefix}codeBlocks[${index}].`);
     requireString(block, "language", errors, `${prefix}codeBlocks[${index}].`);
     requireString(block, "content", errors, `${prefix}codeBlocks[${index}].`);
   });
@@ -218,6 +289,7 @@ function validateFacts(entries, errors, prefix) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, FACT_FIELDS, errors, `${prefix}facts[${index}].`);
     requireString(entry, "label", errors, `${prefix}facts[${index}].`);
     requireString(entry, "value", errors, `${prefix}facts[${index}].`);
   });
@@ -230,6 +302,7 @@ function validateSupportingLinks(entries, errors, prefix) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, SUPPORTING_LINK_FIELDS, errors, `${prefix}links[${index}].`);
     requireString(entry, "label", errors, `${prefix}links[${index}].`);
     requireString(entry, "target", errors, `${prefix}links[${index}].`);
     requireString(entry, "purpose", errors, `${prefix}links[${index}].`);
@@ -241,6 +314,7 @@ function validateSupportingStep(step, errors, prefix) {
     errors.push(`${prefix.slice(0, -1)} must be an object`);
     return;
   }
+  validateAllowedFields(step, SUPPORTING_STEP_FIELDS, errors, prefix);
   requireString(step, "id", errors, prefix);
   requireString(step, "title", errors, prefix);
   requireString(step, "status", errors, prefix);
@@ -261,6 +335,123 @@ function validateSupportingStep(step, errors, prefix) {
   if (!hasInstruction && !hasCommand && !hasCodeBlocks) {
     errors.push(`${prefix.slice(0, -1)} must include instruction, command, or codeBlocks`);
   }
+}
+
+function validateAllowedFields(entry, allowedFields, errors, prefix) {
+  if (!isPlainObject(entry)) return;
+  for (const field of Object.keys(entry)) {
+    if (!allowedFields.has(field)) {
+      errors.push(
+        `${prefix}${field} is not supported; allowed fields: ${Array.from(allowedFields).join(", ")}`,
+      );
+    }
+  }
+}
+
+function isSafeLinkTarget(target) {
+  if (!isNonEmptyString(target)) return false;
+  if (/[\u0000-\u001f\u007f]/u.test(target)) return false;
+  const trimmed = target.trim();
+  if (trimmed !== target) return false;
+  if (trimmed.startsWith("//")) return false;
+  if (trimmed.startsWith("/")) return false;
+  if (/^(javascript|data|file):/iu.test(trimmed)) return false;
+  if (/^(https?:\/\/|mailto:|#|\.\/|\.\.\/)/iu.test(trimmed)) return true;
+  if (trimmed.includes(":")) return false;
+  return /^[A-Za-z0-9._~!$&'()*+,;=:@/-]+(?:#[A-Za-z0-9._~!$&'()*+,;=:@/-]+)?$/u.test(trimmed);
+}
+
+function validateInlineSpans(spans, errors, prefix) {
+  if (!Array.isArray(spans) || spans.length === 0) {
+    errors.push(`${prefix}spans must be a non-empty array`);
+    return;
+  }
+
+  spans.forEach((span, index) => {
+    const spanPrefix = `${prefix}spans[${index}].`;
+    if (!isPlainObject(span)) {
+      errors.push(`${spanPrefix.slice(0, -1)} must be an object`);
+      return;
+    }
+    if (!INLINE_SPAN_TYPES.has(span.type)) {
+      errors.push(`${spanPrefix}type must be one of: ${Array.from(INLINE_SPAN_TYPES).join(", ")}`);
+      return;
+    }
+
+    validateAllowedFields(span, INLINE_SPAN_FIELDS[span.type], errors, spanPrefix);
+    requireString(span, "text", errors, spanPrefix);
+    if (span.type === "link") {
+      requireString(span, "target", errors, spanPrefix);
+      if ("target" in span && !isSafeLinkTarget(span.target)) {
+        errors.push(`${spanPrefix}target must be a safe link target`);
+      }
+    }
+  });
+}
+
+function validateRichTable(block, errors, prefix) {
+  requireStringArray(block, "columns", errors, prefix);
+  if (!Array.isArray(block.rows) || block.rows.length === 0) {
+    errors.push(`${prefix}rows must be a non-empty array`);
+    return;
+  }
+
+  block.rows.forEach((row, rowIndex) => {
+    if (!Array.isArray(row)) {
+      errors.push(`${prefix}rows[${rowIndex}] must be an array`);
+      return;
+    }
+    if (Array.isArray(block.columns) && row.length !== block.columns.length) {
+      errors.push(`${prefix}rows[${rowIndex}] must have ${block.columns.length} cells`);
+    }
+    row.forEach((cell, cellIndex) => {
+      if (!isNonEmptyString(cell)) {
+        errors.push(`${prefix}rows[${rowIndex}][${cellIndex}] must be a non-empty string`);
+      }
+    });
+  });
+}
+
+function validateRichBlock(block, errors, prefix) {
+  if (!isPlainObject(block)) {
+    errors.push(`${prefix.slice(0, -1)} must be an object`);
+    return;
+  }
+  if (!RICH_BLOCK_TYPES.has(block.type)) {
+    errors.push(`${prefix}type must be one of: ${Array.from(RICH_BLOCK_TYPES).join(", ")}`);
+    return;
+  }
+
+  validateAllowedFields(block, RICH_BLOCK_FIELDS[block.type], errors, prefix);
+  if (block.type === "paragraph") {
+    validateInlineSpans(block.spans, errors, prefix);
+  }
+  if (block.type === "callout") {
+    requireString(block, "tone", errors, prefix);
+    if (isNonEmptyString(block.tone) && !CALLOUT_TONES.has(block.tone)) {
+      errors.push(`${prefix}tone must be one of: ${Array.from(CALLOUT_TONES).join(", ")}`);
+    }
+    requireString(block, "title", errors, prefix);
+    requireString(block, "body", errors, prefix);
+  }
+  if (block.type === "quote") {
+    requireString(block, "text", errors, prefix);
+    if ("source" in block) requireString(block, "source", errors, prefix);
+  }
+  if (block.type === "table") {
+    validateRichTable(block, errors, prefix);
+  }
+}
+
+function validateSupportingBlocks(blocks, errors, prefix) {
+  if (blocks === undefined) return;
+  if (!Array.isArray(blocks)) {
+    errors.push(`${prefix}blocks must be an array`);
+    return;
+  }
+  blocks.forEach((block, index) => {
+    validateRichBlock(block, errors, `${prefix}blocks[${index}].`);
+  });
 }
 
 function validateSupportingSteps(entries, errors, prefix) {
@@ -291,12 +482,14 @@ function validateNamedPurposeEntries(entries, errors, field) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, NAMED_PURPOSE_FIELDS, errors, `body.${field}[${index}].`);
     requireString(entry, "name", errors, `body.${field}[${index}].`);
     requireString(entry, "purpose", errors, `body.${field}[${index}].`);
   });
 }
 
 function validateTopLevel(doc, errors) {
+  validateAllowedFields(doc, TOP_LEVEL_FIELDS, errors, "");
   for (const field of REQUIRED_TOP_LEVEL_FIELDS) {
     if (!(field in doc)) errors.push(`missing field: ${field}`);
   }
@@ -320,6 +513,9 @@ function validateTopLevel(doc, errors) {
       errors.push(`field must be a non-empty string: ${field}`);
     }
   }
+  if ("slug" in doc && !isSafeSlug(doc.slug)) {
+    errors.push("slug must contain only lowercase letters, numbers, and hyphens");
+  }
 
   if (isNonEmptyString(doc.id) && isNonEmptyString(doc.docType)) {
     const expectedPrefix = `${doc.docType}:`;
@@ -333,6 +529,9 @@ function validateLinks(doc, errors) {
   if (!isPlainObject(doc.links)) {
     errors.push("links must be an object");
     return;
+  }
+  if (LINK_FIELDS[doc.docType]) {
+    validateAllowedFields(doc.links, LINK_FIELDS[doc.docType], errors, "links.");
   }
   requireStringArray(doc.links, "sourceOfTruth", errors, "links.");
 
@@ -359,6 +558,7 @@ function validatePage(doc, errors) {
     errors.push("page must be an object");
     return;
   }
+  validateAllowedFields(doc.page, PAGE_FIELDS, errors, "page.");
   requireString(doc.page, "humanSummary", errors, "page.");
   requireString(doc.page, "agentSummary", errors, "page.");
   requireString(doc.page, "styleTemplate", errors, "page.");
@@ -377,6 +577,7 @@ function validateScope(scope, errors, prefix = "body.scope.") {
     errors.push("body.scope must be an object");
     return;
   }
+  validateAllowedFields(scope, SCOPE_FIELDS, errors, prefix);
   requireStringArray(scope, "in", errors, prefix);
   requireStringArray(scope, "out", errors, prefix);
 }
@@ -387,6 +588,7 @@ function validateValidationEntries(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, VALIDATION_ENTRY_FIELDS, errors, `body.validation[${index}].`);
     requireString(entry, "command", errors, `body.validation[${index}].`);
     requireString(entry, "purpose", errors, `body.validation[${index}].`);
   });
@@ -398,6 +600,7 @@ function validateSurfaces(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, SURFACE_FIELDS, errors, `body.surfaces[${index}].`);
     requireString(entry, "path", errors, `body.surfaces[${index}].`);
     requireString(entry, "role", errors, `body.surfaces[${index}].`);
     requireString(entry, "owner", errors, `body.surfaces[${index}].`);
@@ -410,6 +613,7 @@ function validateRequirements(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, REQUIREMENT_FIELDS, errors, `body.requirements[${index}].`);
     requireString(entry, "id", errors, `body.requirements[${index}].`);
     requireString(entry, "title", errors, `body.requirements[${index}].`);
     requireString(entry, "detail", errors, `body.requirements[${index}].`);
@@ -423,6 +627,7 @@ function validateApproaches(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, APPROACH_FIELDS, errors, `body.approaches[${index}].`);
     requireString(entry, "name", errors, `body.approaches[${index}].`);
     requireStringArray(entry, "tradeoffs", errors, `body.approaches[${index}].`);
     requireString(entry, "recommendation", errors, `body.approaches[${index}].`);
@@ -435,6 +640,7 @@ function validateComponents(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, COMPONENT_FIELDS, errors, `body.components[${index}].`);
     requireString(entry, "name", errors, `body.components[${index}].`);
     requireString(entry, "responsibility", errors, `body.components[${index}].`);
     requireStringArray(entry, "interfaces", errors, `body.components[${index}].`);
@@ -448,6 +654,7 @@ function validateErrorHandling(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, ERROR_HANDLING_FIELDS, errors, `body.errorHandling[${index}].`);
     requireString(entry, "case", errors, `body.errorHandling[${index}].`);
     requireString(entry, "behavior", errors, `body.errorHandling[${index}].`);
   });
@@ -459,6 +666,7 @@ function validateTestingStrategy(entries, errors) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, TESTING_STRATEGY_FIELDS, errors, `body.testingStrategy[${index}].`);
     requireString(entry, "command", errors, `body.testingStrategy[${index}].`);
     requireString(entry, "expected", errors, `body.testingStrategy[${index}].`);
   });
@@ -469,6 +677,7 @@ function validateImplementationHandoff(handoff, errors, prefix = "body.implement
     errors.push(`${prefix.slice(0, -1)} must be an object`);
     return;
   }
+  validateAllowedFields(handoff, IMPLEMENTATION_HANDOFF_FIELDS, errors, prefix);
   requireString(handoff, "planLocation", errors, prefix);
   requireString(handoff, "requiredSkill", errors, prefix);
   requireStringArray(handoff, "notes", errors, prefix);
@@ -488,6 +697,7 @@ function validateSupportingSections(entries, errors, prefix = "body.supportingSe
     validateFacts(entry.facts, errors, entryPrefix);
     validateSupportingLinks(entry.links, errors, entryPrefix);
     validateSupportingSteps(entry.steps, errors, entryPrefix);
+    validateSupportingBlocks(entry.blocks, errors, entryPrefix);
     validateCodeBlocks(entry.codeBlocks, errors, entryPrefix);
     if (entry?.subSections !== undefined) {
       validateSupportingSections(entry.subSections, errors, `${entryPrefix}subSections.`);
@@ -500,6 +710,7 @@ function validateWorkerInstructions(instructions, errors) {
     errors.push("body.workerInstructions must be an object");
     return;
   }
+  validateAllowedFields(instructions, WORKER_INSTRUCTIONS_FIELDS, errors, "body.workerInstructions.");
   requireStringArray(instructions, "requiredSubSkills", errors, "body.workerInstructions.");
   requireString(instructions, "trackingSyntax", errors, "body.workerInstructions.");
   requireString(instructions, "note", errors, "body.workerInstructions.");
@@ -525,6 +736,7 @@ function validateScopeCheck(scopeCheck, errors) {
     errors.push("body.scopeCheck must be an object");
     return;
   }
+  validateAllowedFields(scopeCheck, SCOPE_CHECK_FIELDS, errors, "body.scopeCheck.");
   requireString(scopeCheck, "assessment", errors, "body.scopeCheck.");
   requireString(scopeCheck, "decomposition", errors, "body.scopeCheck.");
 }
@@ -535,6 +747,7 @@ function validateFileStructure(entries, errors, fieldPath = "body.fileStructure"
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, FILE_STRUCTURE_FIELDS, errors, `${fieldPath}[${index}].`);
     requireString(entry, "action", errors, `${fieldPath}[${index}].`);
     requireString(entry, "path", errors, `${fieldPath}[${index}].`);
     requireString(entry, "responsibility", errors, `${fieldPath}[${index}].`);
@@ -547,6 +760,7 @@ function validateSliceFiles(entries, errors, fieldPath) {
     return;
   }
   entries.forEach((entry, index) => {
+    validateAllowedFields(entry, SLICE_FILE_FIELDS, errors, `${fieldPath}[${index}].`);
     requireString(entry, "action", errors, `${fieldPath}[${index}].`);
     requireString(entry, "path", errors, `${fieldPath}[${index}].`);
     requireString(entry, "role", errors, `${fieldPath}[${index}].`);
@@ -559,6 +773,7 @@ function validatePlanStep(step, errors, prefix) {
     errors.push(`${prefix.slice(0, -1)} must be an object`);
     return;
   }
+  validateAllowedFields(step, PLAN_STEP_FIELDS, errors, prefix);
   requireString(step, "id", errors, prefix);
   requireString(step, "title", errors, prefix);
   requireString(step, "status", errors, prefix);
@@ -586,12 +801,14 @@ function validateExecutionHandoff(handoff, errors) {
     errors.push("body.executionHandoff must be an object");
     return;
   }
+  validateAllowedFields(handoff, EXECUTION_HANDOFF_FIELDS, errors, "body.executionHandoff.");
   requireString(handoff, "defaultPath", errors, "body.executionHandoff.");
   if (!Array.isArray(handoff.options)) {
     errors.push("body.executionHandoff.options must be an array");
     return;
   }
   handoff.options.forEach((option, index) => {
+    validateAllowedFields(option, EXECUTION_HANDOFF_OPTION_FIELDS, errors, `body.executionHandoff.options[${index}].`);
     requireString(option, "label", errors, `body.executionHandoff.options[${index}].`);
     requireString(option, "description", errors, `body.executionHandoff.options[${index}].`);
     requireString(option, "requiredSkill", errors, `body.executionHandoff.options[${index}].`);
@@ -629,6 +846,7 @@ function validateSpecBody(body, errors, schemaVersion) {
     errors.push("body.contracts must be an array");
   } else {
     body.contracts.forEach((contract, index) => {
+      validateAllowedFields(contract, CONTRACT_FIELDS, errors, `body.contracts[${index}].`);
       requireString(contract, "name", errors, `body.contracts[${index}].`);
       requireStringArray(contract, "rules", errors, `body.contracts[${index}].`);
     });
@@ -665,6 +883,7 @@ function validatePlanBody(body, errors, schemaVersion) {
     errors.push("body.slices must be an array");
   } else {
     body.slices.forEach((slice, index) => {
+      validateAllowedFields(slice, SLICE_FIELDS, errors, `body.slices[${index}].`);
       requireString(slice, "id", errors, `body.slices[${index}].`);
       requireString(slice, "title", errors, `body.slices[${index}].`);
       requireString(slice, "status", errors, `body.slices[${index}].`);
@@ -688,6 +907,7 @@ function validatePlanBody(body, errors, schemaVersion) {
     errors.push("body.risks must be an array");
   } else {
     body.risks.forEach((risk, index) => {
+      validateAllowedFields(risk, RISK_FIELDS, errors, `body.risks[${index}].`);
       requireString(risk, "risk", errors, `body.risks[${index}].`);
       requireString(risk, "mitigation", errors, `body.risks[${index}].`);
     });
@@ -709,6 +929,7 @@ function validateDecisionBody(body, errors) {
     errors.push("body.optionsConsidered must be an array");
   } else {
     body.optionsConsidered.forEach((option, index) => {
+      validateAllowedFields(option, DECISION_OPTION_FIELDS, errors, `body.optionsConsidered[${index}].`);
       requireString(option, "option", errors, `body.optionsConsidered[${index}].`);
       requireString(option, "outcome", errors, `body.optionsConsidered[${index}].`);
     });
@@ -732,6 +953,9 @@ function validateBody(doc, errors) {
   if (!isPlainObject(doc.body)) {
     errors.push("body must be an object");
     return;
+  }
+  if (BODY_FIELDS[doc.docType]) {
+    validateAllowedFields(doc.body, BODY_FIELDS[doc.docType], errors, "body.");
   }
 
   const required = REQUIRED_BODY_FIELDS[doc.schemaVersion]?.[doc.docType] || [];

@@ -23,6 +23,8 @@ JSON. There is no Markdown source and no MDX component layer.
    `status`, `title`, `description`, `owner`, `createdAt`, and `updatedAt`.
    Use `schemaVersion: 2` for new documents. `schemaVersion: 1` is accepted
    only for existing nested JSON documents that predate the Superpowers fields.
+   Keep `slug` to lowercase letters, numbers, and hyphens because it becomes
+   the generated route segment.
 5. Fill `links`, `page`, and the type-specific `body`.
 6. For specs derived from Superpowers brainstorming output, preserve
    requirements, considered approaches, components, data flow, error handling,
@@ -71,15 +73,29 @@ collapse those sections into a single summary string when the source has
 structured requirements, task steps, code examples, commands, or review gates.
 
 Use `body.supportingSections` for bounded user-defined outlines. The only
-optional extension fields are `facts`, `links`, `steps`, and `subSections`. Do
-not add visual control fields such as `component`, `layout`, `variant`, or
-`kind`.
+optional extension fields are `facts`, `links`, `steps`, `blocks`, and
+`subSections`. Do not add visual control fields such as `component`, `layout`,
+`variant`, or `kind`.
 
 When converting existing `spec.md` or `plan.md` documents, map content into
 Stenc core fields first. Use `body.supportingSections` only for remaining
 legacy outline sections, section-level facts, source links, runbook/checklist
 steps, and nested heading structures. Markdown is an input to conversion, not
 a Stenc document source.
+
+## Rich Markdown Primitive Conversion
+
+When converting Markdown-derived source material, keep durable Stenc meaning in
+the native body fields first. Use `body.supportingSections[].blocks` only for
+supporting material that needs richer scanning than a plain string.
+
+- Convert inline code, emphasis, links, keyboard tokens, and highlights to a
+  `paragraph` block with typed `spans`.
+- Convert admonitions to `callout` blocks with a fixed `tone`.
+- Convert blockquotes to `quote` blocks.
+- Convert pipe tables to `table.columns` and `table.rows` arrays.
+- Do not preserve Markdown syntax for the renderer to parse later.
+- Do not add `component`, `layout`, `variant`, `kind`, or visual-control fields.
 
 ## Document Types
 
