@@ -10,6 +10,12 @@ const {
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
+const VERSION_ARGS = new Set(["--version", "-v", "version"]);
+
+function readVersion() {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"));
+  return packageJson.version;
+}
 
 function usage() {
   console.log(`Usage: stenc <command> [options]
@@ -22,6 +28,7 @@ docs/stenc.
 Commands:
   install                  Install the Stenc skill and prepare docs.
   migrate                  Stop tracking generated static docs artifacts.
+  version                  Print the installed Stenc version.
 
 Options:
   --project-root <path>       Target project root. Defaults to the current directory.
@@ -29,6 +36,7 @@ Options:
   --title <text>              Target docs app title. Defaults to "Docs".
   --dry-run                   For migrate, print planned paths without changing files or Git.
   --skip-project-install      Deprecated compatibility flag.
+  -v, --version               Print the installed Stenc version.
   -h, --help                  Show this help.
 `);
 }
@@ -233,9 +241,15 @@ function install(options) {
 }
 
 function main() {
+  const argv = process.argv.slice(2);
+  if (argv.length === 1 && VERSION_ARGS.has(argv[0])) {
+    console.log(readVersion());
+    return;
+  }
+
   let options;
   try {
-    options = parseArgs(process.argv.slice(2));
+    options = parseArgs(argv);
   } catch (error) {
     console.error(error.message);
     console.error("");

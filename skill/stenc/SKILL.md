@@ -86,6 +86,12 @@ not need to pass a local Stenc repository path. It also installs a `stenc`
 command into a writable PATH directory when possible; if that is not available,
 it writes `~/.local/bin/stenc` and prints the PATH line to add.
 
+Check the installed Stenc version:
+
+```bash
+stenc --version
+```
+
 If the skill is already installed and only the docs app needs repair, run the
 installed setup script directly:
 

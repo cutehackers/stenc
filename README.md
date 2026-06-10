@@ -34,6 +34,12 @@ local repository path.
 If your shell does not have a writable PATH directory, the installer writes the
 command to `~/.local/bin/stenc` and prints the PATH line to add.
 
+Check the installed version:
+
+```bash
+stenc --version
+```
+
 To set a title in the same one-command install:
 
 ```bash
@@ -115,6 +121,12 @@ npm link
 ```
 
 Then run `stenc install` from the target project where you want docs.
+
+Check the installed Stenc version:
+
+```bash
+stenc --version
+```
 
 Useful repo commands:
 

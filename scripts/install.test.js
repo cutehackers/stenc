@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const INSTALL_SCRIPT = path.join(REPO_ROOT, "scripts", "install.sh");
+const PACKAGE_VERSION = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8")).version;
 
 test("install can prepare the target project's Stenc docs app once", () => {
   const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-skills-"));
@@ -97,6 +98,19 @@ test("install can prepare a target project with default project install", () => 
   });
   assert.equal(commandResult.status, 0, commandResult.stderr || commandResult.stdout);
   assert.match(commandResult.stdout, /Usage: stenc/);
+  for (const versionArg of ["--version", "-v", "version"]) {
+    const versionResult = spawnSync("stenc", [versionArg], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+        CODEX_SKILLS_DIR: skillsRoot,
+      },
+    });
+    assert.equal(versionResult.status, 0, versionResult.stderr || versionResult.stdout);
+    assert.equal(versionResult.stdout.trim(), PACKAGE_VERSION);
+  }
   assert.equal(
     fs.existsSync(
       path.join(projectRoot, "docs", "stenc", "index.html"),
