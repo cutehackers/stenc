@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.3.0
+
+### Added
+
+- Add bounded rich supporting-section blocks for Markdown-era expression:
+  `paragraph`, `callout`, `quote`, `table`, `media`, `taskList`, and
+  `diagram`.
+- Add deterministic local media asset copying from `content/assets/` to
+  generated `assets/`.
+- Add rendered-page checks for missing and stale media references.
+
+### Changed
+
+- Document the rich primitive source contract across the Stenc skill,
+  templates, references, examples, and release planning docs.
+- Keep diagram support as escaped source panels without Mermaid runtime,
+  client-side scripts, or remote dependencies.
+
+### Migration
+
+- No migration steps are recorded for this release.
+
 ## v0.2.2
 
 ### Changed
