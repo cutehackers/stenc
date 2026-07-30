@@ -5,7 +5,7 @@ const path = require("node:path");
 const { renderDocument, renderLayout } = require("./setup-project");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
-const EXAMPLES_APP_ROOT = path.join(REPO_ROOT, "examples-app");
+const EXAMPLES_ROOT = path.join(REPO_ROOT, "examples");
 const DEFAULT_OUTPUT_DIR = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
 const SITE = { title: "Stenc Style Examples" };
 
@@ -56,8 +56,8 @@ function renderSample(sample) {
     },
   };
   const renderedDocument = renderDocument(document, {
-    docsDir: EXAMPLES_APP_ROOT,
-    mediaSrcPrefix: "../../examples-app/",
+    docsDir: EXAMPLES_ROOT,
+    mediaSrcPrefix: "../../examples/content/",
   });
   return renderLayout(SITE, sample.title, renderedDocument.html, {
     brandHref: "./index.html",

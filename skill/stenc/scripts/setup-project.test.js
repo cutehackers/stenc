@@ -742,6 +742,13 @@ test("canonical unified styles stay byte-identical across generated and sample C
 
 test("sample pages use truthful titles and a deterministic style navigation contract", () => {
   const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
+  const trackedResult = spawnSync(
+    "git",
+    ["ls-files", "-z"],
+    { cwd: REPO_ROOT, encoding: "utf8" },
+  );
+  assert.equal(trackedResult.status, 0, trackedResult.stderr || trackedResult.stdout);
+  const trackedPaths = new Set(trackedResult.stdout.split("\0").filter(Boolean));
   const expectedNavigation = [
     { href: "./task-first.html", label: "Task-first" },
     { href: "./operator-console.html", label: "Operator console" },
@@ -781,10 +788,17 @@ test("sample pages use truthful titles and a deterministic style navigation cont
       );
     }
     for (const match of html.matchAll(/(?:href|src)="((?:\.{1,2}\/)[^"#?]+)(?:\?[^"]*)?"/gu)) {
+      const absoluteTarget = path.resolve(sampleRoot, match[1]);
+      const repositoryRelativeTarget = path.relative(REPO_ROOT, absoluteTarget);
       assert.equal(
-        fs.existsSync(path.resolve(sampleRoot, match[1])),
+        fs.existsSync(absoluteTarget),
         true,
         `${fileName}: missing local path ${match[1]}`,
+      );
+      assert.equal(
+        trackedPaths.has(repositoryRelativeTarget),
+        true,
+        `${fileName}: local path is not available in a clean checkout: ${match[1]}`,
       );
     }
     if (currentHref) {
