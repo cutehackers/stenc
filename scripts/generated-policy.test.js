@@ -51,7 +51,7 @@ function trackedFiles() {
     }
   }
   visit(REPO_ROOT);
-  return files.sort();
+  return files.sort().filter((filePath) => !isGeneratedExamplesPath(filePath));
 }
 
 function isGeneratedExamplesPath(filePath) {
