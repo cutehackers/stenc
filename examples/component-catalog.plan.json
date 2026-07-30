@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 2,
+  "docType": "plan",
+  "id": "plan:component-catalog",
+  "slug": "component-catalog",
+  "status": "approved",
+  "title": "Stenc Plan Component Catalog",
+  "description": "Comprehensive schema-v2 fixture for every native plan field, step shape, and supported rich block.",
+  "owner": "stenc-maintainers",
+  "createdAt": "2026-07-30",
+  "updatedAt": "2026-07-30",
+  "links": {
+    "sourceOfTruth": [
+      "examples-app/content/specs/component-catalog.spec.json",
+      "skill/stenc/references/json-field-contract.md"
+    ],
+    "relatedSpec": "spec:component-catalog"
+  },
+  "page": {
+    "humanSummary": "One execution plan demonstrates the complete plan vocabulary, including all step shapes and both supported handoff paths.",
+    "agentSummary": "Use this catalog to verify plan field coverage, execution sequencing, structured steps, rich supporting blocks, and handoff semantics.",
+    "styleTemplate": "operator-console"
+  },
+  "body": {
+    "goal": "Lock the current schema-v2 plan component inventory with concrete execution content.",
+    "architecture": "Two independently reviewable slices add comprehensive fixtures first and then verify mirrored content, validation evidence, and semantic renderer inventory.",
+    "techStack": [
+      "Node.js node:test",
+      "Structured JSON fixtures",
+      "Dependency-free Stenc validator",
+      "Static HTML renderer"
+    ],
+    "workerInstructions": {
+      "requiredSubSkills": [
+        "superpowers:subagent-driven-development",
+        "superpowers:executing-plans"
+      ],
+      "trackingSyntax": "- [ ]",
+      "note": "Execute each structured step in order, preserve fixture byte parity, and record the intentional renderer inventory failure separately from fixture validation."
+    },
+    "scopeCheck": {
+      "assessment": "The work is one coherent fixture-and-test slice because the spec and plan catalogs jointly define the renderer inventory.",
+      "decomposition": "Keep fixture authoring and evidence collection as separate reviewable slices while committing them as one catalog contract."
+    },
+    "currentState": "Existing examples demonstrate many fields in isolation, but no single spec-plan pair locks the complete component inventory.",
+    "targetState": "Byte-identical example fixtures validate against schema v2 and drive a semantic renderer inventory test with an intentional production-class gap.",
+    "scope": {
+      "in": [
+        "Comprehensive spec and plan fixtures",
+        "Stable semantic class assertions",
+        "Schema validation and mirror parity evidence"
+      ],
+      "out": [
+        "Production renderer semantic class implementation",
+        "New structured diagram primitives",
+        "Per-document component or style APIs"
+      ]
+    },
+    "fileStructure": [
+      {
+        "action": "Add",
+        "path": "examples-app/content/specs/component-catalog.spec.json",
+        "responsibility": "Canonical examples-app spec catalog source."
+      },
+      {
+        "action": "Add",
+        "path": "examples-app/content/plans/component-catalog.plan.json",
+        "responsibility": "Canonical examples-app plan catalog source."
+      },
+      {
+        "action": "Add",
+        "path": "examples/component-catalog.spec.json",
+        "responsibility": "Byte-identical standalone spec fixture."
+      },
+      {
+        "action": "Add",
+        "path": "examples/component-catalog.plan.json",
+        "responsibility": "Byte-identical standalone plan fixture."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/setup-project.test.js",
+        "responsibility": "Semantic renderer component inventory test."
+      }
+    ],
+    "slices": [
+      {
+        "id": "slice-1",
+        "title": "Create comprehensive catalog fixtures",
+        "status": "todo",
+        "surfaces": [
+          "examples-app/content/specs/component-catalog.spec.json",
+          "examples-app/content/plans/component-catalog.plan.json",
+          "examples/component-catalog.spec.json",
+          "examples/component-catalog.plan.json"
+        ],
+        "files": [
+          {
+            "action": "Add",
+            "path": "examples-app/content/specs/component-catalog.spec.json",
+            "role": "Complete schema-v2 spec catalog.",
+            "lines": "all"
+          },
+          {
+            "action": "Add",
+            "path": "examples-app/content/plans/component-catalog.plan.json",
+            "role": "Complete schema-v2 plan catalog.",
+            "lines": "all"
+          },
+          {
+            "action": "Add",
+            "path": "examples/component-catalog.spec.json",
+            "role": "Standalone mirror of the spec catalog.",
+            "lines": "all"
+          },
+          {
+            "action": "Add",
+            "path": "examples/component-catalog.plan.json",
+            "role": "Standalone mirror of the plan catalog.",
+            "lines": "all"
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-1-step-1",
+            "title": "Inventory the live schema",
+            "status": "todo",
+            "instruction": "Compare required and optional spec and plan fields with the validator constants before authoring fixtures."
+          },
+          {
+            "id": "slice-1-step-2",
+            "title": "Author the schema-v2 fixture shape",
+            "status": "todo",
+            "codeBlocks": [
+              {
+                "language": "json",
+                "content": "{\n  \"schemaVersion\": 2,\n  \"docType\": \"plan\",\n  \"body\": {\n    \"slices\": []\n  }\n}"
+              }
+            ]
+          },
+          {
+            "id": "slice-1-step-3",
+            "title": "Validate both fixture collections",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+            "expected": "Stenc validation passed."
+          }
+        ],
+        "doneWhen": [
+          "Both catalog documents populate every current native field.",
+          "The spec includes every current rich primitive and all five callout tones.",
+          "The plan includes every current step shape and both execution handoff options."
+        ]
+      },
+      {
+        "id": "slice-2",
+        "title": "Lock semantic inventory evidence",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/setup-project.test.js",
+          "Generated component catalog pages"
+        ],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "Copy fixtures, render pages, and assert stable semantic class tokens.",
+            "lines": "component catalog test"
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-2-step-1",
+            "title": "Add the focused inventory test",
+            "status": "todo",
+            "instruction": "Copy both examples-app catalog fixtures into a temporary docs root, run setup-project, and read the rendered spec and plan pages."
+          },
+          {
+            "id": "slice-2-step-2",
+            "title": "Assert semantic class tokens",
+            "status": "todo",
+            "codeBlocks": [
+              {
+                "language": "javascript",
+                "content": "assertClassTokens(specHtml, [\"document-summary\", \"requirements\", \"supporting-section\"]);\nassertClassTokens(planHtml, [\"worker-instructions\", \"plan-slice\", \"execution-handoff\"]);"
+              }
+            ]
+          },
+          {
+            "id": "slice-2-step-3",
+            "title": "Record the intentional renderer gap",
+            "status": "todo",
+            "command": "node --test --test-name-pattern='renders comprehensive spec and plan component catalogs' skill/stenc/scripts/setup-project.test.js",
+            "expected": "The focused test reaches rendered HTML and fails only because stable semantic renderer classes are not implemented yet."
+          },
+          {
+            "id": "slice-2-step-4",
+            "title": "Commit the fixture inventory",
+            "status": "todo",
+            "command": "git commit -m \"test(stenc): add comprehensive component fixtures\"",
+            "expected": "One commit records only the four fixture files and the focused renderer inventory test."
+          }
+        ],
+        "doneWhen": [
+          "Fixture validation and byte parity checks pass.",
+          "The focused test no longer fails because of missing or malformed fixtures.",
+          "The remaining focused failure identifies only missing production semantic classes."
+        ]
+      }
+    ],
+    "executionOrder": [
+      "slice-1",
+      "slice-2"
+    ],
+    "risks": [
+      {
+        "risk": "The catalog drifts when a validator field or rich primitive changes.",
+        "mitigation": "Review the catalog whenever validator constants or field-contract references change."
+      },
+      {
+        "risk": "The intentional RED test is mistaken for malformed fixture evidence.",
+        "mitigation": "Run schema validation and mirror parity separately, and report the exact semantic class assertion failure."
+      },
+      {
+        "risk": "Fixture content introduces a renderer-only source convention.",
+        "mitigation": "Use only current validator-known JSON fields and fixed rich primitives."
+      }
+    ],
+    "validation": [
+      {
+        "command": "cmp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json",
+        "purpose": "Verify byte-identical spec mirrors."
+      },
+      {
+        "command": "cmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json",
+        "purpose": "Verify byte-identical plan mirrors."
+      },
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+        "purpose": "Verify all example documents satisfy the live schema."
+      },
+      {
+        "command": "node --test skill/stenc/scripts/validate-stenc-doc.test.js",
+        "purpose": "Verify validator regression coverage remains green."
+      }
+    ],
+    "agentInstructions": [
+      "Follow executionOrder and keep each step status current during real execution.",
+      "Do not weaken the semantic class assertions to match generic renderer classes.",
+      "Do not modify production renderer code in this fixture slice.",
+      "Keep both fixture pairs byte-identical."
+    ],
+    "selfReviewChecks": [
+      {
+        "name": "Native field coverage",
+        "purpose": "Confirm every schema-v2 plan field and optional lines field is populated."
+      },
+      {
+        "name": "Step-shape coverage",
+        "purpose": "Confirm instruction-only, codeBlocks-only, command-plus-expected, and commit steps are present."
+      },
+      {
+        "name": "Handoff coverage",
+        "purpose": "Confirm Subagent-Driven and Inline Execution options are both present with the required skills."
+      },
+      {
+        "name": "Scope integrity",
+        "purpose": "Confirm no production renderer or structured diagram implementation is included."
+      }
+    ],
+    "executionHandoff": {
+      "defaultPath": "examples-app/content/plans/component-catalog.plan.json",
+      "options": [
+        {
+          "label": "Subagent-Driven",
+          "description": "Dispatch a fresh subagent for each execution slice and review the fixture evidence between slices.",
+          "requiredSkill": "superpowers:subagent-driven-development"
+        },
+        {
+          "label": "Inline Execution",
+          "description": "Execute both slices in one session with validation checkpoints before the commit.",
+          "requiredSkill": "superpowers:executing-plans"
+        }
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "Plan Primitive Inventory",
+        "content": "Supporting material demonstrates the bounded rich block vocabulary while executable work remains in body.slices.",
+        "items": [
+          "Plan steps remain structured execution objects.",
+          "Task lists remain read-only supporting context.",
+          "The source diagram remains an escaped source panel."
+        ],
+        "facts": [
+          {
+            "label": "Slice Count",
+            "value": "2"
+          },
+          {
+            "label": "Execution Mode Count",
+            "value": "2"
+          }
+        ],
+        "links": [
+          {
+            "label": "Related spec fixture",
+            "target": "examples-app/content/specs/component-catalog.spec.json",
+            "purpose": "Owns the durable component coverage contract."
+          },
+          {
+            "label": "Renderer inventory test",
+            "target": "skill/stenc/scripts/setup-project.test.js",
+            "purpose": "Consumes both fixture documents."
+          }
+        ],
+        "steps": [
+          {
+            "id": "support-step-1",
+            "title": "Review execution boundaries",
+            "status": "todo",
+            "instruction": "Confirm executable work stays in slices and supporting checklists remain read-only."
+          },
+          {
+            "id": "support-step-2",
+            "title": "Check mirror parity",
+            "status": "todo",
+            "command": "cmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json",
+            "expected": "The command exits successfully with no output."
+          },
+          {
+            "id": "support-step-3",
+            "title": "Inspect the focused command",
+            "status": "todo",
+            "codeBlocks": [
+              {
+                "language": "shell",
+                "content": "node --test --test-name-pattern='renders comprehensive spec and plan component catalogs' skill/stenc/scripts/setup-project.test.js"
+              }
+            ]
+          }
+        ],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "type": "text",
+                "text": "Execute "
+              },
+              {
+                "type": "strong",
+                "text": "each slice"
+              },
+              {
+                "type": "text",
+                "text": " with "
+              },
+              {
+                "type": "emphasis",
+                "text": "explicit evidence"
+              },
+              {
+                "type": "text",
+                "text": ", run "
+              },
+              {
+                "type": "code",
+                "text": "./scripts/validate.sh"
+              },
+              {
+                "type": "text",
+                "text": ", use "
+              },
+              {
+                "type": "kbd",
+                "text": "Cmd+Enter"
+              },
+              {
+                "type": "text",
+                "text": ", mark "
+              },
+              {
+                "type": "mark",
+                "text": "intentional RED"
+              },
+              {
+                "type": "text",
+                "text": ", and consult the "
+              },
+              {
+                "type": "link",
+                "text": "related spec",
+                "target": "examples-app/content/specs/component-catalog.spec.json"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "Execution boundary",
+            "body": "This catalog records fixture work only; renderer implementation belongs to a later slice."
+          },
+          {
+            "type": "quote",
+            "text": "Validation evidence and intentional renderer gaps must be reported as separate outcomes.",
+            "source": "Stenc plan catalog"
+          },
+          {
+            "type": "table",
+            "columns": [
+              "Step Shape",
+              "Catalog Example"
+            ],
+            "rows": [
+              [
+                "Instruction only",
+                "Inventory the live schema"
+              ],
+              [
+                "Code blocks",
+                "Author the schema-v2 fixture shape"
+              ],
+              [
+                "Command and expected",
+                "Validate both fixture collections"
+              ],
+              [
+                "Commit",
+                "Commit the fixture inventory"
+              ]
+            ]
+          },
+          {
+            "type": "media",
+            "src": "assets/stenc-flow.svg",
+            "alt": "Fixture validation and rendering execution flow",
+            "caption": "Local media demonstrates the same fixed asset contract on plan pages."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              {
+                "label": "Keep executable steps in plan slices",
+                "checked": true
+              },
+              {
+                "label": "Implement production renderer classes in this slice",
+                "checked": false
+              }
+            ]
+          },
+          {
+            "type": "diagram",
+            "language": "plain",
+            "title": "Current execution source diagram",
+            "source": "RED TEST -> FIXTURES -> VALIDATION -> INTENTIONAL SEMANTIC GAP"
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "Evidence Reporting",
+            "content": "Report each command with its exit status and distinguish fixture validity from renderer completion.",
+            "items": [
+              "Parity checks are binary evidence.",
+              "Validator success proves source shape only.",
+              "The focused RED identifies pending renderer semantics."
+            ],
+            "facts": [
+              {
+                "label": "Expected Fixture Result",
+                "value": "Valid"
+              }
+            ],
+            "links": [
+              {
+                "label": "Validation script",
+                "target": "skill/stenc/scripts/validate-stenc-doc.js",
+                "purpose": "Provides schema evidence."
+              }
+            ],
+            "steps": [
+              {
+                "id": "evidence-step-1",
+                "title": "Separate evidence categories",
+                "status": "todo",
+                "instruction": "List source validation, mirror parity, and semantic renderer inventory as separate results."
+              }
+            ],
+            "blocks": [
+              {
+                "type": "callout",
+                "tone": "success",
+                "title": "Valid source evidence",
+                "body": "A green validator run confirms both catalogs conform to the current schema."
+              }
+            ],
+            "subSections": [],
+            "codeBlocks": [
+              {
+                "language": "text",
+                "content": "fixture validation: PASS\nrenderer inventory: intentional RED"
+              }
+            ]
+          }
+        ],
+        "codeBlocks": [
+          {
+            "language": "shell",
+            "content": "cmp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json\ncmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json"
+          }
+        ]
+      }
+    ],
+    "openQuestions": []
+  }
+}

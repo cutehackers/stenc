@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 2,
+  "docType": "spec",
+  "id": "spec:component-catalog",
+  "slug": "component-catalog",
+  "status": "canonical",
+  "title": "Stenc Spec Component Catalog",
+  "description": "Comprehensive schema-v2 fixture for every native spec field and supported rich block primitive.",
+  "owner": "stenc-maintainers",
+  "createdAt": "2026-07-30",
+  "updatedAt": "2026-07-30",
+  "links": {
+    "sourceOfTruth": [
+      "skill/stenc/references/json-field-contract.md",
+      "skill/stenc/scripts/validate-stenc-doc.js"
+    ],
+    "relatedPlans": [
+      "plan:component-catalog"
+    ],
+    "relatedDecisions": [
+      "decision:structured-json-source"
+    ]
+  },
+  "page": {
+    "humanSummary": "One fixture exposes the complete spec vocabulary so maintainers can review renderer coverage on a single page.",
+    "agentSummary": "Use this catalog to verify that every schema-v2 spec field and every current rich primitive remains validated and rendered.",
+    "styleTemplate": "task-first"
+  },
+  "body": {
+    "goal": "Lock the current schema-v2 spec component inventory with realistic, validator-approved content.",
+    "problem": "Small examples exercise isolated fields but do not reveal when a renderer change omits or visually collapses a supported spec component.",
+    "scope": {
+      "in": [
+        "Every current schema-v2 spec body field",
+        "Every current supporting-section extension field",
+        "Every current rich block and inline span type"
+      ],
+      "out": [
+        "New structured diagram blocks",
+        "Per-document style controls",
+        "Executable client-side diagram runtimes"
+      ]
+    },
+    "architecture": {
+      "summary": "The catalog remains canonical JSON, passes through the shared validator, and renders through the fixed Stenc page generator.",
+      "flow": [
+        "Author structured fixture JSON",
+        "Validate the complete schema inventory",
+        "Render fixed semantic sections",
+        "Inspect stable component classes"
+      ]
+    },
+    "requirements": [
+      {
+        "id": "REQ-SPEC-1",
+        "title": "Complete native field coverage",
+        "detail": "The fixture must populate every current schema-v2 spec field with concrete content.",
+        "acceptanceCriteria": [
+          "The validator accepts the catalog without compatibility fallbacks.",
+          "The generated page exposes all primary spec sections."
+        ]
+      },
+      {
+        "id": "REQ-SPEC-2",
+        "title": "Complete rich primitive coverage",
+        "detail": "The fixture must include every supported inline span, callout tone, and rich block type.",
+        "acceptanceCriteria": [
+          "All seven inline span types appear in one paragraph block.",
+          "Neutral, info, success, warning, and danger callouts are present.",
+          "Quote, table, media, task list, and source diagram blocks are present."
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "name": "Single comprehensive catalog",
+        "tradeoffs": [
+          "Makes the fixture intentionally dense",
+          "Provides one stable renderer inventory surface"
+        ],
+        "recommendation": "Use one comprehensive fixture as the semantic coverage contract."
+      },
+      {
+        "name": "Many isolated fixtures",
+        "tradeoffs": [
+          "Keeps individual documents smaller",
+          "Makes omissions across the full document harder to spot"
+        ],
+        "recommendation": "Retain focused behavior tests, but use this catalog for complete inventory coverage."
+      }
+    ],
+    "components": [
+      {
+        "name": "Structured source fixture",
+        "responsibility": "Represent every current spec contract field without renderer-only meaning.",
+        "interfaces": [
+          "examples-app/content/specs/component-catalog.spec.json",
+          "examples/component-catalog.spec.json"
+        ],
+        "dependencies": [
+          "Schema-v2 field contract",
+          "Rich block validator contract"
+        ]
+      },
+      {
+        "name": "Fixed renderer",
+        "responsibility": "Project the canonical fixture into consistent human-readable sections.",
+        "interfaces": [
+          "skill/stenc/scripts/setup-project.js"
+        ],
+        "dependencies": [
+          "Validated source JSON",
+          "Local media assets"
+        ]
+      }
+    ],
+    "dataFlow": [
+      "Read component catalog JSON",
+      "Validate native fields and bounded rich blocks",
+      "Copy local media assets",
+      "Generate deterministic HTML",
+      "Assert semantic class tokens"
+    ],
+    "errorHandling": [
+      {
+        "case": "Fixture contains an unsupported field",
+        "behavior": "Validation fails with the exact unsupported path before rendering."
+      },
+      {
+        "case": "Local media is unavailable",
+        "behavior": "The renderer shows a fixed missing-media panel without changing the JSON source contract."
+      }
+    ],
+    "contracts": [
+      {
+        "name": "Canonical source contract",
+        "rules": [
+          "JSON remains the only document source.",
+          "Renderer classes do not define document meaning.",
+          "Every extension uses a validator-known supporting primitive."
+        ]
+      },
+      {
+        "name": "Diagram source contract",
+        "rules": [
+          "The diagram block stores escaped source text.",
+          "No browser runtime executes the diagram source."
+        ]
+      }
+    ],
+    "surfaces": [
+      {
+        "path": "examples-app/content/specs/component-catalog.spec.json",
+        "role": "Examples app source fixture",
+        "owner": "stenc-maintainers"
+      },
+      {
+        "path": "examples/component-catalog.spec.json",
+        "role": "Standalone mirrored fixture",
+        "owner": "stenc-maintainers"
+      },
+      {
+        "path": "skill/stenc/scripts/setup-project.test.js",
+        "role": "Semantic renderer inventory test",
+        "owner": "stenc-maintainers"
+      }
+    ],
+    "testingStrategy": [
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+        "expected": "Stenc validation passed."
+      },
+      {
+        "command": "node --test --test-name-pattern='renders comprehensive spec and plan component catalogs' skill/stenc/scripts/setup-project.test.js",
+        "expected": "The inventory test reports only renderer semantic classes that are not implemented yet."
+      }
+    ],
+    "validation": [
+      {
+        "command": "cmp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json",
+        "purpose": "Confirm the examples-app and standalone spec fixtures are byte-identical."
+      },
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+        "purpose": "Validate the complete fixture collection against the live schema."
+      }
+    ],
+    "agentInstructions": [
+      "Keep this catalog aligned with the validator whenever a spec field or rich primitive changes.",
+      "Add new source primitives to the schema before expecting the catalog to use them.",
+      "Preserve byte parity with the standalone example fixture."
+    ],
+    "reviewChecklist": [
+      "Every current native spec field contains concrete content.",
+      "Every inline span and callout tone is visible.",
+      "No renderer-only meaning or per-document styling is present."
+    ],
+    "selfReviewChecks": [
+      {
+        "name": "Schema completeness",
+        "purpose": "Compare the fixture against REQUIRED_BODY_FIELDS, BODY_FIELDS, and optional schema-v2 spec fields."
+      },
+      {
+        "name": "Primitive completeness",
+        "purpose": "Compare blocks against RICH_BLOCK_TYPES, INLINE_SPAN_TYPES, and CALLOUT_TONES."
+      },
+      {
+        "name": "Source integrity",
+        "purpose": "Confirm the fixture is structured JSON with no unsupported visual controls."
+      }
+    ],
+    "implementationHandoff": {
+      "planLocation": "examples-app/content/plans/component-catalog.plan.json",
+      "requiredSkill": "superpowers:writing-plans",
+      "notes": [
+        "Use the related plan for renderer implementation sequencing.",
+        "Do not introduce structured diagrams until the dedicated diagram slice."
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "Rich Primitive Inventory",
+        "content": "These bounded blocks exercise the current rich rendering contract while core behavior remains in native spec fields.",
+        "items": [
+          "Inline semantics stay explicit in typed spans.",
+          "Callout tone is selected from a fixed validator-known set.",
+          "Media and diagram blocks remain local and non-executable."
+        ],
+        "facts": [
+          {
+            "label": "Schema Version",
+            "value": "2"
+          },
+          {
+            "label": "Canonical Format",
+            "value": "Structured JSON"
+          }
+        ],
+        "links": [
+          {
+            "label": "Field contract",
+            "target": "skill/stenc/references/json-field-contract.md",
+            "purpose": "Defines the supported schema and rich primitive shapes."
+          },
+          {
+            "label": "Validator",
+            "target": "skill/stenc/scripts/validate-stenc-doc.js",
+            "purpose": "Enforces the canonical source contract."
+          }
+        ],
+        "steps": [
+          {
+            "id": "catalog-review-1",
+            "title": "Inspect complete source coverage",
+            "status": "todo",
+            "instruction": "Compare every catalog field with the current validator constants."
+          },
+          {
+            "id": "catalog-review-2",
+            "title": "Validate fixture collections",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+            "expected": "Stenc validation passed."
+          },
+          {
+            "id": "catalog-review-3",
+            "title": "Inspect the validator command shape",
+            "status": "todo",
+            "codeBlocks": [
+              {
+                "language": "shell",
+                "content": "node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content"
+              }
+            ]
+          }
+        ],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "type": "text",
+                "text": "The "
+              },
+              {
+                "type": "strong",
+                "text": "canonical catalog"
+              },
+              {
+                "type": "text",
+                "text": " uses "
+              },
+              {
+                "type": "emphasis",
+                "text": "typed semantics"
+              },
+              {
+                "type": "text",
+                "text": ", runs "
+              },
+              {
+                "type": "code",
+                "text": "./scripts/validate.sh"
+              },
+              {
+                "type": "text",
+                "text": ", documents "
+              },
+              {
+                "type": "kbd",
+                "text": "Cmd+K"
+              },
+              {
+                "type": "text",
+                "text": ", marks "
+              },
+              {
+                "type": "mark",
+                "text": "stable coverage"
+              },
+              {
+                "type": "text",
+                "text": ", and links to the "
+              },
+              {
+                "type": "link",
+                "text": "field contract",
+                "target": "skill/stenc/references/json-field-contract.md"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "neutral",
+            "title": "Neutral inventory note",
+            "body": "This block records supporting context without changing contract priority."
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "Canonical source",
+            "body": "Structured JSON remains authoritative and generated HTML remains derived."
+          },
+          {
+            "type": "callout",
+            "tone": "success",
+            "title": "Validation evidence",
+            "body": "The fixture is ready for renderer work when the live validator accepts it."
+          },
+          {
+            "type": "callout",
+            "tone": "warning",
+            "title": "Coverage drift",
+            "body": "A new schema field requires a matching catalog update and renderer decision."
+          },
+          {
+            "type": "callout",
+            "tone": "danger",
+            "title": "Unsupported extension",
+            "body": "Reject raw markup, custom components, and per-document visual controls."
+          },
+          {
+            "type": "quote",
+            "text": "A complete fixture turns renderer omissions into visible contract failures.",
+            "source": "Stenc component catalog"
+          },
+          {
+            "type": "table",
+            "columns": [
+              "Primitive",
+              "Contract"
+            ],
+            "rows": [
+              [
+                "Paragraph",
+                "Typed inline spans"
+              ],
+              [
+                "Callout",
+                "Five bounded tones"
+              ],
+              [
+                "Media",
+                "Local assets only"
+              ],
+              [
+                "Diagram",
+                "Escaped source panel"
+              ]
+            ]
+          },
+          {
+            "type": "media",
+            "src": "assets/stenc-flow.svg",
+            "alt": "Structured JSON flows through validation into the fixed renderer",
+            "caption": "The fixture references a local source asset copied by the renderer."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              {
+                "label": "Validate the canonical JSON fixture",
+                "checked": true
+              },
+              {
+                "label": "Implement the semantic renderer classes",
+                "checked": false
+              }
+            ]
+          },
+          {
+            "type": "diagram",
+            "language": "mermaid",
+            "title": "Current source diagram",
+            "source": "flowchart LR\n  JSON --> Validator\n  Validator --> Renderer\n  Renderer --> HTML"
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "Nested Review Guidance",
+            "content": "Nested sections cover bounded legacy outline detail without creating a custom component system.",
+            "items": [
+              "Review native fields before supporting content."
+            ],
+            "facts": [
+              {
+                "label": "Review Gate",
+                "value": "Schema and renderer coverage"
+              }
+            ],
+            "links": [
+              {
+                "label": "Renderer test",
+                "target": "skill/stenc/scripts/setup-project.test.js",
+                "purpose": "Asserts the stable semantic class inventory."
+              }
+            ],
+            "steps": [
+              {
+                "id": "nested-review-1",
+                "title": "Confirm derived output",
+                "status": "todo",
+                "instruction": "Verify that generated HTML can be deleted and recreated from this JSON source."
+              }
+            ],
+            "blocks": [
+              {
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "type": "text",
+                    "text": "Nested content remains bounded and deterministic."
+                  }
+                ]
+              }
+            ],
+            "subSections": [],
+            "codeBlocks": [
+              {
+                "language": "text",
+                "content": "source JSON -> generated HTML"
+              }
+            ]
+          }
+        ],
+        "codeBlocks": [
+          {
+            "language": "json",
+            "content": "{\n  \"schemaVersion\": 2,\n  \"docType\": \"spec\"\n}"
+          }
+        ]
+      }
+    ],
+    "openQuestions": []
+  }
+}

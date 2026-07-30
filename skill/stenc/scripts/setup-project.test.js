@@ -9,10 +9,30 @@ const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
+const COMPONENT_CATALOG_SPEC = path.join(
+  REPO_ROOT,
+  "examples-app",
+  "content",
+  "specs",
+  "component-catalog.spec.json",
+);
+const COMPONENT_CATALOG_PLAN = path.join(
+  REPO_ROOT,
+  "examples-app",
+  "content",
+  "plans",
+  "component-catalog.plan.json",
+);
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function assertClassTokens(html, tokens) {
+  for (const token of tokens) {
+    assert.match(html, new RegExp(`class="[^"]*\\b${token}\\b[^"]*"`));
+  }
 }
 
 function minimalSpec(overrides = {}) {
@@ -65,6 +85,62 @@ function minimalSpec(overrides = {}) {
     ...overrides,
   };
 }
+
+test("renders comprehensive spec and plan component catalogs", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-component-catalog-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "plans"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    COMPONENT_CATALOG_SPEC,
+    path.join(docsRoot, "content", "specs", "component-catalog.spec.json"),
+  );
+  fs.copyFileSync(
+    COMPONENT_CATALOG_PLAN,
+    path.join(docsRoot, "content", "plans", "component-catalog.plan.json"),
+  );
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples-app", "content", "assets", "stenc-flow.svg"),
+    path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const specHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "component-catalog", "index.html"),
+    "utf8",
+  );
+  const planHtml = fs.readFileSync(
+    path.join(docsRoot, "plans", "component-catalog", "index.html"),
+    "utf8",
+  );
+
+  assertClassTokens(specHtml, [
+    "document-summary",
+    "scope-in",
+    "scope-out",
+    "requirements",
+    "approaches",
+    "components",
+    "validation",
+    "supporting-section",
+  ]);
+  assertClassTokens(planHtml, [
+    "worker-instructions",
+    "scope-check",
+    "file-structure",
+    "plan-slice",
+    "plan-step",
+    "execution-handoff",
+  ]);
+});
 
 test("prepares a fixed Stenc web app backed by JSON documents", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-"));
