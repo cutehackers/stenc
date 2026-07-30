@@ -217,6 +217,17 @@ function contentBetween(text, startMarker, endMarker, label) {
   return text.slice(contentStart, endIndex);
 }
 
+function stripTagsAndDecodeText(html) {
+  return html
+    .replace(/<[^>]*>/gu, "")
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">")
+    .replace(/&quot;/gu, '"')
+    .replace(/&amp;/gu, "&")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 function minimalSpec(overrides = {}) {
   return {
     schemaVersion: 2,
@@ -1314,10 +1325,12 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
 
   assert.match(
     html,
-    /<thead><tr><th scope="col">From<\/th><th scope="col">Relation<\/th><th scope="col">To<\/th><\/tr><\/thead>/,
+    /<thead><tr><th scope="col">From<\/th> <th scope="col">Relation<\/th> <th scope="col">To<\/th><\/tr><\/thead>/,
   );
   assert.equal((html.match(/<table class="table diagram-fallback-table">/gu) || []).length, 2);
   assert.equal((html.match(/<details class="diagram-fallback diagram-relation-fallback">/gu) || []).length, 2);
+  assert.doesNotMatch(html, /<h5>Nodes<\/h5>/);
+  assert.equal((html.match(/<p class="diagram-fallback-label"><strong>Nodes<\/strong>\.<\/p>/gu) || []).length, 2);
 
   const layerVisual = contentBetween(
     html,
@@ -1338,8 +1351,30 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
   );
   assertAppearsInOrder(
     layerFallback,
-    ["Feature &lt;UI&gt;", "Home&lt;Page&gt;", "Detail&lt;Page&gt;", "Places &lt;WorldSurface&gt; next.", "Surface", "World&lt;Surface&gt;"],
+    [
+      '<li data-layer-id="feature"><strong>Feature &lt;UI&gt;</strong> <code>(feature)</code>',
+      '<li data-node-id="home-page"><strong>Home&lt;Page&gt;</strong> <code>(home-page)</code>',
+      '<li data-node-id="detail-page"><strong>Detail&lt;Page&gt;</strong> <code>(detail-page)</code>',
+      '<p class="diagram-fallback-transition"><strong>Transition:</strong> Places &lt;WorldSurface&gt; next.</p>',
+      '<li data-layer-id="surface"><strong>Surface</strong> <code>(surface)</code>',
+      '<li data-node-id="world-surface"><strong>World&lt;Surface&gt;</strong> <code>(world-surface)</code>',
+    ],
     "layer fallback",
+  );
+  assert.equal(
+    stripTagsAndDecodeText(
+      contentBetween(
+        html,
+        '<figure class="rich-block rich-structured-diagram layer-diagram"><figcaption>',
+        "</figcaption>",
+        "layer caption",
+      ),
+    ),
+    "Layer diagram Boundary <script>layer()</script>",
+  );
+  assert.match(
+    stripTagsAndDecodeText(layerFallback),
+    /Feature <UI> \(feature\) — Role: consumer\. Consumes the <public> surface\. Home<Page> \(home-page\): Declares <img src=x onerror=alert\(1\)>\. Detail<Page> \(detail-page\): Reads the public contract\. Transition: Places <WorldSurface> next\. Surface \(surface\) — Role: surface\./,
   );
 
   const flowFigure = contentBetween(
@@ -1360,6 +1395,10 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     "</details>",
     "flow fallback",
   );
+  assert.match(
+    flowFallback,
+    /^<summary>View Validation &lt;flow&gt; text and relation table\.<\/summary>/,
+  );
   assertAppearsInOrder(
     flowVisual,
     ['data-node-id="ingest"', 'data-node-id="validate"', 'data-node-id="render"', 'data-from="ingest" data-to="validate"', 'data-from="validate" data-to="render"', 'data-from="render" data-to="ingest"'],
@@ -1369,6 +1408,19 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     flowFallback,
     ["Ingest &lt;JSON&gt;", "Validate", "Render", "submits &lt;source&gt;", "passes", "reports cycle"],
     "flow fallback",
+  );
+  const flowTbody = contentBetween(flowFallback, "<tbody>", "</tbody>", "flow fallback rows");
+  assert.equal(
+    flowTbody,
+    [
+      '<tr data-from="ingest" data-to="validate"><td><strong>Ingest &lt;JSON&gt;</strong> <code>(ingest)</code></td> <td>submits &lt;source&gt;</td> <td><strong>Validate</strong> <code>(validate)</code></td></tr>',
+      '<tr data-from="validate" data-to="render"><td><strong>Validate</strong> <code>(validate)</code></td> <td>passes</td> <td><strong>Render</strong> <code>(render)</code></td></tr>',
+      '<tr data-from="render" data-to="ingest"><td><strong>Render</strong> <code>(render)</code></td> <td>reports cycle</td> <td><strong>Ingest &lt;JSON&gt;</strong> <code>(ingest)</code></td></tr>',
+    ].join("\n"),
+  );
+  assert.match(
+    stripTagsAndDecodeText(flowFallback),
+    /View Validation <flow> text and relation table\. Nodes\. Ingest <JSON> \(ingest\) — Role: consumer\. Reads author input\./,
   );
 
   const relationFigure = contentBetween(
@@ -1389,6 +1441,10 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     "</details>",
     "relation fallback",
   );
+  assert.match(
+    relationFallback,
+    /^<summary>View Runtime &lt;ownership&gt; text and relation table\.<\/summary>/,
+  );
   assertAppearsInOrder(
     relationVisual,
     ['data-node-id="stage"', 'data-node-id="layout"', 'data-node-id="scene"', 'data-from="stage" data-to="layout"', 'data-from="layout" data-to="scene"', 'data-from="scene" data-to="stage"'],
@@ -1398,6 +1454,24 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     relationFallback,
     ["World&lt;Stage&gt;", "WorldLayout", "M3SpatialScene", "creates &lt;handle&gt;", "borrows", "returns cycle"],
     "relation fallback",
+  );
+  const relationTbody = contentBetween(
+    relationFallback,
+    "<tbody>",
+    "</tbody>",
+    "relation fallback rows",
+  );
+  assert.equal(
+    relationTbody,
+    [
+      '<tr data-from="stage" data-to="layout"><td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td> <td>creates &lt;handle&gt;</td> <td><strong>WorldLayout</strong> <code>(layout)</code></td></tr>',
+      '<tr data-from="layout" data-to="scene"><td><strong>WorldLayout</strong> <code>(layout)</code></td> <td>borrows</td> <td><strong>M3SpatialScene</strong> <code>(scene)</code></td></tr>',
+      '<tr data-from="scene" data-to="stage"><td><strong>M3SpatialScene</strong> <code>(scene)</code></td> <td>returns cycle</td> <td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td></tr>',
+    ].join("\n"),
+  );
+  assert.match(
+    stripTagsAndDecodeText(relationFallback),
+    /View Runtime <ownership> text and relation table\. Nodes\. World<Stage> \(stage\) — Role: value\. Immutable feature input\./,
   );
 });
 

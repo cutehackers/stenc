@@ -5,7 +5,8 @@ function roleClass(role, escapeHtml) {
 }
 
 function renderFigureHeading(block, kindLabel, escapeHtml) {
-  return `<figcaption><span class="badge">${kindLabel}</span><strong>${escapeHtml(block.title)}</strong></figcaption><p class="diagram-summary">${escapeHtml(block.summary)}</p>`;
+  return `<figcaption><span class="badge">${kindLabel}</span> <strong>${escapeHtml(block.title)}</strong></figcaption>
+<p class="diagram-summary">${escapeHtml(block.summary)}</p>`;
 }
 
 function renderLayerNode(node, escapeHtml) {
@@ -17,14 +18,16 @@ function renderLayerFallback(block, escapeHtml) {
     const nodes = layer.nodes
       .map(
         (node) =>
-          `<li data-node-id="${escapeHtml(node.id)}"><strong>${escapeHtml(node.label)}</strong><span> ${escapeHtml(node.detail)}</span></li>`,
+          `<li data-node-id="${escapeHtml(node.id)}"><strong>${escapeHtml(node.label)}</strong> <code>(${escapeHtml(node.id)})</code>: <span>${escapeHtml(node.detail)}</span></li>`,
       )
-      .join("");
+      .join("\n");
     const transition = layer.transition
       ? `<p class="diagram-fallback-transition"><strong>Transition:</strong> ${escapeHtml(layer.transition)}</p>`
       : "";
-    return `<li data-layer-id="${escapeHtml(layer.id)}"><strong>${escapeHtml(layer.label)}</strong><span class="diagram-role-label">Role: ${escapeHtml(layer.role)}</span><p>${escapeHtml(layer.summary)}</p><ol class="diagram-fallback-node-list">${nodes}</ol>${transition}</li>`;
-  }).join("");
+    return `<li data-layer-id="${escapeHtml(layer.id)}"><strong>${escapeHtml(layer.label)}</strong> <code>(${escapeHtml(layer.id)})</code> <span class="diagram-role-label">— Role: ${escapeHtml(layer.role)}.</span> <p>${escapeHtml(layer.summary)}</p>
+<ol class="diagram-fallback-node-list">${nodes}</ol>
+${transition}</li>`;
+  }).join("\n");
 
   return `<ol class="diagram-fallback diagram-layer-fallback visually-hidden">${layers}</ol>`;
 }
@@ -54,9 +57,10 @@ function renderDirectedConnection(connection, nodeById, connectionClass, escapeH
 function renderFallbackNodeList(nodes, escapeHtml) {
   const items = nodes.map(
     (node) =>
-      `<li data-node-id="${escapeHtml(node.id)}"><strong>${escapeHtml(node.label)}</strong><span class="diagram-role-label">Role: ${escapeHtml(node.role)}</span><p>${escapeHtml(node.detail)}</p></li>`,
-  ).join("");
-  return `<h5>Nodes</h5><ol class="diagram-fallback-node-list">${items}</ol>`;
+      `<li data-node-id="${escapeHtml(node.id)}"><strong>${escapeHtml(node.label)}</strong> <code>(${escapeHtml(node.id)})</code> <span class="diagram-role-label">— Role: ${escapeHtml(node.role)}.</span> <span class="diagram-node-detail">${escapeHtml(node.detail)}</span></li>`,
+  ).join("\n");
+  return `<p class="diagram-fallback-label"><strong>Nodes</strong>.</p>
+<ol class="diagram-fallback-node-list">${items}</ol>`;
 }
 
 function renderRelationFallback(block, connections, escapeHtml) {
@@ -64,10 +68,14 @@ function renderRelationFallback(block, connections, escapeHtml) {
   const rows = connections.map((connection) => {
     const fromNode = nodeById.get(connection.from);
     const toNode = nodeById.get(connection.to);
-    return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong><code>${escapeHtml(fromNode.id)}</code></td><td>${escapeHtml(connection.label)}</td><td><strong>${escapeHtml(toNode.label)}</strong><code>${escapeHtml(toNode.id)}</code></td></tr>`;
-  }).join("");
+    return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong> <code>(${escapeHtml(fromNode.id)})</code></td> <td>${escapeHtml(connection.label)}</td> <td><strong>${escapeHtml(toNode.label)}</strong> <code>(${escapeHtml(toNode.id)})</code></td></tr>`;
+  }).join("\n");
 
-  return `<details class="diagram-fallback diagram-relation-fallback"><summary>View diagram text and relation table</summary>${renderFallbackNodeList(block.nodes, escapeHtml)}<table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations</caption><thead><tr><th scope="col">From</th><th scope="col">Relation</th><th scope="col">To</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details class="diagram-fallback diagram-relation-fallback"><summary>View ${escapeHtml(block.title)} text and relation table.</summary>
+${renderFallbackNodeList(block.nodes, escapeHtml)}
+<table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
+<thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
+<tbody>${rows}</tbody></table></details>`;
 }
 
 function renderGraphDiagram(
