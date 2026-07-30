@@ -23,16 +23,179 @@ const COMPONENT_CATALOG_PLAN = path.join(
   "plans",
   "component-catalog.plan.json",
 );
+const COMPONENT_CATALOG_SPEC_MIRROR = path.join(
+  REPO_ROOT,
+  "examples",
+  "component-catalog.spec.json",
+);
+const COMPONENT_CATALOG_PLAN_MIRROR = path.join(
+  REPO_ROOT,
+  "examples",
+  "component-catalog.plan.json",
+);
+
+const RICH_BLOCK_CLASS_TOKENS = [
+  "rich-blocks",
+  "rich-block",
+  "rich-paragraph",
+  "rich-callout",
+  "rich-quote",
+  "table",
+  "rich-media",
+  "rich-task-list",
+  "task-check",
+  "rich-diagram",
+  "code-stack",
+  "nested-sections",
+  "supporting-section",
+  "step-list",
+  "step",
+  "command",
+];
+
+const SPEC_COMPONENT_CLASS_TOKENS = [
+  "document",
+  "task-first",
+  "document-header",
+  "description",
+  "document-metadata",
+  "document-summary",
+  "human-summary",
+  "agent-summary",
+  "source-of-truth",
+  "related-plans",
+  "related-decisions",
+  "goal",
+  "architecture",
+  "architecture-flow",
+  "scope",
+  "scope-in",
+  "scope-out",
+  "problem",
+  "requirements",
+  "requirement",
+  "approaches",
+  "approach",
+  "components",
+  "component",
+  "data-flow",
+  "error-handling",
+  "contracts",
+  "contract",
+  "surfaces",
+  "surface",
+  "testing-strategy",
+  "validation",
+  "agent-instructions",
+  "review-checklist",
+  "self-review-checks",
+  "implementation-handoff",
+  "supporting-sections",
+  "open-questions",
+  ...RICH_BLOCK_CLASS_TOKENS,
+  "tone-neutral",
+  "tone-info",
+  "tone-success",
+  "tone-warning",
+  "tone-danger",
+  "language-shell",
+  "language-json",
+  "language-text",
+];
+
+const PLAN_COMPONENT_CLASS_TOKENS = [
+  "document",
+  "operator-console",
+  "document-header",
+  "description",
+  "document-metadata",
+  "document-summary",
+  "human-summary",
+  "agent-summary",
+  "source-of-truth",
+  "related-spec",
+  "goal",
+  "architecture",
+  "tech-stack",
+  "worker-instructions",
+  "scope-check",
+  "current-state",
+  "target-state",
+  "scope",
+  "scope-in",
+  "scope-out",
+  "file-structure",
+  "file-structure-entry",
+  "plan-slices",
+  "plan-slice",
+  "slice-surfaces",
+  "slice-files",
+  "plan-file",
+  "slice-steps",
+  "plan-step",
+  "step-instruction",
+  "step-code-blocks",
+  "step-command",
+  "step-expected",
+  "done-when",
+  "execution-order",
+  "risks",
+  "risk",
+  "validation",
+  "agent-instructions",
+  "self-review-checks",
+  "execution-handoff",
+  "supporting-sections",
+  "open-questions",
+  ...RICH_BLOCK_CLASS_TOKENS,
+  "tone-info",
+  "tone-success",
+  "language-shell",
+  "language-javascript",
+  "language-json",
+  "language-text",
+];
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function assertClassTokens(html, tokens) {
-  for (const token of tokens) {
-    assert.match(html, new RegExp(`class="[^"]*\\b${token}\\b[^"]*"`));
+function extractClassTokens(html) {
+  const tokens = new Set();
+  for (const match of html.matchAll(/class="([^"]*)"/gu)) {
+    for (const token of match[1].split(/\s+/u)) {
+      if (token) tokens.add(token);
+    }
   }
+  return tokens;
+}
+
+function assertClassTokenInventory(inventories) {
+  const missingGroups = inventories
+    .map(({ label, html, expected }) => {
+      const actual = extractClassTokens(html);
+      return {
+        label,
+        missing: expected.filter((token) => !actual.has(token)),
+      };
+    })
+    .filter(({ missing }) => missing.length > 0);
+
+  if (missingGroups.length > 0) {
+    const detail = missingGroups
+      .map(({ label, missing }) => `${label}=[${missing.join(", ")}]`)
+      .join("; ");
+    assert.fail(`Missing semantic class tokens: ${detail}`);
+  }
+}
+
+function assertByteIdentical(sourcePath, mirrorPath) {
+  assert.equal(
+    Buffer.compare(fs.readFileSync(sourcePath), fs.readFileSync(mirrorPath)),
+    0,
+    `Fixture mirror differs: ${path.relative(REPO_ROOT, mirrorPath)}`,
+  );
 }
 
 function minimalSpec(overrides = {}) {
@@ -86,9 +249,40 @@ function minimalSpec(overrides = {}) {
   };
 }
 
-test("renders comprehensive spec and plan component catalogs", () => {
+test("class inventory matches exact tokens and reports compact missing tokens", () => {
+  assert.throws(
+    () => assertClassTokenInventory([
+      {
+        label: "spec",
+        html: '<section class="scope-in-extra rich-block"></section>',
+        expected: ["scope-in", "scope-out", "rich-block"],
+      },
+      {
+        label: "plan",
+        html: '<section class="plan-slice"></section>',
+        expected: ["plan-slice", "plan-step"],
+      },
+    ]),
+    (error) => {
+      assert.equal(
+        error.message,
+        "Missing semantic class tokens: spec=[scope-in, scope-out]; plan=[plan-step]",
+      );
+      assert.doesNotMatch(error.message, /<section/);
+      return true;
+    },
+  );
+});
+
+test("keeps component catalog fixture mirrors byte-identical", () => {
+  assertByteIdentical(COMPONENT_CATALOG_SPEC, COMPONENT_CATALOG_SPEC_MIRROR);
+  assertByteIdentical(COMPONENT_CATALOG_PLAN, COMPONENT_CATALOG_PLAN_MIRROR);
+});
+
+test("renders comprehensive spec and plan component catalogs", (t) => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-component-catalog-"));
   const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
 
   fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
   fs.mkdirSync(path.join(docsRoot, "content", "plans"), { recursive: true });
@@ -122,23 +316,17 @@ test("renders comprehensive spec and plan component catalogs", () => {
     "utf8",
   );
 
-  assertClassTokens(specHtml, [
-    "document-summary",
-    "scope-in",
-    "scope-out",
-    "requirements",
-    "approaches",
-    "components",
-    "validation",
-    "supporting-section",
-  ]);
-  assertClassTokens(planHtml, [
-    "worker-instructions",
-    "scope-check",
-    "file-structure",
-    "plan-slice",
-    "plan-step",
-    "execution-handoff",
+  assertClassTokenInventory([
+    {
+      label: "spec",
+      html: specHtml,
+      expected: SPEC_COMPONENT_CLASS_TOKENS,
+    },
+    {
+      label: "plan",
+      html: planHtml,
+      expected: PLAN_COMPONENT_CLASS_TOKENS,
+    },
   ]);
 });
 
