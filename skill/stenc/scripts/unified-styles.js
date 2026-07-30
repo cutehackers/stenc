@@ -11,18 +11,24 @@ function buildUnifiedStyles() {
   --color-subtle: #6b7684;
   --color-line: #d8dee6;
   --color-line-strong: #b8c2cf;
+  --color-control-border: #7b8794;
   --color-info: #1769c2;
   --color-info-tint: #eef6ff;
+  --color-info-line: #bfd9f5;
   --color-success: #087f5b;
   --color-success-tint: #edf9f4;
+  --color-success-line: #a8dccb;
   --color-warning: #9a5b00;
   --color-warning-tint: #fff7e8;
+  --color-warning-line: #e9c783;
   --color-danger: #c5293d;
   --color-danger-tint: #fff1f3;
   --color-relation: #6c58e6;
   --color-relation-tint: #f4f1ff;
+  --color-relation-line: #d3caf8;
   --color-diagram-consumer: var(--color-info);
   --color-diagram-surface: #2878d0;
+  --color-diagram-surface-tint: #edf5ff;
   --color-diagram-session: var(--color-relation);
   --color-diagram-engine: var(--color-warning);
   --color-diagram-boundary: var(--color-danger);
@@ -53,22 +59,6 @@ function buildUnifiedStyles() {
   --content-measure: 76ch;
   --content-width: 1120px;
   --sidebar-width: 260px;
-  --bg: var(--color-page);
-  --paper: var(--color-surface);
-  --paper-soft: var(--color-surface-soft);
-  --panel: var(--color-surface);
-  --ink: var(--color-text);
-  --muted: var(--color-muted);
-  --line: var(--color-line);
-  --line-strong: var(--color-line-strong);
-  --soft: var(--color-surface-soft);
-  --accent: var(--color-info);
-  --accent-2: var(--color-relation);
-  --amber: var(--color-warning);
-  --danger: var(--color-danger);
-  --radius: var(--radius-component);
-  --shadow-sm: var(--shadow-component);
-  --shadow-md: var(--shadow-raised);
 }
 
 * {
@@ -312,14 +302,10 @@ main {
   padding: var(--space-1) var(--space-2);
 }
 
-.badge {
-  font-size: var(--font-metadata);
-}
-
 .status-approved,
 .status-canonical,
 .pill.ok {
-  border-color: #a8dccb;
+  border-color: var(--color-success-line);
   background: var(--color-success-tint);
   color: var(--color-success);
 }
@@ -327,7 +313,7 @@ main {
 .status-draft,
 .status-proposed,
 .pill.warn {
-  border-color: #e9c783;
+  border-color: var(--color-warning-line);
   background: var(--color-warning-tint);
   color: var(--color-warning);
 }
@@ -399,8 +385,21 @@ main {
   text-decoration: none;
 }
 
-.panel:hover {
-  border-color: var(--color-line-strong);
+a.panel,
+button.panel {
+  border-color: var(--color-control-border);
+}
+
+a.panel h3 {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+a.panel:hover,
+button.panel:hover {
+  border-color: var(--color-info);
+  box-shadow: var(--shadow-raised);
 }
 
 .operator-console .document-header {
@@ -437,7 +436,7 @@ main {
 
 .agent-summary,
 .agent-banner {
-  border-color: #bfd9f5;
+  border-color: var(--color-info-line);
   background: var(--color-info-tint);
 }
 
@@ -521,7 +520,6 @@ table {
 
 .table {
   display: block;
-  font-size: var(--font-table);
   max-width: 100%;
   overflow-x: auto;
 }
@@ -813,7 +811,7 @@ caption {
 
 .diagram-role-surface {
   --diagram-color: var(--color-diagram-surface);
-  --diagram-tint: #edf5ff;
+  --diagram-tint: var(--color-diagram-surface-tint);
 }
 
 .diagram-role-session {
@@ -857,7 +855,7 @@ caption {
 
 .sort-btn,
 .button {
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-text);
@@ -938,25 +936,25 @@ caption {
 }
 
 .timeline-badge.spec {
-  border-color: #bfd9f5;
+  border-color: var(--color-info-line);
   background: var(--color-info-tint);
   color: var(--color-info);
 }
 
 .timeline-badge.plan {
-  border-color: #d3caf8;
+  border-color: var(--color-relation-line);
   background: var(--color-relation-tint);
   color: var(--color-relation);
 }
 
 .timeline-badge.decision {
-  border-color: #e9c783;
+  border-color: var(--color-warning-line);
   background: var(--color-warning-tint);
   color: var(--color-warning);
 }
 
 .timeline-badge.agent-context {
-  border-color: #a8dccb;
+  border-color: var(--color-success-line);
   background: var(--color-success-tint);
   color: var(--color-success);
 }

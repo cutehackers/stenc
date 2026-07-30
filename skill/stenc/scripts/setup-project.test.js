@@ -198,6 +198,25 @@ function assertByteIdentical(sourcePath, mirrorPath) {
   );
 }
 
+function snapshotFiles(rootPath) {
+  const snapshot = {};
+
+  function visit(currentPath) {
+    for (const entry of fs.readdirSync(currentPath, { withFileTypes: true })) {
+      const entryPath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+      } else if (entry.isFile()) {
+        snapshot[path.relative(rootPath, entryPath)] =
+          fs.readFileSync(entryPath).toString("base64");
+      }
+    }
+  }
+
+  visit(rootPath);
+  return snapshot;
+}
+
 function cssDeclarations(css, selector) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   const match = css.match(new RegExp(`(?:^|\\n)${escapedSelector}\\s*\\{([^}]*)\\}`, "u"));
@@ -263,6 +282,84 @@ test("semantic small-text color pairs meet WCAG AA contrast", () => {
   }
 });
 
+test("interactive control boundaries meet non-text contrast", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const controlPairs = [
+    ["control on page", "--color-control-border", "--color-page"],
+    ["control on surface", "--color-control-border", "--color-surface"],
+    ["control on soft surface", "--color-control-border", "--color-surface-soft"],
+    ["filled info control on surface", "--color-info", "--color-surface"],
+  ];
+
+  for (const [name, boundaryToken, backgroundToken] of controlPairs) {
+    const boundary = root[boundaryToken];
+    const background = root[backgroundToken];
+    assert.equal(typeof boundary, "string", `Missing ${boundaryToken}`);
+    assert.equal(typeof background, "string", `Missing ${backgroundToken}`);
+    const ratio = contrastRatio(boundary, background);
+    assert.ok(
+      ratio >= 3,
+      `${name} contrast is ${ratio.toFixed(3)}:1 for ${boundary} on ${background}`,
+    );
+  }
+});
+
+test("interactive cards have scoped hover and a non-color anchor affordance", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.deepEqual(cssDeclarations(css, "a.panel,\nbutton.panel"), {
+    "border-color": "var(--color-control-border)",
+  });
+  assert.deepEqual(cssDeclarations(css, "a.panel h3"), {
+    "text-decoration": "underline",
+    "text-decoration-thickness": "1px",
+    "text-underline-offset": "4px",
+  });
+  assert.deepEqual(cssDeclarations(css, "a.panel:hover,\nbutton.panel:hover"), {
+    "border-color": "var(--color-info)",
+    "box-shadow": "var(--shadow-raised)",
+  });
+  assert.doesNotMatch(
+    css,
+    /(?:^|\n)\.panel:hover\s*\{/u,
+    "static panels must not expose an interactive hover cue",
+  );
+  assert.equal(
+    cssDeclarations(css, ".sort-btn,\n.button").border,
+    "1px solid var(--color-control-border)",
+  );
+});
+
+test("canonical styles do not expose unused legacy aliases", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const legacyAliases = [
+    "--bg",
+    "--paper",
+    "--paper-soft",
+    "--panel",
+    "--ink",
+    "--muted",
+    "--line",
+    "--line-strong",
+    "--soft",
+    "--accent",
+    "--accent-2",
+    "--amber",
+    "--danger",
+    "--radius",
+    "--shadow-sm",
+    "--shadow-md",
+  ];
+
+  assert.deepEqual(
+    legacyAliases.filter((token) => Object.hasOwn(root, token)),
+    [],
+  );
+});
+
 test("unified B style tokens", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unified-styles-"));
   const result = spawnSync(
@@ -286,6 +383,7 @@ test("unified B style tokens", () => {
         "--color-muted",
         "--color-subtle",
         "--color-line",
+        "--color-control-border",
         "--color-info",
         "--color-success",
         "--color-warning",
@@ -300,6 +398,7 @@ test("unified B style tokens", () => {
       "--color-muted": "#4e5968",
       "--color-subtle": "#6b7684",
       "--color-line": "#d8dee6",
+      "--color-control-border": "#7b8794",
       "--color-info": "#1769c2",
       "--color-success": "#087f5b",
       "--color-warning": "#9a5b00",
@@ -383,9 +482,18 @@ test("unified B style tokens", () => {
     "font-size": "var(--font-body)",
     "line-height": "var(--line-body)",
   });
-  assert.equal(cssDeclarations(css, ".table")["font-size"], "var(--font-table)");
+  assert.equal(
+    cssDeclarations(css, ".table,\ntable")["font-size"],
+    "var(--font-table)",
+  );
   assert.equal(cssDeclarations(css, ".nav-link")["font-size"], "var(--font-nav)");
-  assert.equal(cssDeclarations(css, ".badge")["font-size"], "var(--font-metadata)");
+  assert.equal(
+    cssDeclarations(
+      css,
+      ".badge,\n.pill,\n.version-pill,\n.timeline-badge,\n.method,\n.diagram-role-label",
+    )["font-size"],
+    "var(--font-metadata)",
+  );
   assert.deepEqual(cssDeclarations(css, ":focus-visible"), {
     outline: "3px solid var(--color-info)",
     "outline-offset": "3px",
@@ -419,9 +527,17 @@ test("canonical unified styles stay byte-identical across generated and sample C
   const sample = fs.readFileSync(
     path.join(REPO_ROOT, "samples", "stenc-doc-styles", "styles.css"),
   );
+  const committedExample = fs.readFileSync(
+    path.join(REPO_ROOT, "examples-app", "styles.css"),
+  );
 
   assert.equal(Buffer.compare(generated, canonical), 0, "generated CSS differs");
   assert.equal(Buffer.compare(sample, canonical), 0, "sample CSS differs");
+  assert.equal(
+    Buffer.compare(committedExample, canonical),
+    0,
+    "committed examples-app CSS differs",
+  );
 
   const setupSource = fs.readFileSync(SCRIPT_PATH, "utf8");
   assert.equal(
@@ -434,6 +550,55 @@ test("canonical unified styles stay byte-identical across generated and sample C
     /`?:root\s*\{/u,
     "setup-project must not retain a second inline stylesheet",
   );
+});
+
+test("examples setup is byte-idempotent across repeated runs", () => {
+  const temporaryRepo = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-examples-sync-"));
+  fs.cpSync(path.join(REPO_ROOT, "skill"), path.join(temporaryRepo, "skill"), {
+    recursive: true,
+  });
+  fs.cpSync(path.join(REPO_ROOT, "examples"), path.join(temporaryRepo, "examples"), {
+    recursive: true,
+  });
+  fs.cpSync(
+    path.join(REPO_ROOT, "samples"),
+    path.join(temporaryRepo, "samples"),
+    { recursive: true },
+  );
+  fs.mkdirSync(path.join(temporaryRepo, "scripts"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "scripts", "setup-examples-app.sh"),
+    path.join(temporaryRepo, "scripts", "setup-examples-app.sh"),
+  );
+
+  const setupScript = path.join(temporaryRepo, "scripts", "setup-examples-app.sh");
+  let result = spawnSync("bash", [setupScript], {
+    cwd: temporaryRepo,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const firstSnapshot = {
+    examplesApp: snapshotFiles(path.join(temporaryRepo, "examples-app")),
+    sampleStyles: fs.readFileSync(
+      path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
+      "base64",
+    ),
+  };
+
+  result = spawnSync("bash", [setupScript], {
+    cwd: temporaryRepo,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const secondSnapshot = {
+    examplesApp: snapshotFiles(path.join(temporaryRepo, "examples-app")),
+    sampleStyles: fs.readFileSync(
+      path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
+      "base64",
+    ),
+  };
+
+  assert.deepEqual(secondSnapshot, firstSnapshot);
 });
 
 function assertAppearsInOrder(text, values, label) {
