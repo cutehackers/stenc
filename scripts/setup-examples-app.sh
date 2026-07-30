@@ -35,5 +35,7 @@ node -e \
   "${REPO_ROOT}/skill/stenc/scripts/unified-styles.js" \
   "${REPO_ROOT}/samples/stenc-doc-styles/styles.css"
 
+node "${REPO_ROOT}/skill/stenc/scripts/render-style-samples.js"
+
 echo "Prepared Stenc examples app at ${APP_DIR}"
 echo "Run: cd ${REPO_ROOT} && ./scripts/open-docs.sh --docs-dir examples-app"

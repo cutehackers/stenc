@@ -417,14 +417,18 @@ function readCollection(docsDir, collection) {
 
 function renderLayout(site, title, body, options = {}) {
   const pageTitle = title ? `${title} · ${site.title}` : site.title;
-  const nav = COLLECTIONS.map(
-    (collection) => {
-      const ariaCurrent = options.collectionDir === collection.dir
+  const navigationItems = toList(options.navigation).length > 0
+    ? options.navigation
+    : COLLECTIONS.map((collection) => ({
+      href: `/${collection.dir}/`,
+      label: collection.label,
+      ariaCurrent: options.collectionDir === collection.dir
         ? options.collectionAriaCurrent
-        : null;
-      return `<a class="nav-link" href="/${collection.dir}/"${ariaCurrent ? ` aria-current="${ariaCurrent}"` : ""}>${collection.label}</a>`;
-    },
-  ).join("");
+        : null,
+    }));
+  const nav = navigationItems
+    .map((item) => `<a class="nav-link" href="${escapeHtml(item.href)}"${item.ariaCurrent ? ` aria-current="${escapeHtml(item.ariaCurrent)}"` : ""}>${escapeHtml(item.label)}</a>`)
+    .join("");
   const documentNavigation = toList(options.sections).length > 0
     ? `<nav class="document-navigation" aria-label="On this page">
           <p class="eyebrow">On this page</p>
@@ -439,13 +443,13 @@ function renderLayout(site, title, body, options = {}) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(pageTitle)}</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="${escapeHtml(options.stylesheetHref || "/styles.css")}" />
   </head>
   <body>
     <div class="shell">
       <aside class="sidebar">
-        <a class="brand" href="/">${escapeHtml(site.title)}</a>
-        <nav class="collection-navigation" aria-label="Document collections">${nav}</nav>
+        <a class="brand" href="${escapeHtml(options.brandHref || "/")}">${escapeHtml(options.brandLabel || site.title)}</a>
+        <nav class="collection-navigation" aria-label="${escapeHtml(options.navigationLabel || "Document collections")}">${nav}</nav>
 ${documentNavigation ? `        ${documentNavigation}\n` : ""}      </aside>
       <main id="main-content">${body}</main>
     </div>
@@ -504,8 +508,8 @@ function renderRichTable(block) {
   );
 }
 
-function mediaGeneratedSrc(src) {
-  return `../../${escapeHtml(src)}`;
+function mediaGeneratedSrc(src, context = {}) {
+  return `${context.mediaSrcPrefix || "../../"}${escapeHtml(src)}`;
 }
 
 function mediaSourceExists(block, context) {
@@ -517,7 +521,7 @@ function renderMediaBlock(block, context) {
   if (!mediaSourceExists(block, context)) {
     return `<figure class="rich-block rich-media missing-media"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
   }
-  return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+  return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src, context)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
 }
 
 function renderTaskListBlock(block) {
@@ -962,9 +966,16 @@ function main() {
   console.log(`Run: cd ${options.projectRoot} && ./open-docs.sh`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exit(1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 }
+
+module.exports = {
+  renderDocument,
+  renderLayout,
+};

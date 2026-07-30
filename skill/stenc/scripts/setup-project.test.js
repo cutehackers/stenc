@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
+const STYLE_SAMPLE_SCRIPT_PATH = path.join(__dirname, "render-style-samples.js");
 const COMPONENT_CATALOG_SPEC = path.join(
   REPO_ROOT,
   "examples-app",
@@ -802,6 +803,42 @@ test("sample pages use truthful titles and a deterministic style navigation cont
   }
 });
 
+test("checked-in style specimens are exact deterministic renderer output", () => {
+  const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-style-samples-"));
+  const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
+  const fileNames = [
+    "task-first.html",
+    "operator-console.html",
+    "evidence-led.html",
+  ];
+
+  let result = spawnSync(
+    process.execPath,
+    [STYLE_SAMPLE_SCRIPT_PATH, "--output-dir", outputRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const firstSnapshot = snapshotSelectedFiles(outputRoot, fileNames);
+  for (const fileName of fileNames) {
+    assertByteIdentical(
+      path.join(outputRoot, fileName),
+      path.join(sampleRoot, fileName),
+    );
+  }
+
+  result = spawnSync(
+    process.execPath,
+    [STYLE_SAMPLE_SCRIPT_PATH, "--output-dir", outputRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assertSnapshotParity(
+    snapshotSelectedFiles(outputRoot, fileNames),
+    firstSnapshot,
+    "style sample second render",
+  );
+});
+
 test("examples setup is byte-idempotent across repeated runs", () => {
   const temporaryRepo = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-examples-sync-"));
   fs.cpSync(path.join(REPO_ROOT, "skill"), path.join(temporaryRepo, "skill"), {
@@ -822,6 +859,10 @@ test("examples setup is byte-idempotent across repeated runs", () => {
   );
 
   const setupScript = path.join(temporaryRepo, "scripts", "setup-examples-app.sh");
+  fs.appendFileSync(
+    path.join(temporaryRepo, "samples", "stenc-doc-styles", "task-first.html"),
+    "\n<!-- deliberate sample drift -->\n",
+  );
   const trackedResult = spawnSync(
     "git",
     ["ls-files", "-z", "--", "examples-app"],
@@ -846,6 +887,16 @@ test("examples setup is byte-idempotent across repeated runs", () => {
     path.join(REPO_ROOT, "examples-app"),
     trackedPaths,
   );
+  const samplePaths = [
+    "styles.css",
+    "task-first.html",
+    "operator-console.html",
+    "evidence-led.html",
+  ];
+  const committedSampleSnapshot = snapshotSelectedFiles(
+    path.join(REPO_ROOT, "samples", "stenc-doc-styles"),
+    samplePaths,
+  );
   const firstTrackedSnapshot = snapshotSelectedFiles(
     path.join(temporaryRepo, "examples-app"),
     trackedPaths,
@@ -868,12 +919,18 @@ test("examples setup is byte-idempotent across repeated runs", () => {
     firstTrackedSnapshot,
     "committed examples-app drift",
   );
+  const firstSampleSnapshot = snapshotSelectedFiles(
+    path.join(temporaryRepo, "samples", "stenc-doc-styles"),
+    samplePaths,
+  );
+  assertSnapshotParity(
+    committedSampleSnapshot,
+    firstSampleSnapshot,
+    "committed style sample drift",
+  );
   const firstSnapshot = {
     examplesApp: firstTrackedSnapshot,
-    sampleStyles: fs.readFileSync(
-      path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
-      "base64",
-    ),
+    samples: firstSampleSnapshot,
   };
 
   result = spawnSync("bash", [setupScript], {
@@ -886,9 +943,9 @@ test("examples setup is byte-idempotent across repeated runs", () => {
       path.join(temporaryRepo, "examples-app"),
       trackedPaths,
     ),
-    sampleStyles: fs.readFileSync(
-      path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
-      "base64",
+    samples: snapshotSelectedFiles(
+      path.join(temporaryRepo, "samples", "stenc-doc-styles"),
+      samplePaths,
     ),
   };
 
