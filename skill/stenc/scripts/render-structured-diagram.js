@@ -6,7 +6,7 @@ function roleClass(role, escapeHtml) {
 
 function renderFigureHeading(block, kindLabel, escapeHtml, ids) {
   return `<figcaption id="${ids.caption}"><span class="badge">${kindLabel}</span> <strong>${escapeHtml(block.title)}</strong></figcaption>
-<p id="${ids.summary}" class="diagram-summary">${escapeHtml(block.summary)}</p>`;
+<p id="${ids.summary}" class="diagram-summary" hidden>${escapeHtml(block.summary)}</p>`;
 }
 
 function renderLayerNode(node, escapeHtml) {

@@ -527,6 +527,7 @@ test("selector palettes use semantic tokens", () => {
     "max-width": "100%",
     "overflow-x": "auto",
     padding: "var(--space-3) var(--space-4)",
+    width: "100%",
   });
   assert.equal(cssDeclarations(css, "mark").background, "var(--color-highlight)");
   assert.equal(
@@ -664,7 +665,6 @@ test("unified B style tokens", () => {
       'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     "font-size": "var(--font-body)",
     "line-height": "var(--line-body)",
-    "overflow-x": "clip",
   });
   assert.equal(
     cssDeclarations(css, ".table,\ntable")["font-size"],
@@ -1159,7 +1159,7 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
     /aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"/u,
   );
   assert.match(diagram, /<figcaption id="diagram-1-caption">/u);
-  assert.match(diagram, /<p id="diagram-1-summary" class="diagram-summary">/u);
+  assert.match(diagram, /<p id="diagram-1-summary" class="diagram-summary" hidden>/u);
   assert.match(
     diagram,
     /<details id="diagram-1-fallback" class="diagram-fallback diagram-relation-fallback">/u,
@@ -1240,7 +1240,18 @@ test("accessible responsive styles expose keyboard, contrast, and source-order h
     css,
     /h1,[\s\S]*h6,[\s\S]*section\[id\]\s*\{[\s\S]*scroll-margin-top:/u,
   );
-  assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*clip;/u);
+  assert.equal(
+    cssDeclarations(css, "body")["overflow-x"],
+    undefined,
+    "page overflow must be prevented structurally instead of clipped",
+  );
+  assert.deepEqual(
+    cssDeclarations(
+      css,
+      ".document,\n.document > *,\n.document section,\n.document article,\n.document div,\n.document figure,\n.document ul,\n.document ol,\n.document li",
+    ),
+    { "min-width": "0" },
+  );
   assert.match(
     css,
     /\.table-scroll-region\s*\{[\s\S]*max-width:\s*100%;[\s\S]*overflow-x:\s*auto;/u,

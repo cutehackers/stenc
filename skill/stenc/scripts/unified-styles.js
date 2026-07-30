@@ -82,7 +82,6 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: var(--font-body);
   line-height: var(--line-body);
-  overflow-x: clip;
 }
 
 .skip-link {
@@ -211,6 +210,7 @@ pre,
   max-width: 100%;
   overflow-x: auto;
   padding: var(--space-3) var(--space-4);
+  width: 100%;
 }
 
 pre code {
@@ -288,6 +288,18 @@ main {
   min-width: 0;
   padding: var(--space-7) var(--space-6) 64px;
   width: min(var(--content-width), 100%);
+}
+
+.document,
+.document > *,
+.document section,
+.document article,
+.document div,
+.document figure,
+.document ul,
+.document ol,
+.document li {
+  min-width: 0;
 }
 
 .document-header,
