@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Stenc unified readability layer diagram</title>
+  <desc id="desc">A four-layer architecture diagram showing document source, validator, fixed renderer, and generated page.</desc>
+  <rect width="1200" height="720" fill="#f2f4f6"/>
+  <style>
+    .label{font:700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#191f28}
+    .detail{font:400 17px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#4e5968}
+    .rail{font:800 17px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#191f28}
+    .arrow{font:800 26px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#6b7684}
+  </style>
+  <rect x="56" y="44" width="1088" height="632" rx="22" fill="#fff" stroke="#d8dee6" stroke-width="2"/>
+  <rect x="56" y="44" width="210" height="144" rx="22" fill="#eaf4ff"/>
+  <rect x="56" y="188" width="210" height="144" fill="#f7f5ff"/>
+  <rect x="56" y="332" width="210" height="144" fill="#fff9ed"/>
+  <rect x="56" y="476" width="210" height="200" rx="0 0 22 22" fill="#fff5f6"/>
+  <rect x="56" y="44" width="7" height="144" rx="3" fill="#3182f6"/>
+  <rect x="56" y="188" width="7" height="144" fill="#7b61ff"/>
+  <rect x="56" y="332" width="7" height="144" fill="#f59f00"/>
+  <rect x="56" y="476" width="7" height="200" rx="3" fill="#f04452"/>
+  <text x="88" y="102" class="rail">Document source</text>
+  <text x="88" y="130" class="detail">Structured JSON</text>
+  <text x="88" y="246" class="rail">Validation</text>
+  <text x="88" y="274" class="detail">Known contracts</text>
+  <text x="88" y="390" class="rail">Renderer</text>
+  <text x="88" y="418" class="detail">Fixed B language</text>
+  <text x="88" y="548" class="rail">Generated page</text>
+  <text x="88" y="576" class="detail">Readable output</text>
+  <g>
+    <rect x="310" y="76" width="350" height="82" rx="14" fill="#fff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="338" y="112" class="label">Spec · Plan contracts</text>
+    <text x="338" y="140" class="detail">Meaning remains agent-readable</text>
+    <text x="694" y="127" class="arrow">↓</text>
+    <rect x="740" y="76" width="350" height="82" rx="14" fill="#fff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="768" y="112" class="label">Rich primitives</text>
+    <text x="768" y="140" class="detail">Bounded and deterministic</text>
+  </g>
+  <g>
+    <rect x="310" y="220" width="780" height="82" rx="14" fill="#fff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="338" y="256" class="label">Schema · link · media · diagram validation</text>
+    <text x="338" y="284" class="detail">Reject unknown fields, unsafe targets, and incomplete relations</text>
+  </g>
+  <g>
+    <rect x="310" y="364" width="238" height="82" rx="14" fill="#fff" stroke="#3182f6" stroke-width="3"/>
+    <text x="338" y="400" class="label">Typography</text>
+    <text x="338" y="428" class="detail">17–18px body</text>
+    <rect x="570" y="364" width="238" height="82" rx="14" fill="#fff" stroke="#7b61ff" stroke-width="3"/>
+    <text x="598" y="400" class="label">Components</text>
+    <text x="598" y="428" class="detail">Shared hierarchy</text>
+    <rect x="830" y="364" width="260" height="82" rx="14" fill="#fff" stroke="#f59f00" stroke-width="3"/>
+    <text x="858" y="400" class="label">Diagrams</text>
+    <text x="858" y="428" class="detail">Semantic relations</text>
+  </g>
+  <g>
+    <rect x="310" y="514" width="780" height="112" rx="14" fill="#fff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="338" y="556" class="label">One visual language across task-first, operator-console, evidence-led</text>
+    <text x="338" y="588" class="detail">Template identity comes from information emphasis, not unrelated styling.</text>
+  </g>
+</svg>

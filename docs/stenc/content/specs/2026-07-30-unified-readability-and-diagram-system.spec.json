@@ -1,0 +1,1091 @@
+{
+  "schemaVersion": 2,
+  "docType": "spec",
+  "id": "spec:2026-07-30-unified-readability-and-diagram-system",
+  "slug": "2026-07-30-unified-readability-and-diagram-system",
+  "status": "proposed",
+  "title": "Stenc 통합 가독성 및 구조화 Diagram 시스템",
+  "description": "Spec과 plan의 모든 고정 컴포넌트를 B안의 단일 시각 언어로 통합하고 구조화 diagram을 추가하는 제품 계약.",
+  "owner": "stenc",
+  "createdAt": "2026-07-30",
+  "updatedAt": "2026-07-30",
+  "links": {
+    "sourceOfTruth": [
+      "skill/stenc/SKILL.md",
+      "skill/stenc/references/fixed-page-style.md",
+      "skill/stenc/references/json-field-contract.md",
+      "skill/stenc/scripts/setup-project.js"
+    ],
+    "relatedPlans": [],
+    "relatedDecisions": [
+      "docs/DECISIONS.md"
+    ]
+  },
+  "page": {
+    "humanSummary": "Stenc 문서는 17–18px 본문, 명확한 계층, 넉넉한 여백, 제한된 역할색을 공유하며 spec과 plan의 모든 정보를 빠르게 스캔할 수 있어야 한다.",
+    "agentSummary": "스타일 구현 시 JSON 의미 계약과 세 템플릿의 정보 강조점은 유지하되 공통 토큰, 컴포넌트, 접근성, 구조화 diagram renderer를 함께 갱신하고 전체 검증을 실행한다.",
+    "styleTemplate": "task-first"
+  },
+  "body": {
+    "goal": "task-first, operator-console, evidence-led를 B안의 통합 가독성 시스템으로 묶고, spec과 plan에서 발생 가능한 모든 고정 컴포넌트와 sgp-981-app형 아키텍처 diagram을 일관되고 접근 가능한 방식으로 표현한다.",
+    "problem": "현재 생성 renderer는 본문 기본 크기가 브라우저 기본값에 머물고 h2, h3, 표, badge, timeline 보조 문구가 작다. 샘플 스타일과 실제 renderer도 서로 다르다. 세 스타일 템플릿은 색과 헤더 처리만 부분적으로 달라 공통 제품 언어가 약하며, diagram block은 source text만 표시해 계층, 소유권, 관계를 시각적으로 전달하지 못한다.",
+    "scope": {
+      "in": [
+        "Spec과 plan 상세 페이지, collection index, timeline, sidebar/navigation의 통합 시각 언어",
+        "Typography, spacing, color, radius, elevation, focus, responsive token",
+        "Header, metadata, summary, scope, requirement, approach, component, flow, error, contract, surface, slice, step, table, code, validation, handoff, supporting section 표현",
+        "Paragraph span, callout, quote, table, media, task list, source diagram을 포함한 기존 rich block 전체",
+        "Layer stack, directed flow, relation spine을 위한 validator-known 구조화 diagram primitive",
+        "키보드 탐색, 색상 비의존, 확대, reduced motion, mobile reflow",
+        "Renderer, validator, template, reference, example, generated fixture, regression test 동시 갱신"
+      ],
+      "out": [
+        "문서별 custom HTML, CSS, JavaScript 또는 renderer hook",
+        "Markdown, MDX, raw HTML을 source of truth로 재도입",
+        "Mermaid 또는 DOT의 CDN·client runtime 실행",
+        "사용자 선택형 theme builder와 문서별 색상·layout 설정",
+        "실시간 공동 편집, 댓글, 검색 엔진, 인증 기능",
+        "Toss UI Kit의 코드나 자산을 직접 복제"
+      ]
+    },
+    "architecture": {
+      "summary": "구조화 JSON이 의미를 소유하고 validator가 알려진 계약만 허용하며 fixed renderer가 B안의 공통 시각 언어로 HTML/CSS를 생성한다. 세 styleTemplate은 별도 디자인 시스템이 아니라 동일한 token과 primitive 위에서 정보 강조 순서만 달리한다. 구조화 diagram은 의미 중심 JSON을 입력받아 고정 renderer와 텍스트 fallback으로 표현한다.",
+      "flow": [
+        "Author copies a schemaVersion 2 template",
+        "Document JSON expresses native spec or plan meaning",
+        "Validator checks core fields, rich blocks, and structured diagram relations",
+        "Setup project derives collection, detail, timeline, asset, and navigation pages",
+        "Fixed renderer applies unified B tokens and semantic components",
+        "Rendered-page checks verify routes, assets, accessibility hooks, and diagram fallbacks"
+      ]
+    },
+    "requirements": [
+      {
+        "id": "VIS-01",
+        "title": "단일 시각 언어",
+        "detail": "task-first, operator-console, evidence-led는 동일한 typography, spacing, color, radius, elevation, focus, table, code, card token을 사용해야 한다. 스타일 차이는 문서 의미에 따른 강조 순서와 제한된 accent 적용으로만 표현한다.",
+        "acceptanceCriteria": [
+          "세 템플릿의 같은 semantic component가 같은 글자 크기, 간격, radius, border 규칙을 사용한다.",
+          "operator-console은 전체 dark header를 별도 제품처럼 사용하지 않고 status와 실행 우선순위를 공통 언어 안에서 강조한다.",
+          "evidence-led는 모든 panel에 accent border를 반복하지 않고 evidence와 proof surface에만 역할색을 사용한다.",
+          "스타일 선택이 document source의 의미나 component 구조를 바꾸지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-02",
+        "title": "읽기 중심 typography scale",
+        "detail": "긴 기술 문서를 반복해서 읽는 사용자를 기준으로 본문을 17px 이상으로 설정하고 제목, 보조 문구, 표, badge, code의 최소 크기와 행간을 명시한다.",
+        "acceptanceCriteria": [
+          "일반 본문은 desktop 17px 또는 18px, line-height 1.6을 사용한다.",
+          "리드 문장은 18px 이상, h1은 clamp 기반 34–48px, h2는 24px 이상, h3는 17px 이상을 사용한다.",
+          "표 본문과 step 본문은 15px 이상, sidebar navigation은 15px 이상, badge와 eyebrow는 13px 이상을 사용한다.",
+          "장식 목적의 텍스트를 제외한 필수 정보는 13px 미만으로 렌더링하지 않는다.",
+          "200% browser zoom에서 내용 손실, 겹침, 필수 horizontal page scroll이 발생하지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-03",
+        "title": "첫 화면 정보 위계",
+        "detail": "문서 종류, 제목, 설명, 상태, owner, update date, human summary, agent summary를 첫 viewport에서 식별할 수 있어야 한다.",
+        "acceptanceCriteria": [
+          "제목과 설명은 metadata보다 먼저 읽히고 line length는 읽기 가능한 폭으로 제한한다.",
+          "status, owner, updatedAt, schema 또는 template metadata는 일관된 pill 또는 fact row로 표현한다.",
+          "human summary와 agent summary는 동일한 크기의 두 panel로 배치하되 agent summary에만 제한된 info tint를 허용한다.",
+          "mobile에서는 summary panel이 자연스러운 읽기 순서로 한 열에 쌓인다."
+        ]
+      },
+      {
+        "id": "VIS-04",
+        "title": "Spec component 전체 표현",
+        "detail": "Spec의 모든 native body field는 supporting prose로 축소하지 않고 고정 first-class component로 표현해야 한다.",
+        "acceptanceCriteria": [
+          "goal과 problem은 명확한 label과 본문 계층을 가진다.",
+          "scope.in과 scope.out은 wide screen에서 나란히, narrow screen에서 순서대로 쌓인다.",
+          "requirements는 ID, title, detail, acceptance criteria를 한 단위로 보여준다.",
+          "approaches는 name, tradeoffs, recommendation을 비교 가능한 구조로 보여준다.",
+          "components, errorHandling, contracts, surfaces, testingStrategy, validation, selfReviewChecks는 의미에 맞는 card 또는 table을 사용한다.",
+          "dataFlow와 architecture.flow는 순서가 보존되고 텍스트 fallback이 제공된다.",
+          "reviewChecklist, agentInstructions, implementationHandoff, supportingSections, openQuestions가 누락되지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-05",
+        "title": "Plan component 전체 표현",
+        "detail": "Plan의 workerInstructions, scopeCheck, fileStructure, slices, files, structured steps, code, command, expected result, risks, validation, review, execution handoff를 실행자가 놓치지 않게 표현해야 한다.",
+        "acceptanceCriteria": [
+          "workerInstructions와 trackingSyntax는 plan 상단의 명시적 작업 규칙 panel로 표시한다.",
+          "scopeCheck의 assessment와 decomposition은 plan 실행 전에 보인다.",
+          "fileStructure는 action, path, responsibility를 한 행에서 비교한다.",
+          "각 slice는 id, title, status, surfaces, files, steps, doneWhen을 하나의 bounded section으로 표현한다.",
+          "각 step의 instruction, codeBlocks, command, expected, commit 또는 handoff 의미가 서로 섞이지 않는다.",
+          "risk와 mitigation, validation과 purpose, selfReviewChecks, executionHandoff가 별도 operational section으로 유지된다.",
+          "collection timeline과 detail page의 status 표현이 같은 token을 사용한다."
+        ]
+      },
+      {
+        "id": "VIS-06",
+        "title": "Rich supporting block 전체 표현",
+        "detail": "기존 paragraph span, callout tone, quote, table, media, taskList, source diagram block을 B안의 공통 component로 렌더링한다.",
+        "acceptanceCriteria": [
+          "text, strong, emphasis, code, kbd, mark, link span이 의미와 focus state를 유지한다.",
+          "neutral, info, success, warning, danger callout은 색상 외에도 title, icon 또는 label, border 차이로 구분한다.",
+          "quote는 본문과 source를 구분하고 media는 alt, caption, missing state를 표시한다.",
+          "table은 header가 명확하고 좁은 화면에서 container 내부 scroll 또는 card fallback을 사용한다.",
+          "taskList는 read-only임이 명확하고 checked 상태가 symbol과 text로 전달된다.",
+          "기존 diagram block은 escaped source panel로 계속 지원해 하위 호환성을 유지한다."
+        ]
+      },
+      {
+        "id": "VIS-07",
+        "title": "구조화 architecture diagram",
+        "detail": "sgp-981-app의 layer stack, ownership spine, dependency flow 사례를 Stenc가 소유하는 bounded semantic primitive로 일반화한다.",
+        "acceptanceCriteria": [
+          "새 block type은 layerDiagram, flowDiagram, relationDiagram으로 제한하고 layout, variant, component 같은 임의 visual-control field를 허용하지 않는다.",
+          "세 block은 공통으로 type, title, summary를 필수로 사용하며 unknown field를 거부한다.",
+          "layerDiagram은 layers를 1개 이상 요구한다. 각 layer는 id, label, role, summary, 1개 이상의 nodes를 가지며 마지막 layer를 제외한 layer만 다음 layer를 설명하는 non-empty transition 문자열을 선택적으로 가진다.",
+          "layerDiagram node는 id, label, detail을 필수로 가지며 layer id와 node id는 각각 block 전체에서 유일하고 source array order를 rendering과 fallback order로 보존한다.",
+          "flowDiagram은 2개 이상의 nodes와 1개 이상의 directed edges를 요구한다. node는 id, label, detail, role을, edge는 from, to, label을 필수로 가진다.",
+          "relationDiagram은 2개 이상의 nodes와 1개 이상의 directed relations를 요구한다. node는 id, label, detail, role을, relation은 from, to, label을 필수로 가진다.",
+          "flowDiagram edge label과 relationDiagram relation label은 domain vocabulary를 보존할 수 있는 non-empty plain Unicode 문자열이며 고정 vocabulary로 제한하지 않는다. Renderer는 label을 escaped text로만 표시한다.",
+          "모든 edge와 relation endpoint는 같은 block의 기존 node id를 참조하며 self-edge와 동일한 from, to, label 조합의 중복을 거부한다.",
+          "Flow와 relation cycle은 lifecycle과 bidirectional borrowing을 표현할 수 있도록 허용하며 source node·edge·relation array order를 결정적 layout input과 fallback table order로 보존한다.",
+          "Flow와 relation의 모든 node는 적어도 하나의 edge 또는 relation에 참여해야 한다.",
+          "role 값은 consumer, surface, session, engine, boundary, value, neutral의 고정 vocabulary만 허용하고 renderer가 색을 결정한다.",
+          "각 diagram은 접근 가능한 summary와 자동 생성 relation table fallback을 가진다.",
+          "mobile에서는 layer와 relation이 세로 읽기 순서로 재배치되고 연결 의미가 사라지지 않는다.",
+          "기존 source diagram block은 그대로 유효하다."
+        ]
+      },
+      {
+        "id": "VIS-08",
+        "title": "탐색과 긴 문서 스캔",
+        "detail": "collection navigation과 on-this-page navigation을 분리하고 긴 spec과 plan에서 현재 위치를 쉽게 파악하게 한다.",
+        "acceptanceCriteria": [
+          "desktop sidebar는 site collection과 현재 문서 section navigation을 시각적으로 구분한다.",
+          "active link는 색상, 배경, font weight 중 둘 이상으로 표시한다.",
+          "sticky navigation은 content keyboard order를 방해하지 않는다.",
+          "mobile navigation은 content 앞에서 과도한 세로 공간을 차지하지 않고 접근 가능한 disclosure 또는 compact stack을 사용한다.",
+          "heading anchor와 focus target은 sticky surface에 가려지지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-09",
+        "title": "색상과 상태 의미",
+        "detail": "Toss에서 참고한 높은 명도 대비, 큰 typography, 절제된 역할색 원칙을 Stenc 고유 token으로 구현한다.",
+        "acceptanceCriteria": [
+          "기본 text, muted text, link, border, surface는 WCAG AA contrast를 만족한다.",
+          "approved, proposed, draft, canonical, superseded 상태는 text label과 shape를 포함해 색상에만 의존하지 않는다.",
+          "blue는 link와 information, green은 success와 value, amber는 warning과 engine, red는 danger와 boundary, violet은 session 또는 secondary relation에 제한해 사용한다.",
+          "한 viewport에서 accent가 경쟁하지 않도록 neutral surface를 기본으로 사용한다.",
+          "Toss UI Kit 자산이나 proprietary component code를 복제하지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-10",
+        "title": "반응형과 접근성",
+        "detail": "desktop, tablet, mobile, zoom, keyboard, reduced motion 환경에서 정보와 조작 가능성이 유지되어야 한다.",
+        "acceptanceCriteria": [
+          "780px 이하에서 shell, scope, summary, grid, spine은 한 열 또는 의미 보존 순서로 재배치된다.",
+          "focus-visible outline은 모든 link와 button에서 충분한 대비와 offset을 가진다.",
+          "prefers-reduced-motion에서 필수 정보 전달과 무관한 transition과 smooth scroll을 제거한다.",
+          "diagram과 media는 alt 또는 summary를 제공하고 표·관계 fallback으로 동등한 정보를 제공한다.",
+          "semantic heading order와 landmark가 collection과 detail page에서 유지된다.",
+          "hover 없이 모든 정보와 상태를 확인할 수 있다."
+        ]
+      },
+      {
+        "id": "VIS-11",
+        "title": "결정적 생성과 하위 호환성",
+        "detail": "스타일 개선과 diagram 확장이 JSON source of truth와 재현 가능한 생성 계약을 약화시키지 않아야 한다.",
+        "acceptanceCriteria": [
+          "동일한 JSON과 Stenc 버전은 동일한 HTML, CSS, asset output을 생성한다.",
+          "기존 schemaVersion 1과 2 문서는 새 필드를 요구하지 않고 계속 validate와 render된다.",
+          "알 수 없는 structured diagram type, role, node reference, unsafe URL·media target, NUL과 허용되지 않은 ASCII control character는 validation에서 거부된다.",
+          "Diagram의 title, summary, label, detail, transition은 trim 후 non-empty plain Unicode 문자열이어야 한다. Tab과 newline은 summary와 detail에서만 허용하며 renderer는 모든 문자열을 HTML escape한다.",
+          "HTML처럼 보이는 plain text는 실행하거나 해석하지 않고 escape해 표시한다. URL allowlist 검사는 link target과 media source에만 적용한다.",
+          "generated file은 source of truth로 취급하지 않고 content JSON과 source assets만 version control 대상이 된다.",
+          "renderer가 document prose에서 관계나 component 의미를 추론하지 않는다."
+        ]
+      },
+      {
+        "id": "VIS-12",
+        "title": "Specimen과 regression coverage",
+        "detail": "가능한 모든 spec과 plan component를 담은 canonical fixture를 유지해 이후 스타일 변경의 누락을 탐지한다.",
+        "acceptanceCriteria": [
+          "한 comprehensive spec fixture가 모든 spec native field와 rich block type을 포함한다.",
+          "한 comprehensive plan fixture가 모든 plan native field, step field, handoff option을 포함한다.",
+          "fixture는 layerDiagram, flowDiagram, relationDiagram과 기존 source diagram을 모두 포함한다.",
+          "validator tests는 valid와 invalid structured diagram 사례를 다룬다.",
+          "renderer tests는 heading, class, fallback table, mobile hook, accessibility label의 존재를 확인한다.",
+          "generated example app의 모든 JSON이 matching route와 asset을 가진다."
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "name": "A. 보수적 typography 확대",
+        "tradeoffs": [
+          "현재 renderer 구조와 CSS selector를 대부분 유지해 변경 위험이 낮다.",
+          "폰트 크기 문제는 일부 완화하지만 세 템플릿의 통합감, navigation, component hierarchy, diagram 문제는 남는다.",
+          "샘플 styles.css와 generated styles.css의 구조적 차이가 지속된다."
+        ],
+        "recommendation": "채택하지 않는다. 사용자가 요구한 강한 시각 언어 통합과 실전 spec·plan 가독성을 충족하지 못한다."
+      },
+      {
+        "name": "B. 통합 가독성 시스템",
+        "tradeoffs": [
+          "공통 token과 semantic component를 재정의하고 renderer regression test를 확장해야 한다.",
+          "17–18px 본문, 명확한 heading, neutral card, 제한된 role tint로 긴 문서와 정보 밀도의 균형이 좋다.",
+          "세 styleTemplate의 개성은 시각 장식이 아니라 정보 강조와 section ordering으로 다시 정의해야 한다.",
+          "구조화 diagram을 포함하면 validator와 renderer 계약 변경이 필요하지만 의미 검색, 접근성, 반응형 표현을 함께 얻는다."
+        ],
+        "recommendation": "채택한다. 사용자가 real-world spec 샘플과 sgp-981-app형 diagram을 검토하고 만족한 기준이다."
+      },
+      {
+        "name": "C. 에디토리얼 대형화",
+        "tradeoffs": [
+          "18–20px 본문과 넓은 여백으로 짧은 문서의 몰입감이 가장 크다.",
+          "긴 table, code, plan slice, validation section에서 스크롤 비용과 정보 밀도 손실이 크다.",
+          "operator console 성격의 실행 문서에서 필요한 동시 비교가 어려워진다."
+        ],
+        "recommendation": "채택하지 않는다. 일부 hero typography 참고만 B안에 흡수한다."
+      }
+    ],
+    "components": [
+      {
+        "name": "Unified design tokens",
+        "responsibility": "색상, typography, spacing, radius, elevation, focus, breakpoints를 단일 source에서 정의한다.",
+        "interfaces": [
+          "skill/stenc/scripts/setup-project.js::writeStyles",
+          "samples/stenc-doc-styles/styles.css"
+        ],
+        "dependencies": [
+          "VIS-01",
+          "VIS-02",
+          "VIS-09",
+          "VIS-10"
+        ]
+      },
+      {
+        "name": "Document shell and navigation",
+        "responsibility": "Collection navigation, on-this-page navigation, content width, responsive shell, active state를 소유한다.",
+        "interfaces": [
+          "renderLayout",
+          "writeStaticPages"
+        ],
+        "dependencies": [
+          "Unified design tokens",
+          "Document heading inventory"
+        ]
+      },
+      {
+        "name": "Document header and summaries",
+        "responsibility": "Kicker, title, description, metadata, human summary, agent summary의 첫 viewport 위계를 소유한다.",
+        "interfaces": [
+          "renderDocument",
+          "page.humanSummary",
+          "page.agentSummary"
+        ],
+        "dependencies": [
+          "Unified design tokens"
+        ]
+      },
+      {
+        "name": "Spec renderer components",
+        "responsibility": "Spec native body field를 requirement, approach, component, scope, contract, validation component로 렌더링한다.",
+        "interfaces": [
+          "renderDocument",
+          "renderTable",
+          "listItems"
+        ],
+        "dependencies": [
+          "json-field-contract.md",
+          "Unified design tokens"
+        ]
+      },
+      {
+        "name": "Plan renderer components",
+        "responsibility": "Plan worker rule, scope check, file structure, slice, file, step, command, expected, risk, handoff를 실행 중심으로 렌더링한다.",
+        "interfaces": [
+          "renderDocument",
+          "renderPlanStep",
+          "renderTable"
+        ],
+        "dependencies": [
+          "json-field-contract.md",
+          "Unified design tokens"
+        ]
+      },
+      {
+        "name": "Rich block renderer",
+        "responsibility": "Paragraph span, callout, quote, table, media, taskList, source diagram과 missing state를 렌더링한다.",
+        "interfaces": [
+          "renderSupportingBlocks",
+          "renderSupportingSection"
+        ],
+        "dependencies": [
+          "Rich block validator",
+          "Content assets"
+        ]
+      },
+      {
+        "name": "Structured diagram validator",
+        "responsibility": "layerDiagram, flowDiagram, relationDiagram의 schema, role vocabulary, id uniqueness, edge reference, accessible summary를 검증한다.",
+        "interfaces": [
+          "skill/stenc/scripts/validate-stenc-doc.js",
+          "skill/stenc/references/json-field-contract.md"
+        ],
+        "dependencies": [
+          "Validator-known diagram schemas"
+        ]
+      },
+      {
+        "name": "Structured diagram renderer",
+        "responsibility": "구조화 diagram을 layer stack, directed flow, relation spine과 자동 text/table fallback으로 결정적으로 렌더링한다.",
+        "interfaces": [
+          "renderSupportingBlocks",
+          "writeStyles"
+        ],
+        "dependencies": [
+          "Structured diagram validator",
+          "Unified design tokens"
+        ]
+      },
+      {
+        "name": "Comprehensive fixtures",
+        "responsibility": "모든 spec과 plan native field, rich block, diagram, status, empty state를 지속적으로 노출한다.",
+        "interfaces": [
+          "examples-app/content/specs/",
+          "examples-app/content/plans/",
+          "examples/"
+        ],
+        "dependencies": [
+          "Spec template",
+          "Plan template",
+          "Content assets"
+        ]
+      },
+      {
+        "name": "Validation and rendered-page checks",
+        "responsibility": "JSON validity, generated route, media copy, diagram fallback, key accessibility surface의 존재를 검증한다.",
+        "interfaces": [
+          "scripts/validate.sh",
+          "skill/stenc/scripts/check-rendered-pages.js",
+          "skill/stenc/scripts/setup-project.test.js",
+          "skill/stenc/scripts/validate-stenc-doc.test.js"
+        ],
+        "dependencies": [
+          "Comprehensive fixtures",
+          "Structured diagram validator",
+          "Structured diagram renderer"
+        ]
+      }
+    ],
+    "dataFlow": [
+      "Author selects exactly one Stenc document type and copies its template.",
+      "Author fills native spec or plan fields before supportingSections.",
+      "Optional rich and structured diagram blocks carry bounded semantic data.",
+      "Validator rejects unknown visual controls, unsafe assets, duplicate ids, and broken diagram relations.",
+      "Generator derives collection indexes, timeline, detail navigation, document sections, and assets.",
+      "Fixed renderer maps semantic data to B typography, spacing, cards, tables, code, states, and diagrams.",
+      "Rendered output exposes text and table fallbacks for diagrams and narrow screens.",
+      "Validation scripts compare source inventory with generated routes and regression expectations."
+    ],
+    "errorHandling": [
+      {
+        "case": "Unknown document or block field",
+        "behavior": "Validation fails with the exact JSON path and allowed fixed fields. Renderer does not ignore a field that could hide contract meaning."
+      },
+      {
+        "case": "Structured diagram references a missing or duplicate node id",
+        "behavior": "Validation fails before rendering and names the block, relation, and invalid id."
+      },
+      {
+        "case": "Unsupported diagram role or relation shape",
+        "behavior": "Validation rejects the value and lists the bounded role vocabulary or required relation fields."
+      },
+      {
+        "case": "Diagram is too wide for the viewport",
+        "behavior": "Renderer changes to semantic vertical order or a contained scroll region and always preserves the generated relation table fallback."
+      },
+      {
+        "case": "Media asset is missing",
+        "behavior": "Generated page shows an explicit missing-media panel and rendered-page validation fails."
+      },
+      {
+        "case": "Text contrast or minimum size regression",
+        "behavior": "Token and renderer regression tests fail; do not fix a single document with custom CSS."
+      },
+      {
+        "case": "Existing schemaVersion 1 or 2 document lacks new diagram data",
+        "behavior": "Document remains valid and renders without structured diagram sections."
+      },
+      {
+        "case": "JavaScript is unavailable",
+        "behavior": "All document content, navigation links, code, tables, status, and diagram fallbacks remain readable; optional enhancements may be absent."
+      }
+    ],
+    "contracts": [
+      {
+        "name": "B typography contract",
+        "rules": [
+          "Body text is at least 17px with 1.6 line height.",
+          "Required information is never smaller than 13px.",
+          "Lead, heading, table, navigation, code, and badge scales are tokenized.",
+          "Line length and content width prioritize repeated technical reading."
+        ]
+      },
+      {
+        "name": "Unified template contract",
+        "rules": [
+          "All styleTemplate values share the same tokens and semantic components.",
+          "Template differences express information priority, not separate design systems.",
+          "No document-authored color, layout, component, kind, or variant field is accepted."
+        ]
+      },
+      {
+        "name": "Structured diagram contract",
+        "rules": [
+          "Structured diagrams use validator-known semantic block types.",
+          "Common required fields are type, title, and summary; every type rejects unknown fields.",
+          "Layer ids and node ids are explicit and unique within one diagram block.",
+          "Layer and relation arrays preserve source order for deterministic rendering and fallback output.",
+          "Edges and relations reference local node ids, reject self-edges and exact duplicates, and allow multi-node cycles.",
+          "Role vocabulary is bounded and renderer-owned.",
+          "Edge and relation labels are non-empty escaped domain text rather than a fixed vocabulary.",
+          "Every diagram has accessible summary and text or table fallback.",
+          "No Mermaid, DOT, CDN, script, or client runtime executes."
+        ]
+      },
+      {
+        "name": "Source authority contract",
+        "rules": [
+          "Structured JSON and local content assets are the source of truth.",
+          "Generated HTML and CSS are reproducible derived artifacts.",
+          "Renderer never infers canonical meaning from arbitrary supporting prose.",
+          "Required field changes update templates, references, examples, validator, renderer, and tests together."
+        ]
+      },
+      {
+        "name": "Accessibility contract",
+        "rules": [
+          "Color is never the only carrier of role, status, relation, or completion.",
+          "Keyboard focus is visible and reading order is semantic.",
+          "Zoom and mobile reflow preserve information.",
+          "Reduced motion removes nonessential transitions.",
+          "Diagram meaning is available without seeing the visual rendering."
+        ]
+      }
+    ],
+    "surfaces": [
+      {
+        "path": "skill/stenc/scripts/setup-project.js",
+        "role": "Generated page structure, fixed component renderer, unified B stylesheet",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/scripts/validate-stenc-doc.js",
+        "role": "Core field, rich block, and structured diagram validation",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/scripts/check-rendered-pages.js",
+        "role": "Generated route, media, and rendered contract checks",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/templates/spec.json",
+        "role": "Canonical comprehensive spec authoring shape",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/templates/plan.json",
+        "role": "Canonical comprehensive plan authoring shape",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/references/fixed-page-style.md",
+        "role": "B visual language and template emphasis rules",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/references/json-field-contract.md",
+        "role": "Structured diagram and native field contract",
+        "owner": "stenc"
+      },
+      {
+        "path": "samples/stenc-doc-styles/styles.css",
+        "role": "Human-reviewable visual specimen aligned with generated styles",
+        "owner": "stenc"
+      },
+      {
+        "path": "examples-app/content/specs/",
+        "role": "Comprehensive spec regression fixture",
+        "owner": "stenc"
+      },
+      {
+        "path": "examples-app/content/plans/",
+        "role": "Comprehensive plan regression fixture",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/scripts/setup-project.test.js",
+        "role": "Renderer, route, component, and accessibility regression coverage",
+        "owner": "stenc"
+      },
+      {
+        "path": "skill/stenc/scripts/validate-stenc-doc.test.js",
+        "role": "Structured contract valid and invalid coverage",
+        "owner": "stenc"
+      }
+    ],
+    "testingStrategy": [
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js docs/stenc/content/specs/2026-07-30-unified-readability-and-diagram-system.spec.json",
+        "expected": "The canonical style specification validates without warnings."
+      },
+      {
+        "command": "npm test",
+        "expected": "CLI, installer, validator, renderer, migration, and rendered-page tests pass."
+      },
+      {
+        "command": "./scripts/validate.sh",
+        "expected": "Repository validation, example validation, generation, and rendered-page checks pass."
+      },
+      {
+        "command": "./scripts/setup-examples-app.sh",
+        "expected": "The comprehensive example app is regenerated deterministically."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.js examples-app",
+        "expected": "Every JSON document and local asset has a matching generated page or copied asset."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.js --project-root \"$(pwd)\" --docs-dir docs/stenc",
+        "expected": "The canonical spec has a matching generated page under docs/stenc/specs."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.js docs/stenc",
+        "expected": "The canonical docs workspace has complete routes and assets."
+      }
+    ],
+    "validation": [
+      {
+        "command": "./scripts/validate.sh",
+        "purpose": "Run the repository-wide deterministic validation gate."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.js docs/stenc",
+        "purpose": "Confirm this JSON spec and its media asset have matching generated output."
+      },
+      {
+        "command": "git diff --check",
+        "purpose": "Reject whitespace errors in source artifacts."
+      }
+    ],
+    "agentInstructions": [
+      "이 spec과 skill/stenc/SKILL.md를 먼저 읽고 구현 범위를 정한다.",
+      "B안을 단순 CSS 확대가 아니라 token, semantic component, navigation, accessibility, structured diagram의 통합 변경으로 취급한다.",
+      "Spec과 plan comprehensive fixture를 먼저 추가하고 renderer 변경의 red test로 사용한다.",
+      "기존 source diagram block의 escaped-source 동작을 유지한다.",
+      "새 structured diagram은 임의 layout field가 아닌 validator-known block type으로만 추가한다.",
+      "Required JSON field가 바뀌면 template, reference, example, validator, renderer, generated fixture를 한 변경에서 갱신한다.",
+      "문서별 custom HTML, CSS, Markdown, MDX, Mermaid runtime을 추가하지 않는다.",
+      "정적 검사와 rendered-page check를 모두 통과하기 전에는 완료로 보고하지 않는다."
+    ],
+    "reviewChecklist": [
+      "B안이 typography 확대를 넘어 세 템플릿의 강한 시각 언어 통합을 정의한다.",
+      "Spec과 plan의 모든 native field가 component coverage에 포함된다.",
+      "모든 기존 rich block type과 span type이 포함된다.",
+      "sgp-981-app에서 참고한 layer stack, dependency flow, ownership relation이 bounded primitive로 일반화된다.",
+      "Diagram 의미가 구조화 JSON과 fallback에 존재하며 rendered-only UI에 숨지 않는다.",
+      "접근성, 반응형, 하위 호환성, 결정적 생성 계약이 검증 가능하다.",
+      "구현 surface와 validation command가 실제 repository path를 가리킨다.",
+      "범위 밖 기능과 금지된 custom rendering이 명시되어 있다."
+    ],
+    "selfReviewChecks": [
+      {
+        "name": "Spec component completeness",
+        "purpose": "goal부터 implementationHandoff와 supportingSections까지 모든 spec native field가 시각 계약에 포함되는지 확인한다."
+      },
+      {
+        "name": "Plan component completeness",
+        "purpose": "workerInstructions, scopeCheck, fileStructure, slice files, steps, commands, expected, risk, validation, handoff가 포함되는지 확인한다."
+      },
+      {
+        "name": "Rich primitive completeness",
+        "purpose": "모든 span, callout tone, quote, table, media, taskList, source diagram이 누락되지 않았는지 확인한다."
+      },
+      {
+        "name": "Diagram semantics",
+        "purpose": "layer, node, edge, relation, role, fallback이 renderer style과 분리된 의미 계약인지 확인한다."
+      },
+      {
+        "name": "Accessibility",
+        "purpose": "색상 비의존, keyboard focus, zoom, mobile reflow, reduced motion, alt와 fallback 요구가 testable한지 확인한다."
+      },
+      {
+        "name": "Scope discipline",
+        "purpose": "문서 styling과 diagram에 직접 필요한 변경만 포함하고 editor, search, collaboration 기능을 제외했는지 확인한다."
+      }
+    ],
+    "implementationHandoff": {
+      "planLocation": "docs/stenc/content/plans/2026-07-30-unified-readability-and-diagram-system.plan.json",
+      "requiredSkill": "superpowers:writing-plans",
+      "notes": [
+        "사용자가 이 canonical spec을 검토하고 승인한 뒤 implementation plan을 작성한다.",
+        "Plan은 comprehensive fixture, token foundation, shared components, structured diagrams, accessibility, migration, validation 순으로 independently reviewable slice를 만든다.",
+        "Plan 작성 전 current worktree와 generated artifact 정책을 다시 확인한다."
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "B안 시각 기준",
+        "content": "B안은 Toss Design System의 높은 가독성과 일관성 원칙, sgp-981-app docs/html의 명확한 card·table·architecture diagram 패턴을 참고하되 Stenc의 고유하고 dependency-light한 fixed renderer로 구현한다.",
+        "items": [
+          "본문 17–18px와 line-height 1.6",
+          "Neutral surface 중심, 제한된 semantic role color",
+          "14px 내외 card radius와 얕은 elevation",
+          "첫 viewport의 title, metadata, human summary, agent summary",
+          "긴 문서에 적합한 sidebar와 section navigation",
+          "정보 의미를 보존하는 responsive stack"
+        ],
+        "facts": [
+          {
+            "label": "Selected approach",
+            "value": "B. Unified readability system"
+          },
+          {
+            "label": "Reference body scale",
+            "value": "17–18px / 1.6"
+          },
+          {
+            "label": "Diagram source",
+            "value": "Structured JSON with fixed renderer"
+          },
+          {
+            "label": "Compatibility",
+            "value": "Existing source diagram remains valid"
+          }
+        ],
+        "links": [
+          {
+            "label": "Stenc fixed page style",
+            "target": "skill/stenc/references/fixed-page-style.md",
+            "purpose": "Current fixed renderer guidance to replace with the unified B contract."
+          },
+          {
+            "label": "Stenc JSON contract",
+            "target": "skill/stenc/references/json-field-contract.md",
+            "purpose": "Current native fields and rich primitive contract."
+          },
+          {
+            "label": "sgp-981-app docs system",
+            "target": "../sgp-981-app/docs/html/assets/docs-system.css",
+            "purpose": "Local reference for readable cards, tables, shell, and responsive hierarchy."
+          },
+          {
+            "label": "sgp-981-app diagram layer",
+            "target": "../sgp-981-app/docs/html/assets/diagram.css",
+            "purpose": "Local reference for layer stack, ownership spine, and role mapping."
+          }
+        ],
+        "steps": [
+          {
+            "id": "design-review-1",
+            "title": "Confirm real-world density",
+            "status": "done",
+            "instruction": "Review a full spec page with sidebar, metadata, summaries, scope, requirements, table, code, and validation.",
+            "codeBlocks": []
+          },
+          {
+            "id": "design-review-2",
+            "title": "Confirm structured diagrams",
+            "status": "done",
+            "instruction": "Review layer stack and relation spine integrated into the B visual language.",
+            "codeBlocks": []
+          },
+          {
+            "id": "design-review-3",
+            "title": "Review canonical JSON spec",
+            "status": "todo",
+            "instruction": "Review this generated spec page before implementation plan authoring.",
+            "codeBlocks": []
+          }
+        ],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "type": "strong",
+                "text": "B안"
+              },
+              {
+                "type": "text",
+                "text": "은 "
+              },
+              {
+                "type": "mark",
+                "text": "읽기 편한 기본값"
+              },
+              {
+                "type": "text",
+                "text": "을 제공하며 "
+              },
+              {
+                "type": "code",
+                "text": "styleTemplate"
+              },
+              {
+                "type": "text",
+                "text": "은 정보 강조만 선택합니다. "
+              },
+              {
+                "type": "emphasis",
+                "text": "문서별 visual customization은 허용하지 않습니다."
+              },
+              {
+                "type": "text",
+                "text": " 검토 중에는 "
+              },
+              {
+                "type": "kbd",
+                "text": "Tab"
+              },
+              {
+                "type": "text",
+                "text": "으로 focus order를 확인하고 "
+              },
+              {
+                "type": "link",
+                "text": "fixed page style",
+                "target": "skill/stenc/references/fixed-page-style.md"
+              },
+              {
+                "type": "text",
+                "text": " 계약과 비교합니다."
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "neutral",
+            "title": "고정 renderer",
+            "body": "문서 작성자는 의미를 제공하고 Stenc는 표현을 소유한다."
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "Agent summary",
+            "body": "에이전트가 작업 경계와 검증 명령을 첫 화면에서 찾을 수 있어야 한다."
+          },
+          {
+            "type": "callout",
+            "tone": "success",
+            "title": "Approved direction",
+            "body": "B안의 real-world spec 밀도와 구조화 diagram 방향은 사용자 검토를 통과했다."
+          },
+          {
+            "type": "callout",
+            "tone": "warning",
+            "title": "Compatibility",
+            "body": "새 diagram primitive를 추가해도 기존 escaped source diagram을 제거하지 않는다."
+          },
+          {
+            "type": "callout",
+            "tone": "danger",
+            "title": "금지",
+            "body": "문서별 raw HTML, CSS, script, Mermaid runtime을 추가하지 않는다."
+          },
+          {
+            "type": "quote",
+            "text": "가장 쉽게 알아볼 수 있는 형태와 높은 시인성을 우선한다.",
+            "source": "Style improvement request"
+          },
+          {
+            "type": "table",
+            "columns": [
+              "Surface",
+              "Minimum readable scale",
+              "B treatment"
+            ],
+            "rows": [
+              [
+                "Body",
+                "17px / 1.6",
+                "Neutral text on soft page background"
+              ],
+              [
+                "Table and steps",
+                "15px / 1.55",
+                "Clear headers and bounded scroll"
+              ],
+              [
+                "Navigation",
+                "15px",
+                "Active background plus weight and color"
+              ],
+              [
+                "Metadata",
+                "13px",
+                "Pills with text labels"
+              ],
+              [
+                "Diagram nodes",
+                "13–15px",
+                "Role rail, label, detail, and fallback relation"
+              ]
+            ]
+          },
+          {
+            "type": "media",
+            "src": "assets/unified-readability-diagram.svg",
+            "alt": "Structured JSON flows through validation and the fixed B renderer to one unified generated page.",
+            "caption": "B안의 source, validation, renderer, generated-page 경계."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              {
+                "label": "Spec native component coverage",
+                "checked": true
+              },
+              {
+                "label": "Plan native component coverage",
+                "checked": true
+              },
+              {
+                "label": "Existing rich block coverage",
+                "checked": true
+              },
+              {
+                "label": "Structured diagram contract",
+                "checked": true
+              },
+              {
+                "label": "Implementation plan after user review",
+                "checked": false
+              }
+            ]
+          },
+          {
+            "type": "diagram",
+            "language": "plain",
+            "title": "Backward-compatible source flow",
+            "source": "Document JSON -> Validator -> Fixed B Renderer -> Generated HTML\nExisting source diagram -> Escaped source panel\nNew structured diagram -> Semantic visual + relation fallback"
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "Style template emphasis",
+            "content": "세 template은 같은 visual system을 사용하며 다음 정보만 상대적으로 먼저 강조한다.",
+            "items": [
+              "task-first: requirements, scope, architecture, validation",
+              "operator-console: status, worker rules, slices, risk, validation, handoff",
+              "evidence-led: facts, evidence, source links, proof, validation"
+            ],
+            "facts": [],
+            "links": [],
+            "steps": [],
+            "blocks": [],
+            "subSections": [],
+            "codeBlocks": []
+          }
+        ],
+        "codeBlocks": []
+      },
+      {
+        "heading": "Spec과 Plan component coverage",
+        "content": "구현 fixture는 다음 component를 모두 포함해야 하며 하나라도 누락되면 visual regression surface가 불완전한 것으로 본다.",
+        "items": [
+          "Common: shell, collection nav, on-this-page nav, header, description, metadata, summaries, links, supporting sections, open questions",
+          "Spec: goal, problem, scope, architecture, requirements, approaches, components, data flow, errors, contracts, surfaces, testing, validation, instructions, review, handoff",
+          "Plan: worker instructions, scope check, current and target state, file structure, slices, files, steps, code, command, expected, doneWhen, execution order, risks, validation, review, execution handoff",
+          "Rich: paragraph spans, five callout tones, quote, table, media, task list, source diagram",
+          "Structured diagram: layer, directed flow, relation",
+          "States: approved, canonical, proposed, draft, superseded, todo, in progress, done, empty, missing media, validation error"
+        ],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "table",
+            "columns": [
+              "Family",
+              "Primary components",
+              "Density rule"
+            ],
+            "rows": [
+              [
+                "Spec",
+                "Requirements, contracts, components, surfaces",
+                "Readable comparison with explicit acceptance criteria"
+              ],
+              [
+                "Plan",
+                "Slices, files, steps, commands, expected",
+                "Operational scanning without collapsing detail"
+              ],
+              [
+                "Evidence",
+                "Facts, links, media, proof",
+                "Source and validation remain adjacent"
+              ],
+              [
+                "Diagram",
+                "Layers, nodes, edges, relations",
+                "Visual plus generated semantic fallback"
+              ]
+            ]
+          }
+        ],
+        "subSections": [],
+        "codeBlocks": []
+      },
+      {
+        "heading": "구조화 Diagram 규범 schema",
+        "content": "이 section은 implementation plan과 validator가 그대로 사용할 타입별 JSON 계약이다. 모든 object는 아래에 열거한 field만 허용하며 모든 문자열은 trim 후 non-empty여야 한다.",
+        "items": [
+          "공통: type, title, summary는 필수다.",
+          "ID: lowercase letter로 시작하고 lowercase letter, number, hyphen만 사용한다.",
+          "Role: consumer, surface, session, engine, boundary, value, neutral만 허용한다.",
+          "순서: layers, nodes, edges, relations array의 source order를 결정적 rendering과 fallback order로 사용한다.",
+          "Text: title과 label은 single-line, summary·detail·transition은 newline과 tab을 허용한다. NUL과 그 외 ASCII control character는 거부한다.",
+          "Safety: 모든 text는 HTML escape하며 URL parsing은 link와 media field에만 적용한다."
+        ],
+        "facts": [
+          {
+            "label": "layerDiagram minimum",
+            "value": "1 layer, 1 node per layer"
+          },
+          {
+            "label": "flowDiagram minimum",
+            "value": "2 nodes, 1 directed edge"
+          },
+          {
+            "label": "relationDiagram minimum",
+            "value": "2 nodes, 1 directed relation"
+          },
+          {
+            "label": "Cycles",
+            "value": "Allowed for flow and relation"
+          },
+          {
+            "label": "Self edge",
+            "value": "Rejected"
+          },
+          {
+            "label": "Exact duplicate",
+            "value": "Rejected by from, to, label tuple"
+          }
+        ],
+        "links": [
+          {
+            "label": "JSON field contract",
+            "target": "skill/stenc/references/json-field-contract.md",
+            "purpose": "Implementation must add these normative shapes to the product contract."
+          }
+        ],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "table",
+            "columns": [
+              "Block",
+              "Required shape",
+              "Additional validation"
+            ],
+            "rows": [
+              [
+                "layerDiagram",
+                "type, title, summary, layers[]; layer: id, label, role, summary, nodes[], optional transition; node: id, label, detail",
+                "Layer and node ids unique per block; each layer has nodes; final layer forbids transition"
+              ],
+              [
+                "flowDiagram",
+                "type, title, summary, nodes[], edges[]; node: id, label, detail, role; edge: from, to, label",
+                "Endpoints exist; every node participates; self-edge and exact duplicate rejected; cycles allowed"
+              ],
+              [
+                "relationDiagram",
+                "type, title, summary, nodes[], relations[]; node: id, label, detail, role; relation: from, to, label",
+                "Endpoints exist; every node participates; self-edge and exact duplicate rejected; cycles allowed"
+              ]
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "Label policy",
+            "body": "Edge와 relation label은 creates, borrows, adapts 같은 domain language를 보존하는 자유 plain text다. Validator는 vocabulary를 제한하지 않고 non-empty, control character, endpoint 규칙만 검사한다."
+          },
+          {
+            "type": "callout",
+            "tone": "warning",
+            "title": "Renderer responsibility",
+            "body": "JSON array order는 안정적인 입력 순서다. Renderer는 viewport에 맞춰 배치할 수 있지만 fallback table과 linearized mobile reading order는 source order를 유지해야 한다."
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "Invalid case matrix",
+            "content": "다음 입력은 validator test에서 반드시 거부한다.",
+            "items": [
+              "Unknown block or object field",
+              "Empty title, summary, label, detail, transition, id",
+              "Duplicate layer id or node id in one block",
+              "Unknown role",
+              "Missing endpoint node",
+              "Self-edge or exact duplicate from/to/label tuple",
+              "Unconnected flow or relation node",
+              "Empty layers, nodes, edges, or relations array",
+              "Transition on the final layer",
+              "NUL or disallowed ASCII control character"
+            ],
+            "facts": [],
+            "links": [],
+            "steps": [],
+            "blocks": [],
+            "subSections": [],
+            "codeBlocks": []
+          }
+        ],
+        "codeBlocks": [
+          {
+            "language": "json",
+            "content": "{\n  \"type\": \"layerDiagram\",\n  \"title\": \"Feature to engine boundary\",\n  \"summary\": \"Dependencies flow from feature to engine.\",\n  \"layers\": [\n    {\n      \"id\": \"feature\",\n      \"label\": \"Feature\",\n      \"role\": \"consumer\",\n      \"summary\": \"Consumes the public surface.\",\n      \"nodes\": [\n        { \"id\": \"home-page\", \"label\": \"HomePage\", \"detail\": \"Declares WorldStage and WorldLayout.\" }\n      ],\n      \"transition\": \"Places WorldSurface in the widget tree.\"\n    },\n    {\n      \"id\": \"surface\",\n      \"label\": \"Surface\",\n      \"role\": \"surface\",\n      \"summary\": \"Owns the public Flutter API.\",\n      \"nodes\": [\n        { \"id\": \"world-surface\", \"label\": \"WorldSurface\", \"detail\": \"Creates and owns the session.\" }\n      ]\n    }\n  ]\n}"
+          },
+          {
+            "language": "json",
+            "content": "{\n  \"type\": \"flowDiagram\",\n  \"title\": \"Artifact projection flow\",\n  \"summary\": \"A validated handle flows from persistence to projection.\",\n  \"nodes\": [\n    { \"id\": \"persist\", \"label\": \"Persist\", \"detail\": \"Creates the handle.\", \"role\": \"value\" },\n    { \"id\": \"project\", \"label\": \"Project\", \"detail\": \"Reads persisted artifacts.\", \"role\": \"surface\" }\n  ],\n  \"edges\": [\n    { \"from\": \"persist\", \"to\": \"project\", \"label\": \"provides handle\" }\n  ]\n}"
+          },
+          {
+            "language": "json",
+            "content": "{\n  \"type\": \"relationDiagram\",\n  \"title\": \"Runtime ownership\",\n  \"summary\": \"WorldStage creates WorldLayout, which adapts to M3SpatialScene.\",\n  \"nodes\": [\n    { \"id\": \"stage\", \"label\": \"WorldStage\", \"detail\": \"Immutable feature input.\", \"role\": \"value\" },\n    { \"id\": \"layout\", \"label\": \"WorldLayout\", \"detail\": \"Session-owned runtime handle.\", \"role\": \"session\" },\n    { \"id\": \"scene\", \"label\": \"M3SpatialScene\", \"detail\": \"Engine-owned resource.\", \"role\": \"boundary\" }\n  ],\n  \"relations\": [\n    { \"from\": \"stage\", \"to\": \"layout\", \"label\": \"creates\" },\n    { \"from\": \"layout\", \"to\": \"scene\", \"label\": \"adapts\" }\n  ]\n}"
+          }
+        ]
+      },
+      {
+        "heading": "Reviewer calibration",
+        "content": "이 spec 검토는 제품 계약의 누락, 모순, 구현 불가능성에 집중한다. 개인적 색상 취향이나 B안 승인 자체를 다시 열지 않는다.",
+        "items": [
+          "요구사항이 검증 가능한가",
+          "기존 문서와 하위 호환되는가",
+          "구조화 diagram 의미가 renderer에서 분리되어 있는가",
+          "모든 spec과 plan component가 fixture에 포함되는가",
+          "접근성 fallback이 시각 표현과 동등한가",
+          "구현 surface와 테스트가 충분히 구체적인가"
+        ],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "blocks": [],
+        "subSections": [],
+        "codeBlocks": []
+      }
+    ],
+    "openQuestions": []
+  }
+}
