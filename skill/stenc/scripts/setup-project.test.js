@@ -198,6 +198,25 @@ function assertByteIdentical(sourcePath, mirrorPath) {
   );
 }
 
+function assertAppearsInOrder(text, values, label) {
+  let previousIndex = -1;
+  for (const value of values) {
+    const index = text.indexOf(value, previousIndex + 1);
+    assert.notEqual(index, -1, `${label}: missing ${value}`);
+    assert.ok(index > previousIndex, `${label}: ${value} is out of source order`);
+    previousIndex = index;
+  }
+}
+
+function contentBetween(text, startMarker, endMarker, label) {
+  const startIndex = text.indexOf(startMarker);
+  assert.notEqual(startIndex, -1, `${label}: missing start marker`);
+  const contentStart = startIndex + startMarker.length;
+  const endIndex = text.indexOf(endMarker, contentStart);
+  assert.notEqual(endIndex, -1, `${label}: missing end marker`);
+  return text.slice(contentStart, endIndex);
+}
+
 function minimalSpec(overrides = {}) {
   return {
     schemaVersion: 2,
@@ -1085,6 +1104,301 @@ test("renders Phase 2 media and task lists with copied local assets", () => {
   assert.equal(fs.existsSync(path.join(docsRoot, "assets", "stenc-flow.svg")), true);
   assert.doesNotMatch(html, /<local>/);
   assert.doesNotMatch(html, /<input/);
+});
+
+test("renders structured diagrams with escaped deterministic visuals and fallbacks", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-structured-diagrams-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "structured-diagrams.spec.json"), minimalSpec({
+    id: "spec:structured-diagrams",
+    slug: "structured-diagrams",
+    title: "Structured Diagrams",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Structured diagrams",
+          content: "Render each validator-known diagram type.",
+          items: [],
+          blocks: [
+            {
+              type: "layerDiagram",
+              title: "Boundary <script>layer()</script>",
+              summary: "Dependencies move through <strong>owned layers</strong>.",
+              layers: [
+                {
+                  id: "feature",
+                  label: "Feature <UI>",
+                  role: "consumer",
+                  summary: "Consumes the <public> surface.",
+                  nodes: [
+                    {
+                      id: "home-page",
+                      label: "Home<Page>",
+                      detail: "Declares <img src=x onerror=alert(1)>.",
+                    },
+                    {
+                      id: "detail-page",
+                      label: "Detail<Page>",
+                      detail: "Reads the public contract.",
+                    },
+                  ],
+                  transition: "Places <WorldSurface> next.",
+                },
+                {
+                  id: "surface",
+                  label: "Surface",
+                  role: "surface",
+                  summary: "Owns the public API.",
+                  nodes: [
+                    {
+                      id: "world-surface",
+                      label: "World<Surface>",
+                      detail: "Creates the session.",
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              type: "flowDiagram",
+              title: "Validation <flow>",
+              summary: "The flow preserves a permitted <cycle>.",
+              nodes: [
+                {
+                  id: "ingest",
+                  label: "Ingest <JSON>",
+                  detail: "Reads author input.",
+                  role: "consumer",
+                },
+                {
+                  id: "validate",
+                  label: "Validate",
+                  detail: "Checks the bounded contract.",
+                  role: "boundary",
+                },
+                {
+                  id: "render",
+                  label: "Render",
+                  detail: "Writes escaped HTML.",
+                  role: "engine",
+                },
+              ],
+              edges: [
+                { from: "ingest", to: "validate", label: "submits <source>" },
+                { from: "validate", to: "render", label: "passes" },
+                { from: "render", to: "ingest", label: "reports cycle" },
+              ],
+            },
+            {
+              type: "relationDiagram",
+              title: "Runtime <ownership>",
+              summary: "Ownership and borrowing stay explicit.",
+              nodes: [
+                {
+                  id: "stage",
+                  label: "World<Stage>",
+                  detail: "Immutable feature input.",
+                  role: "value",
+                },
+                {
+                  id: "layout",
+                  label: "WorldLayout",
+                  detail: "Session-owned runtime handle.",
+                  role: "session",
+                },
+                {
+                  id: "scene",
+                  label: "M3SpatialScene",
+                  detail: "Engine-owned resource.",
+                  role: "boundary",
+                },
+              ],
+              relations: [
+                { from: "stage", to: "layout", label: "creates <handle>" },
+                { from: "layout", to: "scene", label: "borrows" },
+                { from: "scene", to: "stage", label: "returns cycle" },
+              ],
+            },
+          ],
+          codeBlocks: [],
+        },
+      ],
+    },
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(
+    path.join(docsRoot, "specs", "structured-diagrams", "index.html"),
+    "utf8",
+  );
+  const classes = extractClassTokens(html);
+
+  assert.equal((html.match(/<figure class="rich-block rich-structured-diagram/gu) || []).length, 3);
+  assert.equal((html.match(/<figcaption>/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-summary"/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-visual[^"]*" aria-hidden="true"/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-mobile-linear"/gu) || []).length, 3);
+
+  for (const className of [
+    "layer-diagram",
+    "flow-diagram",
+    "relation-diagram",
+    "diagram-layer",
+    "diagram-role-rail",
+    "diagram-node-card",
+    "diagram-layer-transition",
+    "diagram-flow-grid",
+    "diagram-relation-spine",
+    "diagram-directed-connection",
+    "diagram-fallback",
+    "diagram-layer-fallback",
+    "diagram-relation-fallback",
+    "diagram-fallback-table",
+    "visually-hidden",
+    "diagram-role-consumer",
+    "diagram-role-surface",
+    "diagram-role-boundary",
+    "diagram-role-engine",
+    "diagram-role-value",
+    "diagram-role-session",
+  ]) {
+    assert.ok(classes.has(className), `missing structured diagram class: ${className}`);
+  }
+
+  for (const nodeId of [
+    "home-page",
+    "detail-page",
+    "world-surface",
+    "ingest",
+    "validate",
+    "render",
+    "stage",
+    "layout",
+    "scene",
+  ]) {
+    assert.match(html, new RegExp(`data-node-id="${nodeId}"`, "u"));
+  }
+  assert.match(html, /data-layer-id="feature"/);
+  assert.match(html, /data-layer-id="surface"/);
+  assert.match(html, /data-from="render" data-to="ingest"/);
+  assert.match(html, /data-from="scene" data-to="stage"/);
+
+  assert.match(html, /submits &lt;source&gt;/);
+  assert.match(html, /creates &lt;handle&gt;/);
+  assert.match(html, /Boundary &lt;script&gt;layer\(\)&lt;\/script&gt;/);
+  assert.match(html, /Dependencies move through &lt;strong&gt;owned layers&lt;\/strong&gt;\./);
+  assert.match(html, /Feature &lt;UI&gt;/);
+  assert.match(html, /Home&lt;Page&gt;/);
+  assert.match(html, /Declares &lt;img src=x onerror=alert\(1\)&gt;\./);
+  assert.match(html, /Places &lt;WorldSurface&gt; next\./);
+  assert.match(html, /World&lt;Stage&gt;/);
+  assert.doesNotMatch(html, /<script>layer\(\)<\/script>/);
+  assert.doesNotMatch(html, /<strong>owned layers<\/strong>/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+
+  assert.match(
+    html,
+    /<thead><tr><th scope="col">From<\/th><th scope="col">Relation<\/th><th scope="col">To<\/th><\/tr><\/thead>/,
+  );
+  assert.equal((html.match(/<table class="table diagram-fallback-table">/gu) || []).length, 2);
+  assert.equal((html.match(/<details class="diagram-fallback diagram-relation-fallback">/gu) || []).length, 2);
+
+  const layerVisual = contentBetween(
+    html,
+    '<div class="diagram-visual diagram-layer-stack" aria-hidden="true">',
+    '<ol class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    "layer visual",
+  );
+  const layerFallback = contentBetween(
+    html,
+    '<ol class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    "</ol></figure>",
+    "layer fallback",
+  );
+  assertAppearsInOrder(
+    layerVisual,
+    ['data-layer-id="feature"', 'data-node-id="home-page"', 'data-node-id="detail-page"', 'data-layer-id="surface"', 'data-node-id="world-surface"'],
+    "layer visual",
+  );
+  assertAppearsInOrder(
+    layerFallback,
+    ["Feature &lt;UI&gt;", "Home&lt;Page&gt;", "Detail&lt;Page&gt;", "Places &lt;WorldSurface&gt; next.", "Surface", "World&lt;Surface&gt;"],
+    "layer fallback",
+  );
+
+  const flowFigure = contentBetween(
+    html,
+    '<figure class="rich-block rich-structured-diagram flow-diagram">',
+    "</figure>",
+    "flow figure",
+  );
+  const flowVisual = contentBetween(
+    flowFigure,
+    '<div class="diagram-visual diagram-flow-grid" aria-hidden="true">',
+    '<details class="diagram-fallback diagram-relation-fallback">',
+    "flow visual",
+  );
+  const flowFallback = contentBetween(
+    flowFigure,
+    '<details class="diagram-fallback diagram-relation-fallback">',
+    "</details>",
+    "flow fallback",
+  );
+  assertAppearsInOrder(
+    flowVisual,
+    ['data-node-id="ingest"', 'data-node-id="validate"', 'data-node-id="render"', 'data-from="ingest" data-to="validate"', 'data-from="validate" data-to="render"', 'data-from="render" data-to="ingest"'],
+    "flow visual",
+  );
+  assertAppearsInOrder(
+    flowFallback,
+    ["Ingest &lt;JSON&gt;", "Validate", "Render", "submits &lt;source&gt;", "passes", "reports cycle"],
+    "flow fallback",
+  );
+
+  const relationFigure = contentBetween(
+    html,
+    '<figure class="rich-block rich-structured-diagram relation-diagram">',
+    "</figure>",
+    "relation figure",
+  );
+  const relationVisual = contentBetween(
+    relationFigure,
+    '<div class="diagram-visual diagram-relation-spine" aria-hidden="true">',
+    '<details class="diagram-fallback diagram-relation-fallback">',
+    "relation visual",
+  );
+  const relationFallback = contentBetween(
+    relationFigure,
+    '<details class="diagram-fallback diagram-relation-fallback">',
+    "</details>",
+    "relation fallback",
+  );
+  assertAppearsInOrder(
+    relationVisual,
+    ['data-node-id="stage"', 'data-node-id="layout"', 'data-node-id="scene"', 'data-from="stage" data-to="layout"', 'data-from="layout" data-to="scene"', 'data-from="scene" data-to="stage"'],
+    "relation visual",
+  );
+  assertAppearsInOrder(
+    relationFallback,
+    ["World&lt;Stage&gt;", "WorldLayout", "M3SpatialScene", "creates &lt;handle&gt;", "borrows", "returns cycle"],
+    "relation fallback",
+  );
 });
 
 test("renders Phase 3 diagram source panels without runtime execution", () => {

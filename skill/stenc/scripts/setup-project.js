@@ -6,6 +6,7 @@ const {
   generatedArtifactPaths,
   generatedGitignoreText,
 } = require("./generated-artifacts");
+const { renderStructuredDiagram } = require("./render-structured-diagram");
 
 const COLLECTIONS = [
   { dir: "specs", label: "Specs", docType: "spec", suffix: ".spec.json" },
@@ -529,6 +530,13 @@ function renderSupportingBlock(block, context = {}) {
   if (block.type === "media") return renderMediaBlock(block, context);
   if (block.type === "taskList") return renderTaskListBlock(block);
   if (block.type === "diagram") return renderDiagramBlock(block);
+  if (
+    block.type === "layerDiagram"
+    || block.type === "flowDiagram"
+    || block.type === "relationDiagram"
+  ) {
+    return renderStructuredDiagram(block, escapeHtml);
+  }
   return "";
 }
 
