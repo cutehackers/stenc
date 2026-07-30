@@ -198,23 +198,20 @@ function assertByteIdentical(sourcePath, mirrorPath) {
   );
 }
 
-function snapshotFiles(rootPath) {
+function snapshotSelectedFiles(rootPath, relativePaths) {
   const snapshot = {};
-
-  function visit(currentPath) {
-    for (const entry of fs.readdirSync(currentPath, { withFileTypes: true })) {
-      const entryPath = path.join(currentPath, entry.name);
-      if (entry.isDirectory()) {
-        visit(entryPath);
-      } else if (entry.isFile()) {
-        snapshot[path.relative(rootPath, entryPath)] =
-          fs.readFileSync(entryPath).toString("base64");
-      }
-    }
+  for (const relativePath of relativePaths) {
+    const filePath = path.join(rootPath, relativePath);
+    assert.equal(fs.existsSync(filePath), true, `Missing snapshot file: ${relativePath}`);
+    snapshot[relativePath] = fs.readFileSync(filePath).toString("base64");
   }
-
-  visit(rootPath);
   return snapshot;
+}
+
+function assertSnapshotParity(actual, expected, label) {
+  const paths = [...new Set([...Object.keys(actual), ...Object.keys(expected)])].sort();
+  const drift = paths.filter((filePath) => actual[filePath] !== expected[filePath]);
+  assert.deepEqual(drift, [], `${label}: ${drift.join(", ")}`);
 }
 
 function cssDeclarations(css, selector) {
@@ -269,11 +266,16 @@ test("semantic small-text color pairs meet WCAG AA contrast", () => {
     ["warning", "--color-warning", "--color-warning-tint"],
     ["danger", "--color-danger", "--color-danger-tint"],
     ["relation", "--color-relation", "--color-relation-tint"],
+    ["code", "--color-code-text", "--color-code-surface"],
+    ["filled control", "--color-on-accent", "--color-info"],
+    ["highlight", "--color-text", "--color-highlight"],
   ];
 
   for (const [name, foregroundToken, backgroundToken] of semanticPairs) {
     const foreground = root[foregroundToken];
     const background = root[backgroundToken];
+    assert.equal(typeof foreground, "string", `Missing ${foregroundToken}`);
+    assert.equal(typeof background, "string", `Missing ${backgroundToken}`);
     const ratio = contrastRatio(foreground, background);
     assert.ok(
       ratio >= 4.5,
@@ -358,6 +360,57 @@ test("canonical styles do not expose unused legacy aliases", () => {
     legacyAliases.filter((token) => Object.hasOwn(root, token)),
     [],
   );
+});
+
+test("selector palettes use semantic tokens", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+  const root = cssDeclarations(css, ":root");
+
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-code-border",
+        "--color-code-surface",
+        "--color-code-text",
+        "--color-highlight",
+        "--color-on-accent",
+        "--color-surface-overlay",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-code-border": "#2f3a4a",
+      "--color-code-surface": "#18212f",
+      "--color-code-text": "#f8fafc",
+      "--color-highlight": "#fff0a8",
+      "--color-on-accent": "#ffffff",
+      "--color-surface-overlay": "rgba(255, 255, 255, 0.94)",
+    },
+  );
+  assert.deepEqual(cssDeclarations(css, "pre,\n.command"), {
+    border: "1px solid var(--color-code-border)",
+    "border-radius": "var(--radius-control)",
+    background: "var(--color-code-surface)",
+    color: "var(--color-code-text)",
+    display: "block",
+    margin: "var(--space-2) 0",
+    "max-width": "100%",
+    "overflow-x": "auto",
+    padding: "var(--space-3) var(--space-4)",
+  });
+  assert.equal(cssDeclarations(css, "mark").background, "var(--color-highlight)");
+  assert.equal(
+    cssDeclarations(css, ".sort-btn:hover,\n.sort-btn.active,\n.button").color,
+    "var(--color-on-accent)",
+  );
+  assert.equal(
+    cssDeclarations(css, ".site-header").background,
+    "var(--color-surface-overlay)",
+  );
+
+  const selectors = css.slice(css.indexOf("}\n") + 2);
+  assert.doesNotMatch(selectors, /#[0-9a-f]{3,8}/iu);
+  assert.doesNotMatch(selectors, /rgba?\(/iu);
 });
 
 test("unified B style tokens", () => {
@@ -572,13 +625,54 @@ test("examples setup is byte-idempotent across repeated runs", () => {
   );
 
   const setupScript = path.join(temporaryRepo, "scripts", "setup-examples-app.sh");
+  const trackedResult = spawnSync(
+    "git",
+    ["ls-files", "-z", "--", "examples-app"],
+    { cwd: REPO_ROOT, encoding: "utf8" },
+  );
+  assert.equal(trackedResult.status, 0, trackedResult.stderr || trackedResult.stdout);
+  const trackedPaths = trackedResult.stdout
+    .split("\0")
+    .filter(Boolean)
+    .map((filePath) => path.relative("examples-app", filePath));
+  assert.ok(trackedPaths.includes("styles.css"));
+  assert.ok(trackedPaths.includes("index.html"));
+  assert.ok(trackedPaths.includes(path.join("specs", "index.html")));
+  assert.ok(trackedPaths.includes(path.join("plans", "index.html")));
+
   let result = spawnSync("bash", [setupScript], {
     cwd: temporaryRepo,
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  const committedSnapshot = snapshotSelectedFiles(
+    path.join(REPO_ROOT, "examples-app"),
+    trackedPaths,
+  );
+  const firstTrackedSnapshot = snapshotSelectedFiles(
+    path.join(temporaryRepo, "examples-app"),
+    trackedPaths,
+  );
+  const deliberatelyAlteredSnapshot = {
+    ...committedSnapshot,
+    "index.html": `${committedSnapshot["index.html"]}drift`,
+  };
+  assert.throws(
+    () =>
+      assertSnapshotParity(
+        deliberatelyAlteredSnapshot,
+        firstTrackedSnapshot,
+        "deliberate committed drift",
+      ),
+    /index\.html/u,
+  );
+  assertSnapshotParity(
+    committedSnapshot,
+    firstTrackedSnapshot,
+    "committed examples-app drift",
+  );
   const firstSnapshot = {
-    examplesApp: snapshotFiles(path.join(temporaryRepo, "examples-app")),
+    examplesApp: firstTrackedSnapshot,
     sampleStyles: fs.readFileSync(
       path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
       "base64",
@@ -591,7 +685,10 @@ test("examples setup is byte-idempotent across repeated runs", () => {
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const secondSnapshot = {
-    examplesApp: snapshotFiles(path.join(temporaryRepo, "examples-app")),
+    examplesApp: snapshotSelectedFiles(
+      path.join(temporaryRepo, "examples-app"),
+      trackedPaths,
+    ),
     sampleStyles: fs.readFileSync(
       path.join(temporaryRepo, "samples", "stenc-doc-styles", "styles.css"),
       "base64",

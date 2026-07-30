@@ -3,9 +3,15 @@
   --color-page: #f2f4f6;
   --color-surface: #ffffff;
   --color-surface-soft: #f8fafc;
+  --color-surface-overlay: rgba(255, 255, 255, 0.94);
   --color-text: #191f28;
+  --color-on-accent: #ffffff;
   --color-muted: #4e5968;
   --color-subtle: #6b7684;
+  --color-code-border: #2f3a4a;
+  --color-code-surface: #18212f;
+  --color-code-text: #f8fafc;
+  --color-highlight: #fff0a8;
   --color-line: #d8dee6;
   --color-line-strong: #b8c2cf;
   --color-control-border: #7b8794;
@@ -165,10 +171,10 @@ code {
 
 pre,
 .command {
-  border: 1px solid #2f3a4a;
+  border: 1px solid var(--color-code-border);
   border-radius: var(--radius-control);
-  background: #18212f;
-  color: #f8fafc;
+  background: var(--color-code-surface);
+  color: var(--color-code-text);
   display: block;
   margin: var(--space-2) 0;
   max-width: 100%;
@@ -194,7 +200,7 @@ kbd {
 
 mark {
   border-radius: 4px;
-  background: #fff0a8;
+  background: var(--color-highlight);
   color: inherit;
   padding: 0.05rem 0.2rem;
 }
@@ -868,7 +874,7 @@ caption {
 .button {
   border-color: var(--color-info);
   background: var(--color-info);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .timeline-section {
@@ -959,7 +965,7 @@ caption {
 .site-header {
   align-items: center;
   border-bottom: 1px solid var(--color-line);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--color-surface-overlay);
   display: flex;
   gap: var(--space-5);
   justify-content: space-between;
