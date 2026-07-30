@@ -190,6 +190,41 @@ function assertClassTokenInventory(inventories) {
   }
 }
 
+function assertMarkupOrder(html, markers, label) {
+  let previousIndex = -1;
+  for (const marker of markers) {
+    const currentIndex = html.indexOf(marker);
+    assert.notEqual(currentIndex, -1, `${label}: missing ${marker}`);
+    assert.ok(currentIndex > previousIndex, `${label}: ${marker} is out of order`);
+    previousIndex = currentIndex;
+  }
+}
+
+function assertHeadingOrder(html, label) {
+  const levels = [...html.matchAll(/<h([1-6])(?:\s[^>]*)?>/gu)].map((match) => Number(match[1]));
+  assert.ok(levels.length > 0, `${label}: expected headings`);
+  assert.equal(levels[0], 1, `${label}: detail page must begin with h1`);
+  for (let index = 1; index < levels.length; index += 1) {
+    assert.ok(
+      levels[index] <= levels[index - 1] + 1,
+      `${label}: heading level skips from h${levels[index - 1]} to h${levels[index]}`,
+    );
+  }
+}
+
+function assertDocumentNavigation(html, expectedIds, label) {
+  const navigationMatch = html.match(
+    /<nav class="document-navigation" aria-label="On this page">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch, `${label}: missing document navigation`);
+  const targets = [...navigationMatch[1].matchAll(/href="#([^"]+)"/gu)]
+    .map((match) => match[1]);
+  assert.deepEqual(targets, expectedIds, `${label}: native section inventory changed`);
+  for (const target of targets) {
+    assert.match(html, new RegExp(`id="${target}"`, "u"), `${label}: missing target #${target}`);
+  }
+}
+
 function assertByteIdentical(sourcePath, mirrorPath) {
   assert.equal(
     Buffer.compare(fs.readFileSync(sourcePath), fs.readFileSync(mirrorPath)),
@@ -825,6 +860,14 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     COMPONENT_CATALOG_PLAN,
     path.join(docsRoot, "content", "plans", "component-catalog.plan.json"),
   );
+  const evidenceSpec = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  evidenceSpec.slug = "evidence-component-catalog";
+  evidenceSpec.title = "Evidence-led Component Contract";
+  evidenceSpec.page.styleTemplate = "evidence-led";
+  writeJson(
+    path.join(docsRoot, "content", "specs", "evidence-component-catalog.spec.json"),
+    evidenceSpec,
+  );
   fs.copyFileSync(
     path.join(REPO_ROOT, "examples-app", "content", "assets", "stenc-flow.svg"),
     path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
@@ -845,6 +888,10 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     path.join(docsRoot, "plans", "component-catalog", "index.html"),
     "utf8",
   );
+  const evidenceHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "evidence-component-catalog", "index.html"),
+    "utf8",
+  );
 
   assertClassTokenInventory([
     {
@@ -858,6 +905,174 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
       expected: PLAN_COMPONENT_CLASS_TOKENS,
     },
   ]);
+
+  for (const [label, html, activeCollection] of [
+    ["spec", specHtml, "specs"],
+    ["plan", planHtml, "plans"],
+  ]) {
+    assert.match(html, /<main id="main-content">/u, `${label}: missing main landmark`);
+    assert.match(html, /<aside class="sidebar"/u, `${label}: missing complementary landmark`);
+    assert.match(
+      html,
+      /<nav class="collection-navigation" aria-label="Document collections">/u,
+      `${label}: missing collection navigation`,
+    );
+    assert.match(
+      html,
+      new RegExp(`<a class="nav-link" href="/${activeCollection}/" aria-current="page">`, "u"),
+      `${label}: active collection must be announced`,
+    );
+    assert.match(html, /<dl class="document-metadata">/u);
+    for (const metadataLabel of ["Status", "Owner", "Updated", "Schema", "Template"]) {
+      assert.match(html, new RegExp(`<dt>${metadataLabel}</dt>`, "u"));
+    }
+    assert.match(
+      html,
+      /<section class="document-summary human-summary" aria-labelledby="human-summary-title">/u,
+    );
+    assert.match(
+      html,
+      /<section class="document-summary agent-summary" aria-labelledby="agent-summary-title">/u,
+    );
+    assertHeadingOrder(html, label);
+  }
+
+  assertMarkupOrder(
+    specHtml,
+    [
+      '<p class="kicker">Spec</p>',
+      "<h1>",
+      '<p class="description">',
+      '<dl class="document-metadata">',
+      '<section class="document-summary human-summary"',
+      '<section class="document-summary agent-summary"',
+    ],
+    "spec first viewport",
+  );
+  assertMarkupOrder(
+    planHtml,
+    [
+      '<p class="kicker">Plan</p>',
+      "<h1>",
+      '<p class="description">',
+      '<dl class="document-metadata">',
+      '<section class="document-summary human-summary"',
+      '<section class="document-summary agent-summary"',
+    ],
+    "plan first viewport",
+  );
+
+  assertDocumentNavigation(
+    specHtml,
+    [
+      "source-of-truth",
+      "related-plans",
+      "related-decisions",
+      "goal",
+      "problem",
+      "scope",
+      "architecture",
+      "requirements",
+      "approaches",
+      "components",
+      "data-flow",
+      "error-handling",
+      "contracts",
+      "surfaces",
+      "testing-strategy",
+      "validation",
+      "agent-instructions",
+      "review-checklist",
+      "self-review-checks",
+      "implementation-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "spec",
+  );
+  assertDocumentNavigation(
+    planHtml,
+    [
+      "source-of-truth",
+      "related-spec",
+      "goal",
+      "worker-instructions",
+      "scope-check",
+      "architecture",
+      "tech-stack",
+      "current-state",
+      "target-state",
+      "scope",
+      "file-structure",
+      "plan-slices",
+      "execution-order",
+      "risks",
+      "validation",
+      "agent-instructions",
+      "self-review-checks",
+      "execution-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "plan",
+  );
+  assert.doesNotMatch(specHtml, /href="#reviewer-calibration"/u);
+  assert.doesNotMatch(planHtml, /href="#evidence-reporting"/u);
+
+  assertMarkupOrder(
+    planHtml,
+    [
+      'id="worker-instructions"',
+      'id="scope-check"',
+      'id="architecture"',
+      'id="tech-stack"',
+      'id="current-state"',
+      'id="target-state"',
+      'id="file-structure"',
+      'id="plan-slices"',
+      'class="slice-files"',
+      'class="slice-steps"',
+      'class="done-when"',
+      'id="execution-order"',
+      'id="risks"',
+      'id="validation"',
+      'id="self-review-checks"',
+      'id="execution-handoff"',
+    ],
+    "plan execution hierarchy",
+  );
+  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-instruction"/u);
+  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-code-blocks"/u);
+  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-command"/u);
+  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-expected"/u);
+  assert.match(planHtml, /Commit the fixture inventory/u);
+
+  assert.match(
+    specHtml,
+    /id="requirements" class="requirements template-emphasis emphasis-task"/u,
+  );
+  assert.match(
+    specHtml,
+    /id="validation" class="validation template-emphasis emphasis-task"/u,
+  );
+  assert.match(planHtml, /status-approved template-emphasis emphasis-status/u);
+  assert.match(
+    planHtml,
+    /id="plan-slices" class="plan-slices template-emphasis emphasis-operator"/u,
+  );
+  assert.match(
+    evidenceHtml,
+    /class="facts template-emphasis emphasis-evidence"/u,
+  );
+  assert.match(
+    evidenceHtml,
+    /id="validation" class="validation template-emphasis emphasis-evidence"/u,
+  );
+  assert.doesNotMatch(specHtml, /emphasis-(?:operator|status|evidence)/u);
+  assert.doesNotMatch(planHtml, /emphasis-(?:task|evidence)/u);
+  assert.doesNotMatch(evidenceHtml, /emphasis-(?:task|operator|status)/u);
+  assert.doesNotMatch(planHtml, /console-hero|dark-header/u);
+  assert.doesNotMatch(evidenceHtml, /evidence-panel|evidence-border/u);
 });
 
 test("prepares a fixed Stenc web app backed by JSON documents", () => {

@@ -415,11 +415,19 @@ function readCollection(docsDir, collection) {
     });
 }
 
-function renderLayout(site, title, body) {
+function renderLayout(site, title, body, options = {}) {
   const pageTitle = title ? `${title} · ${site.title}` : site.title;
   const nav = COLLECTIONS.map(
-    (collection) => `<a class="nav-link" href="/${collection.dir}/">${collection.label}</a>`,
+    (collection) => `<a class="nav-link" href="/${collection.dir}/"${options.collectionDir === collection.dir ? ' aria-current="page"' : ""}>${collection.label}</a>`,
   ).join("");
+  const documentNavigation = toList(options.sections).length > 0
+    ? `<nav class="document-navigation" aria-label="On this page">
+          <p class="eyebrow">On this page</p>
+          ${options.sections
+            .map((section) => `<a class="nav-link" href="#${escapeHtml(section.id)}">${escapeHtml(section.label)}</a>`)
+            .join("")}
+        </nav>`
+    : "";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -432,9 +440,9 @@ function renderLayout(site, title, body) {
     <div class="shell">
       <aside class="sidebar">
         <a class="brand" href="/">${escapeHtml(site.title)}</a>
-        <nav aria-label="Document collections">${nav}</nav>
-      </aside>
-      <main>${body}</main>
+        <nav class="collection-navigation" aria-label="Document collections">${nav}</nav>
+${documentNavigation ? `        ${documentNavigation}\n` : ""}      </aside>
+      <main id="main-content">${body}</main>
     </div>
   </body>
 </html>
@@ -549,18 +557,21 @@ function renderSupportingBlocks(blocks, context = {}) {
 
 function renderPlanStep(step, index) {
   if (typeof step === "string") {
-    return `<section class="step"><div class="meta"><span class="badge">step-${index + 1}</span></div><p>${escapeHtml(step)}</p></section>`;
+    return `<section class="plan-step step"><div class="meta"><span class="badge">step-${index + 1}</span></div><div class="step-instruction"><p>${escapeHtml(step)}</p></div></section>`;
   }
-  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
+  return `<section class="plan-step step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<div class="step-instruction"><p>${escapeHtml(step.instruction)}</p></div>` : ""}${toList(step.codeBlocks).length > 0 ? `<div class="step-code-blocks">${codeBlocks(step.codeBlocks)}</div>` : ""}${step.command ? `<div class="step-command"><h6>Run</h6><code class="command">${escapeHtml(step.command)}</code></div>` : ""}${step.expected ? `<div class="step-expected"><h6>Expected</h6><p>${escapeHtml(step.expected)}</p></div>` : ""}</section>`;
 }
 
-function renderFacts(facts) {
+function renderFacts(facts, context = {}) {
   const values = toList(facts);
   if (values.length === 0) return "";
-  return renderTable(
+  const emphasisClass = context.template === "evidence-led"
+    ? " template-emphasis emphasis-evidence"
+    : "";
+  return `<div class="facts${emphasisClass}">${renderTable(
     ["Label", "Value"],
     values.map((fact) => `<tr><td>${escapeHtml(fact.label)}</td><td>${escapeHtml(fact.value)}</td></tr>`),
-  );
+  )}</div>`;
 }
 
 function renderSupportingLinks(links) {
@@ -584,7 +595,96 @@ function renderSupportingSection(section, depth = 0, context = {}) {
   const childSections = toList(section.subSections)
     .map((subSection) => renderSupportingSection(subSection, depth + 1, context))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+}
+
+const DOCUMENT_SECTION_DEFINITIONS = {
+  spec: [
+    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
+    ["related-plans", "Related Plans", (doc) => toList(doc.links?.relatedPlans).length > 0],
+    ["related-decisions", "Related Decisions", (doc) => toList(doc.links?.relatedDecisions).length > 0],
+    ["goal", "Goal", (doc) => Boolean(doc.body?.goal)],
+    ["problem", "Problem", (doc) => Boolean(doc.body?.problem)],
+    ["scope", "Scope", (doc) => Boolean(doc.body?.scope)],
+    ["architecture", "Architecture", (doc) => Boolean(doc.body?.architecture)],
+    ["requirements", "Requirements", (doc) => toList(doc.body?.requirements).length > 0],
+    ["approaches", "Approaches", (doc) => toList(doc.body?.approaches).length > 0],
+    ["components", "Components", (doc) => toList(doc.body?.components).length > 0],
+    ["data-flow", "Data Flow", (doc) => toList(doc.body?.dataFlow).length > 0],
+    ["error-handling", "Error Handling", (doc) => toList(doc.body?.errorHandling).length > 0],
+    ["contracts", "Contracts", (doc) => toList(doc.body?.contracts).length > 0],
+    ["surfaces", "Surfaces", (doc) => toList(doc.body?.surfaces).length > 0],
+    ["testing-strategy", "Testing Strategy", (doc) => toList(doc.body?.testingStrategy).length > 0],
+    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
+    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
+    ["review-checklist", "Review Checklist", (doc) => toList(doc.body?.reviewChecklist).length > 0],
+    ["self-review-checks", "Self Review Checks", (doc) => toList(doc.body?.selfReviewChecks).length > 0],
+    ["implementation-handoff", "Implementation Handoff", (doc) => Boolean(doc.body?.implementationHandoff)],
+    ["supporting-sections", "Supporting Sections", (doc) => toList(doc.body?.supportingSections).length > 0],
+    ["open-questions", "Open Questions", () => true],
+  ],
+  plan: [
+    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
+    ["related-spec", "Related Spec", (doc) => Boolean(doc.links?.relatedSpec)],
+    ["goal", "Goal", (doc) => Boolean(doc.body?.goal)],
+    ["worker-instructions", "Worker Instructions", (doc) => Boolean(doc.body?.workerInstructions)],
+    ["scope-check", "Scope Check", (doc) => Boolean(doc.body?.scopeCheck)],
+    ["architecture", "Architecture", (doc) => Boolean(doc.body?.architecture)],
+    ["tech-stack", "Tech Stack", (doc) => toList(doc.body?.techStack).length > 0],
+    ["current-state", "Current State", (doc) => Boolean(doc.body?.currentState)],
+    ["target-state", "Target State", (doc) => Boolean(doc.body?.targetState)],
+    ["scope", "Scope", (doc) => Boolean(doc.body?.scope)],
+    ["file-structure", "File Structure", (doc) => toList(doc.body?.fileStructure).length > 0],
+    ["plan-slices", "Implementation Slices", (doc) => toList(doc.body?.slices).length > 0],
+    ["execution-order", "Execution Order", (doc) => toList(doc.body?.executionOrder).length > 0],
+    ["risks", "Risks", (doc) => toList(doc.body?.risks).length > 0],
+    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
+    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
+    ["self-review-checks", "Self Review Checks", (doc) => toList(doc.body?.selfReviewChecks).length > 0],
+    ["execution-handoff", "Execution Handoff", (doc) => Boolean(doc.body?.executionHandoff)],
+    ["supporting-sections", "Supporting Sections", (doc) => toList(doc.body?.supportingSections).length > 0],
+    ["open-questions", "Open Questions", () => true],
+  ],
+  decision: [
+    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
+    ["related-spec", "Related Spec", (doc) => Boolean(doc.links?.relatedSpec)],
+    ["context", "Context", (doc) => Boolean(doc.body?.context)],
+    ["decision", "Decision", (doc) => Boolean(doc.body?.decision)],
+    ["options-considered", "Options Considered", (doc) => toList(doc.body?.optionsConsidered).length > 0],
+    ["consequences", "Consequences", (doc) => toList(doc.body?.consequences).length > 0],
+    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
+    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
+    ["open-questions", "Open Questions", () => true],
+  ],
+  "agent-context": [
+    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
+    ["when-to-use", "When To Use", (doc) => toList(doc.body?.whenToUse).length > 0],
+    ["required-reading", "Required Reading", (doc) => toList(doc.body?.requiredReading).length > 0],
+    ["working-rules", "Working Rules", (doc) => toList(doc.body?.workingRules).length > 0],
+    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
+    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
+    ["open-questions", "Open Questions", () => true],
+  ],
+};
+
+function deriveDocumentSections(doc) {
+  return toList(DOCUMENT_SECTION_DEFINITIONS[doc.docType])
+    .filter(([, , isVisible]) => isVisible(doc))
+    .map(([id, label]) => ({ id, label }));
+}
+
+function sectionClass(baseClass, template, emphasis) {
+  const emphasized =
+    (template === "task-first" && emphasis === "task")
+    || (template === "operator-console" && emphasis === "operator")
+    || (template === "evidence-led" && emphasis === "evidence");
+  return [baseClass, emphasized ? `template-emphasis emphasis-${emphasis}` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function renderSection(id, label, className, content) {
+  return `<section id="${id}" class="${className}"><h2>${label}</h2>${content}</section>`;
 }
 
 function renderDocument(doc, collection, context = {}) {
@@ -598,118 +698,131 @@ function renderDocument(doc, collection, context = {}) {
 
   parts.push(`<article class="document ${template}">
     <header class="document-header">
-      <div class="kicker">${escapeHtml(collection.label)} · ${escapeHtml(template)}</div>
+      <p class="kicker">${escapeHtml(doc.docType === "agent-context" ? "Agent Context" : `${doc.docType.charAt(0).toUpperCase()}${doc.docType.slice(1)}`)}</p>
       <h1>${escapeHtml(doc.title)}</h1>
       <p class="description">${escapeHtml(doc.description)}</p>
-      <div class="meta">
-        <span class="badge">Status: ${escapeHtml(doc.status)}</span>
-        <span class="badge">Owner: ${escapeHtml(doc.owner)}</span>
-        <span class="badge">Updated: ${escapeHtml(doc.updatedAt)}</span>
-      </div>
+      <dl class="document-metadata">
+        <div><dt>Status</dt><dd><span class="badge status-${escapeHtml(doc.status)}${template === "operator-console" ? " template-emphasis emphasis-status" : ""}">${escapeHtml(doc.status)}</span></dd></div>
+        <div><dt>Owner</dt><dd>${escapeHtml(doc.owner)}</dd></div>
+        <div><dt>Updated</dt><dd>${escapeHtml(doc.updatedAt)}</dd></div>
+        <div><dt>Schema</dt><dd>${escapeHtml(doc.schemaVersion)}</dd></div>
+        <div><dt>Template</dt><dd>${escapeHtml(template)}</dd></div>
+      </dl>
     </header>
-    <section class="grid">
-      <div class="panel"><h3>Human Summary</h3><p>${escapeHtml(page.humanSummary)}</p></div>
-      <div class="panel"><h3>Agent Summary</h3><p>${escapeHtml(page.agentSummary)}</p></div>
-    </section>`);
+    <div class="summary-grid">
+      <section class="document-summary human-summary" aria-labelledby="human-summary-title"><h2 id="human-summary-title">Human Summary</h2><p>${escapeHtml(page.humanSummary)}</p></section>
+      <section class="document-summary agent-summary" aria-labelledby="agent-summary-title"><h2 id="agent-summary-title">Agent Summary</h2><p>${escapeHtml(page.agentSummary)}</p></section>
+    </div>`);
 
-  parts.push(`<h2>Source Of Truth</h2>${listItems(links.sourceOfTruth, true)}`);
-  if (links.relatedSpec) parts.push(`<h2>Related Spec</h2><p><code>${escapeHtml(links.relatedSpec)}</code></p>`);
-  if (toList(links.relatedPlans).length > 0) parts.push(`<h2>Related Plans</h2>${listItems(links.relatedPlans, true)}`);
-  if (body.goal) parts.push(`<h2>Goal</h2><p>${escapeHtml(body.goal)}</p>`);
+  if (toList(links.sourceOfTruth).length > 0) {
+    parts.push(renderSection("source-of-truth", "Source Of Truth", "source-of-truth", listItems(links.sourceOfTruth, true)));
+  }
+  if (links.relatedSpec) {
+    parts.push(renderSection("related-spec", "Related Spec", "related-spec", `<p><code>${escapeHtml(links.relatedSpec)}</code></p>`));
+  }
+  if (toList(links.relatedPlans).length > 0) {
+    parts.push(renderSection("related-plans", "Related Plans", "related-plans", listItems(links.relatedPlans, true)));
+  }
+  if (toList(links.relatedDecisions).length > 0) {
+    parts.push(renderSection("related-decisions", "Related Decisions", "related-decisions", listItems(links.relatedDecisions, true)));
+  }
+  if (body.goal) parts.push(renderSection("goal", "Goal", "goal", `<p>${escapeHtml(body.goal)}</p>`));
+
+  if (doc.docType === "plan" && body.workerInstructions) {
+    parts.push(renderSection("worker-instructions", "Worker Instructions", "worker-instructions", `<p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h3>Required Sub-Skills</h3>${listItems(body.workerInstructions.requiredSubSkills, true)}`));
+  }
+  if (doc.docType === "plan" && body.scopeCheck) {
+    parts.push(renderSection("scope-check", "Scope Check", "scope-check", `<div class="grid"><section class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></section><section class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></section></div>`));
+  }
+
+  if (body.problem) parts.push(renderSection("problem", "Problem", "problem", `<p>${escapeHtml(body.problem)}</p>`));
+  if (doc.docType !== "plan" && (scope.in || scope.out)) {
+    parts.push(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
+  }
   if (typeof body.architecture === "string" && body.architecture) {
-    parts.push(`<h2>Architecture</h2><p>${escapeHtml(body.architecture)}</p>`);
+    parts.push(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(body.architecture)}</p>`));
+  } else if (architecture.summary) {
+    parts.push(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(architecture.summary)}</p>${toList(architecture.flow).length > 0 ? `<div class="architecture-flow"><h3>Flow</h3>${listItems(architecture.flow)}</div>` : ""}`));
   }
-  if (architecture.summary) {
-    parts.push(`<h2>Architecture</h2><p>${escapeHtml(architecture.summary)}</p>${listItems(architecture.flow)}`);
+  if (toList(body.techStack).length > 0) {
+    parts.push(renderSection("tech-stack", "Tech Stack", "tech-stack", listItems(body.techStack, true)));
   }
-  if (toList(body.techStack).length > 0) parts.push(`<h2>Tech Stack</h2>${listItems(body.techStack, true)}`);
-  if (body.workerInstructions) {
-    parts.push(`<h2>Worker Instructions</h2><div class="panel"><p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h4>Required Sub-Skills</h4>${listItems(body.workerInstructions.requiredSubSkills, true)}</div>`);
-  }
-  if (body.scopeCheck) {
-    parts.push(`<h2>Scope Check</h2><div class="grid"><div class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></div><div class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></div></div>`);
-  }
-  if (scope.in) {
-    parts.push(`<h2>Scope</h2><div class="grid"><div class="panel"><h3>In</h3>${listItems(scope.in)}</div><div class="panel"><h3>Out</h3>${listItems(scope.out)}</div></div>`);
-  }
-  for (const [label, value] of [
-    ["Problem", body.problem],
-    ["Current State", body.currentState],
-    ["Target State", body.targetState],
-    ["Context", body.context],
-    ["Decision", body.decision],
-  ]) {
-    if (value) parts.push(`<h2>${label}</h2><p>${escapeHtml(value)}</p>`);
+  if (body.currentState) parts.push(renderSection("current-state", "Current State", "current-state", `<p>${escapeHtml(body.currentState)}</p>`));
+  if (body.targetState) parts.push(renderSection("target-state", "Target State", "target-state", `<p>${escapeHtml(body.targetState)}</p>`));
+  if (doc.docType === "plan" && (scope.in || scope.out)) {
+    parts.push(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
   }
   if (toList(body.requirements).length > 0) {
-    parts.push(`<h2>Requirements</h2><div class="stack">${body.requirements
-      .map((requirement) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
-      .join("")}</div>`);
+    parts.push(renderSection("requirements", "Requirements", sectionClass("requirements", template, "task"), body.requirements
+      .map((requirement) => `<section class="requirement"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
+      .join("")));
   }
   if (toList(body.approaches).length > 0) {
-    parts.push(`<h2>Approaches</h2><div class="stack">${body.approaches
-      .map((approach) => `<section class="panel"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
-      .join("")}</div>`);
+    parts.push(renderSection("approaches", "Approaches", "approaches", body.approaches
+      .map((approach) => `<section class="approach"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
+      .join("")));
   }
   if (toList(body.components).length > 0) {
-    parts.push(`<h2>Components</h2><div class="stack">${body.components
-      .map((component) => `<section class="panel"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
-      .join("")}</div>`);
+    parts.push(renderSection("components", "Components", "components", body.components
+      .map((component) => `<section class="component"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
+      .join("")));
   }
-  if (toList(body.dataFlow).length > 0) parts.push(`<h2>Data Flow</h2>${listItems(body.dataFlow)}`);
+  if (toList(body.dataFlow).length > 0) parts.push(renderSection("data-flow", "Data Flow", "data-flow", listItems(body.dataFlow)));
   if (toList(body.errorHandling).length > 0) {
-    parts.push(`<h2>Error Handling</h2>${renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))}`);
+    parts.push(renderSection("error-handling", "Error Handling", "error-handling", renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))));
   }
   if (toList(body.contracts).length > 0) {
-    parts.push(`<h2>Contracts</h2><div class="stack">${body.contracts
-      .map((contract) => `<section class="panel"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
-      .join("")}</div>`);
+    parts.push(renderSection("contracts", "Contracts", "contracts", body.contracts
+      .map((contract) => `<section class="contract"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
+      .join("")));
   }
   if (toList(body.fileStructure).length > 0) {
-    parts.push(`<h2>File Structure</h2>${renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))}`);
+    parts.push(renderSection("file-structure", "File Structure", "file-structure", renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr class="file-structure-entry"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))));
   }
   if (toList(body.slices).length > 0) {
-    parts.push(`<h2>Implementation Slices</h2><div class="stack">${body.slices
-      .map((slice) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><h4>Surfaces</h4>${listItems(slice.surfaces, true)}${toList(slice.files).length > 0 ? `<h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}` : ""}<h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div><h4>Done When</h4>${listItems(slice.doneWhen)}</section>`)
-      .join("")}</div>`);
+    parts.push(renderSection("plan-slices", "Implementation Slices", sectionClass("plan-slices", template, "operator"), body.slices
+      .map((slice) => `<section class="plan-slice"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><div class="slice-surfaces"><h4>Surfaces</h4>${listItems(slice.surfaces, true)}</div>${toList(slice.files).length > 0 ? `<div class="slice-files"><h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr class="plan-file"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}</div>` : ""}<div class="slice-steps"><h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div></div><div class="done-when"><h4>Done When</h4>${listItems(slice.doneWhen)}</div></section>`)
+      .join("")));
   }
-  if (toList(body.executionOrder).length > 0) parts.push(`<h2>Execution Order</h2>${listItems(body.executionOrder)}`);
+  if (toList(body.executionOrder).length > 0) parts.push(renderSection("execution-order", "Execution Order", "execution-order", listItems(body.executionOrder)));
   if (toList(body.risks).length > 0) {
-    parts.push(`<h2>Risks</h2>${renderTable(["Risk", "Mitigation"], body.risks.map((row) => `<tr><td>${escapeHtml(row.risk)}</td><td>${escapeHtml(row.mitigation)}</td></tr>`))}`);
+    parts.push(renderSection("risks", "Risks", "risks", body.risks.map((row) => `<article class="risk"><h3>Risk</h3><p>${escapeHtml(row.risk)}</p><h4>Mitigation</h4><p>${escapeHtml(row.mitigation)}</p></article>`).join("")));
   }
+  if (body.context) parts.push(renderSection("context", "Context", "context", `<p>${escapeHtml(body.context)}</p>`));
+  if (body.decision) parts.push(renderSection("decision", "Decision", "decision", `<p>${escapeHtml(body.decision)}</p>`));
   if (toList(body.optionsConsidered).length > 0) {
-    parts.push(`<h2>Options Considered</h2>${renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))}`);
+    parts.push(renderSection("options-considered", "Options Considered", "options-considered", renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))));
   }
-  if (toList(body.consequences).length > 0) parts.push(`<h2>Consequences</h2>${listItems(body.consequences)}`);
-  if (toList(body.whenToUse).length > 0) parts.push(`<h2>When To Use</h2>${listItems(body.whenToUse)}`);
-  if (toList(body.requiredReading).length > 0) parts.push(`<h2>Required Reading</h2>${listItems(body.requiredReading, true)}`);
-  if (toList(body.workingRules).length > 0) parts.push(`<h2>Working Rules</h2>${listItems(body.workingRules)}`);
+  if (toList(body.consequences).length > 0) parts.push(renderSection("consequences", "Consequences", "consequences", listItems(body.consequences)));
+  if (toList(body.whenToUse).length > 0) parts.push(renderSection("when-to-use", "When To Use", "when-to-use", listItems(body.whenToUse)));
+  if (toList(body.requiredReading).length > 0) parts.push(renderSection("required-reading", "Required Reading", "required-reading", listItems(body.requiredReading, true)));
+  if (toList(body.workingRules).length > 0) parts.push(renderSection("working-rules", "Working Rules", "working-rules", listItems(body.workingRules)));
   if (toList(body.surfaces).length > 0) {
-    parts.push(`<h2>File Or Surface Map</h2>${renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))}`);
+    parts.push(renderSection("surfaces", "File Or Surface Map", "surfaces", renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr class="surface"><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))));
   }
   if (toList(body.testingStrategy).length > 0) {
-    parts.push(`<h2>Testing Strategy</h2>${renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))}`);
+    parts.push(renderSection("testing-strategy", "Testing Strategy", "testing-strategy", renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))));
   }
   if (toList(body.validation).length > 0) {
-    parts.push(`<h2>Validation</h2>${renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
+    parts.push(renderSection("validation", "Validation", sectionClass("validation", template, template === "evidence-led" ? "evidence" : "task"), renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
-  parts.push(`<h2>Agent Instructions</h2>${listItems(body.agentInstructions)}`);
-  if (toList(body.reviewChecklist).length > 0) parts.push(`<h2>Review Checklist</h2>${listItems(body.reviewChecklist)}`);
+  if (toList(body.agentInstructions).length > 0) parts.push(renderSection("agent-instructions", "Agent Instructions", "agent-instructions", listItems(body.agentInstructions)));
+  if (toList(body.reviewChecklist).length > 0) parts.push(renderSection("review-checklist", "Review Checklist", "review-checklist", listItems(body.reviewChecklist)));
   if (toList(body.selfReviewChecks).length > 0) {
-    parts.push(`<h2>Self Review Checks</h2>${renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
+    parts.push(renderSection("self-review-checks", "Self Review Checks", "self-review-checks", renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
   if (body.implementationHandoff) {
-    parts.push(`<h2>Implementation Handoff</h2><div class="panel"><p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}</div>`);
+    parts.push(renderSection("implementation-handoff", "Implementation Handoff", "implementation-handoff", `<p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}`));
   }
   if (body.executionHandoff) {
-    parts.push(`<h2>Execution Handoff</h2><div class="panel"><p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}</div>`);
+    parts.push(renderSection("execution-handoff", "Execution Handoff", "execution-handoff", `<p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}`));
   }
   if (toList(body.supportingSections).length > 0) {
-    parts.push(`<h2>Supporting Sections</h2><div class="stack">${body.supportingSections
-      .map((section) => renderSupportingSection(section, 0, context))
-      .join("")}</div>`);
+    parts.push(renderSection("supporting-sections", "Supporting Sections", "supporting-sections", body.supportingSections
+      .map((section) => renderSupportingSection(section, 0, { ...context, template }))
+      .join("")));
   }
-  parts.push(`<h2>Open Questions</h2>${toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>"}</article>`);
+  parts.push(`${renderSection("open-questions", "Open Questions", "open-questions", toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>")}</article>`);
   return parts.join("\n");
 }
 
@@ -841,12 +954,21 @@ function writeStaticPages(docsDir, title) {
         site,
         collection.label,
         `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${sortingControls}<section class="grid">${cards || "<p>No documents yet.</p>"}</section>${sortingScript}`,
+        { collectionDir: collection.dir },
       ),
     );
     for (const doc of docs) {
       writeFile(
         documentPagePath(docsDir, collection.dir, doc.slug),
-        renderLayout(site, doc.title, renderDocument(doc, collection, { docsDir })),
+        renderLayout(
+          site,
+          doc.title,
+          renderDocument(doc, collection, { docsDir }),
+          {
+            collectionDir: collection.dir,
+            sections: deriveDocumentSections(doc),
+          },
+        ),
       );
     }
   }
