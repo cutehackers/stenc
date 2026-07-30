@@ -219,6 +219,50 @@ function cssDeclarations(css, selector) {
   );
 }
 
+function relativeLuminance(hexColor) {
+  assert.match(hexColor, /^#[0-9a-f]{6}$/iu);
+  const channels = hexColor
+    .slice(1)
+    .match(/.{2}/gu)
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) =>
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4,
+    );
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground, background) {
+  const foregroundLuminance = relativeLuminance(foreground);
+  const backgroundLuminance = relativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+test("semantic small-text color pairs meet WCAG AA contrast", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const semanticPairs = [
+    ["info", "--color-info", "--color-info-tint"],
+    ["success", "--color-success", "--color-success-tint"],
+    ["warning", "--color-warning", "--color-warning-tint"],
+    ["danger", "--color-danger", "--color-danger-tint"],
+    ["relation", "--color-relation", "--color-relation-tint"],
+  ];
+
+  for (const [name, foregroundToken, backgroundToken] of semanticPairs) {
+    const foreground = root[foregroundToken];
+    const background = root[backgroundToken];
+    const ratio = contrastRatio(foreground, background);
+    assert.ok(
+      ratio >= 4.5,
+      `${name} small-text contrast is ${ratio.toFixed(3)}:1 for ${foreground} on ${background}`,
+    );
+  }
+});
+
 test("unified B style tokens", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unified-styles-"));
   const result = spawnSync(
@@ -260,7 +304,7 @@ test("unified B style tokens", () => {
       "--color-success": "#087f5b",
       "--color-warning": "#9a5b00",
       "--color-danger": "#c5293d",
-      "--color-relation": "#6f5ce7",
+      "--color-relation": "#6c58e6",
     },
   );
   assert.deepEqual(

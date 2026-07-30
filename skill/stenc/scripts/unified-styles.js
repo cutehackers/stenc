@@ -19,7 +19,7 @@ function buildUnifiedStyles() {
   --color-warning-tint: #fff7e8;
   --color-danger: #c5293d;
   --color-danger-tint: #fff1f3;
-  --color-relation: #6f5ce7;
+  --color-relation: #6c58e6;
   --color-relation-tint: #f4f1ff;
   --color-diagram-consumer: var(--color-info);
   --color-diagram-surface: #2878d0;
