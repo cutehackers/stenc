@@ -135,6 +135,9 @@ node ~/.codex/skills/stenc/scripts/setup-project.js \
 Validate the regenerated pages and local media assets:
 
 ```bash
+node ~/.codex/skills/stenc/scripts/setup-project.js \
+  --project-root "$(pwd)" \
+  --docs-dir docs/stenc
 node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
 ```
 
@@ -174,16 +177,18 @@ Useful repo commands:
 
 ```bash
 ./scripts/install.sh
-./scripts/setup-examples-app.sh
 node skill/stenc/scripts/validate-stenc-doc.js skill/stenc/templates examples examples-app/content
+./scripts/setup-examples-app.sh
 node skill/stenc/scripts/check-rendered-pages.js examples-app
 ./scripts/open-docs.sh --docs-dir examples-app
 ./scripts/validate.sh
 ```
 
-`./scripts/setup-examples-app.sh` regenerates both the local examples app and
-the tracked style specimens from the canonical renderer. Do not hand-edit their
-generated HTML or CSS.
+`./scripts/setup-examples-app.sh` regenerates both the source-only local
+examples app and the tracked style specimens from the canonical renderer.
+`examples-app/content/` and its source assets are tracked; renderer-owned
+routes, copied assets, `index.html`, and `styles.css` are ignored. Do not
+hand-edit generated HTML or CSS.
 
 After starting the examples app, use the printed local port with these routes:
 
@@ -203,6 +208,8 @@ specimens are tracked at:
 ## Compatibility
 
 - Schema-version 1 and 2 documents remain supported.
+- Top-level `language` is optional. Safe BCP-47-like tags select the detail
+  page's `<html lang>` value; documents without it render as English (`en`).
 - Existing source `diagram` blocks remain valid escaped-source panels.
 - Structured diagrams are optional; existing documents do not need them.
 - Canonical documents remain JSON. Markdown, MDX, raw HTML, per-document CSS,
