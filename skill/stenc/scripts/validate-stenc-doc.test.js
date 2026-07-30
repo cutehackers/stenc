@@ -1046,7 +1046,15 @@ test("rejects invalid structured diagram contracts with exact paths", () => {
       path: `${blockPath}nodes[3].id`,
     },
     {
-      name: "disallowed control character",
+      name: "NUL control character",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.summary = "Artifact\u0000projection flow";
+      },
+      path: `${blockPath}summary`,
+    },
+    {
+      name: "BEL control character",
       block: validRelationDiagram(),
       mutate: (block) => {
         block.relations[0].label = "creates\u0007";
@@ -1060,6 +1068,22 @@ test("rejects invalid structured diagram contracts with exact paths", () => {
         block.title = "Artifact\nflow";
       },
       path: `${blockPath}title`,
+    },
+    {
+      name: "Unicode line separator in title",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.title = "Artifact\u2028flow";
+      },
+      path: `${blockPath}title`,
+    },
+    {
+      name: "Unicode paragraph separator in relation label",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].label = "creates\u2029runtime";
+      },
+      path: `${blockPath}relations[0].label`,
     },
     {
       name: "tabbed label",

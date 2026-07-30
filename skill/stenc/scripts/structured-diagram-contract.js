@@ -43,7 +43,7 @@ function hasSafeDiagramText(value, { multiline = false } = {}) {
   ) {
     return false;
   }
-  return multiline || !/[\n\r\t]/u.test(value);
+  return multiline || !/[\n\r\t\u2028\u2029]/u.test(value);
 }
 
 function validateAllowedFields(value, allowedFields, errors, prefix) {
