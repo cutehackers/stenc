@@ -2,6 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { inspectRegularFileWithin } = require("./file-boundary");
 
 const COLLECTIONS = [
   { dir: "specs", suffix: ".spec.json" },
@@ -74,12 +75,22 @@ function checkMediaAssets(absoluteDocsDir, jsonPath, doc, html, pageRelativePath
       continue;
     }
     const sourceAssetPath = path.join(absoluteDocsDir, "content", src);
-    if (!fs.existsSync(sourceAssetPath)) {
+    const sourceInspection = inspectRegularFileWithin(absoluteDocsDir, sourceAssetPath);
+    if (!sourceInspection.exists) {
       errors.push(`${jsonRelativePath}: missing media asset: content/${src}`);
+    } else if (!sourceInspection.ok) {
+      errors.push(
+        `${jsonRelativePath}: media asset must be a regular file without symlinks: content/${src} (${sourceInspection.reason})`,
+      );
     }
     const generatedAssetPath = path.join(absoluteDocsDir, src);
-    if (!fs.existsSync(generatedAssetPath)) {
+    const generatedInspection = inspectRegularFileWithin(absoluteDocsDir, generatedAssetPath);
+    if (!generatedInspection.exists) {
       errors.push(`${jsonRelativePath}: missing generated media asset: ${src}`);
+    } else if (!generatedInspection.ok) {
+      errors.push(
+        `${jsonRelativePath}: generated media asset must be a regular file without symlinks: ${src} (${generatedInspection.reason})`,
+      );
     }
     const expectedRenderedSrc = escapeHtml(`../../${src}`);
     if (!html.includes(`src="${expectedRenderedSrc}"`)) {

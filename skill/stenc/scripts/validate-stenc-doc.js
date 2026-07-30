@@ -6,6 +6,7 @@ const {
   STRUCTURED_DIAGRAM_TYPES,
   validateStructuredDiagram,
 } = require("./structured-diagram-contract");
+const { SUPPORTING_SECTION_FIELDS } = require("./document-contract");
 
 const VALID_TYPES = new Set(["spec", "plan", "decision", "agent-context"]);
 const VALID_STYLE_TEMPLATES = new Set([
@@ -21,17 +22,6 @@ const VALID_STATUSES = new Set([
   "superseded",
 ]);
 const VALID_SCHEMA_VERSIONS = new Set([1, 2]);
-const SUPPORTING_SECTION_FIELDS = new Set([
-  "heading",
-  "content",
-  "items",
-  "facts",
-  "links",
-  "steps",
-  "blocks",
-  "codeBlocks",
-  "subSections",
-]);
 const RICH_BLOCK_TYPES = new Set([
   "paragraph",
   "callout",

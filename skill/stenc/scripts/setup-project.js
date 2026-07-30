@@ -8,6 +8,11 @@ const {
 } = require("./generated-artifacts");
 const { renderStructuredDiagram } = require("./render-structured-diagram");
 const { buildUnifiedStyles } = require("./unified-styles");
+const {
+  ensureDirectoryWithin,
+  inspectDirectoryWithin,
+  inspectRegularFileWithin,
+} = require("./file-boundary");
 
 const COLLECTIONS = [
   { dir: "specs", label: "Specs", docType: "spec", suffix: ".spec.json" },
@@ -246,17 +251,44 @@ function referencedMediaSources(docsDir) {
 }
 
 function seedBundledTemplateAssets(docsDir, { seedAll = false } = {}) {
-  if (!fs.existsSync(BUNDLED_TEMPLATE_ASSETS_DIR)) return;
+  const bundledRootInspection = inspectDirectoryWithin(
+    path.dirname(BUNDLED_TEMPLATE_ASSETS_DIR),
+    BUNDLED_TEMPLATE_ASSETS_DIR,
+  );
+  if (!bundledRootInspection.ok) {
+    throw new Error(
+      `bundled template asset root ${BUNDLED_TEMPLATE_ASSETS_DIR} must be a real directory without symlinks: ${bundledRootInspection.reason}`,
+    );
+  }
   const contentAssetsDir = path.join(docsDir, "content", "assets");
   const referencedSources = referencedMediaSources(docsDir);
   for (const entry of fs.readdirSync(BUNDLED_TEMPLATE_ASSETS_DIR, { withFileTypes: true })) {
-    if (!entry.isFile()) continue;
     if (!seedAll && !referencedSources.has(`assets/${entry.name}`)) continue;
-    const targetPath = path.join(contentAssetsDir, entry.name);
-    if (!fs.existsSync(targetPath)) {
-      ensureDirectory(contentAssetsDir);
-      fs.copyFileSync(path.join(BUNDLED_TEMPLATE_ASSETS_DIR, entry.name), targetPath);
+    const sourcePath = path.join(BUNDLED_TEMPLATE_ASSETS_DIR, entry.name);
+    const sourceInspection = inspectRegularFileWithin(
+      BUNDLED_TEMPLATE_ASSETS_DIR,
+      sourcePath,
+    );
+    if (!sourceInspection.ok) {
+      throw new Error(
+        `bundled template asset ${sourcePath} must be a regular file without symlinks: ${sourceInspection.reason}`,
+      );
     }
+    const targetPath = path.join(contentAssetsDir, entry.name);
+    const targetInspection = inspectRegularFileWithin(docsDir, targetPath);
+    if (targetInspection.exists) {
+      if (!targetInspection.ok) {
+        throw new Error(
+          `template asset target ${targetPath} must be a regular file without symlinks: ${targetInspection.reason}`,
+        );
+      }
+      continue;
+    }
+    if (targetInspection.reason !== "missing") {
+      throw new Error(`unsafe template asset target ${targetPath}: ${targetInspection.reason}`);
+    }
+    ensureDirectoryWithin(docsDir, contentAssetsDir);
+    fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
   }
 }
 
@@ -624,7 +656,10 @@ function mediaGeneratedSrc(src, context = {}) {
 
 function mediaSourceExists(block, context) {
   if (!context?.docsDir) return false;
-  return fs.existsSync(path.join(context.docsDir, "content", block.src));
+  return inspectRegularFileWithin(
+    context.docsDir,
+    path.join(context.docsDir, "content", block.src),
+  ).ok;
 }
 
 function renderMediaBlock(block, context) {

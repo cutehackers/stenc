@@ -123,6 +123,40 @@ test("install can prepare a target project with default project install", () => 
     assert.equal(versionResult.status, 0, versionResult.stderr || versionResult.stdout);
     assert.equal(versionResult.stdout.trim(), PACKAGE_VERSION);
   }
+  const planTemplate = JSON.parse(
+    fs.readFileSync(path.join(skillsRoot, "stenc", "templates", "plan.json"), "utf8"),
+  );
+  const planPath = path.join(
+    projectRoot,
+    "docs",
+    "stenc",
+    "content",
+    "plans",
+    "yyyy-mm-dd-topic.plan.json",
+  );
+  fs.mkdirSync(path.dirname(planPath), { recursive: true });
+  fs.writeFileSync(planPath, `${JSON.stringify(planTemplate, null, 2)}\n`);
+  const templateValidationCommand = planTemplate.body.slices[0].steps.find(
+    (step) => step.command,
+  ).command;
+  const templateValidationResult = spawnSync(
+    "bash",
+    ["-c", templateValidationCommand],
+    {
+      cwd: projectRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CODEX_SKILLS_DIR: skillsRoot,
+      },
+    },
+  );
+  assert.equal(
+    templateValidationResult.status,
+    0,
+    templateValidationResult.stderr || templateValidationResult.stdout,
+  );
+  assert.match(templateValidationResult.stdout, /Stenc validation passed/u);
   assert.equal(
     fs.existsSync(
       path.join(projectRoot, "docs", "stenc", "index.html"),

@@ -911,6 +911,31 @@ test("fresh template workflow renders bundled media and passes rendered checks",
   );
   assert.equal(checkResult.status, 0, checkResult.stderr || checkResult.stdout);
 
+  const renderedPagePath = path.join(
+    docsRoot,
+    "specs",
+    "yyyy-mm-dd-topic",
+    "index.html",
+  );
+  const renderedPage = fs.readFileSync(renderedPagePath, "utf8");
+  for (const match of renderedPage.matchAll(/(?:href|src)="([^"]+)"/gu)) {
+    const target = match[1];
+    if (/^(?:https?:|mailto:)/u.test(target)) continue;
+    if (target.startsWith("#")) {
+      assert.match(renderedPage, new RegExp(`id="${target.slice(1)}"`, "u"));
+      continue;
+    }
+    const cleanTarget = target.split(/[?#]/u, 1)[0];
+    let resolvedTarget = cleanTarget.startsWith("/")
+      ? path.join(docsRoot, cleanTarget)
+      : path.resolve(path.dirname(renderedPagePath), cleanTarget);
+    if (cleanTarget.endsWith("/")) resolvedTarget = path.join(resolvedTarget, "index.html");
+    assert.ok(
+      fs.existsSync(resolvedTarget),
+      `missing local template output target: ${target}`,
+    );
+  }
+
   const customAsset = '<svg xmlns="http://www.w3.org/2000/svg"><text>Target-owned</text></svg>\n';
   fs.writeFileSync(path.join(docsRoot, "content", expectedAsset), customAsset);
   const rerunResult = spawnSync(
@@ -927,6 +952,138 @@ test("fresh template workflow renders bundled media and passes rendered checks",
   assert.equal(rerunResult.status, 0, rerunResult.stderr || rerunResult.stdout);
   assert.equal(fs.readFileSync(path.join(docsRoot, "content", expectedAsset), "utf8"), customAsset);
   assert.equal(fs.readFileSync(path.join(docsRoot, expectedAsset), "utf8"), customAsset);
+});
+
+test("bundled asset seeding rejects an asset-root symlink escape", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-root-symlink-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-outside-"));
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+  fs.symlinkSync(outsideRoot, path.join(docsRoot, "content", "assets"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /symlink[\s\S]*content\/assets|content\/assets[\s\S]*symlink/iu);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "architecture-overview.svg")), false);
+});
+
+test("bundled asset seeding rejects a symlink target without modifying it", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-symlink-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-outside-"));
+  const outsideFile = path.join(outsideRoot, "outside.svg");
+  const sentinel = "outside must stay unchanged\n";
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+  fs.writeFileSync(outsideFile, sentinel);
+  fs.symlinkSync(
+    outsideFile,
+    path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /architecture-overview\.svg[\s\S]*regular file|symlink/iu);
+  assert.equal(fs.readFileSync(outsideFile, "utf8"), sentinel);
+});
+
+test("bundled asset seeding rejects a target directory collision", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-directory-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(
+    path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+    { recursive: true },
+  );
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /architecture-overview\.svg[\s\S]*regular file/iu);
+  assert.equal(
+    fs.lstatSync(
+      path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+    ).isDirectory(),
+    true,
+  );
+});
+
+test("bundled asset seeding requires a regular bundled source file", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-source-directory-"));
+  const installedSkillRoot = path.join(fixtureRoot, "stenc");
+  const projectRoot = path.join(fixtureRoot, "project");
+  const bundledAssetPath = path.join(
+    installedSkillRoot,
+    "templates",
+    "assets",
+    "architecture-overview.svg",
+  );
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+
+  fs.cpSync(path.join(REPO_ROOT, "skill", "stenc"), installedSkillRoot, {
+    recursive: true,
+  });
+  fs.rmSync(bundledAssetPath);
+  fs.mkdirSync(bundledAssetPath);
+  fs.mkdirSync(path.join(projectRoot, "docs", "stenc", "content", "specs"), {
+    recursive: true,
+  });
+  fs.copyFileSync(
+    path.join(installedSkillRoot, "templates", "spec.json"),
+    path.join(
+      projectRoot,
+      "docs",
+      "stenc",
+      "content",
+      "specs",
+      "yyyy-mm-dd-topic.spec.json",
+    ),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(installedSkillRoot, "scripts", "setup-project.js"),
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /bundled[\s\S]*architecture-overview\.svg[\s\S]*regular file/iu);
 });
 
 test("examples setup is byte-idempotent across repeated runs", () => {

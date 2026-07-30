@@ -14,6 +14,7 @@ const {
   DIAGRAM_ROLES,
   DIAGRAM_ID_PATTERN,
 } = require("./structured-diagram-contract");
+const { SUPPORTING_SECTION_FIELDS } = require("./document-contract");
 const { renderDocument, renderLayout } = require("./setup-project");
 
 function writeJson(filePath, value) {
@@ -526,14 +527,6 @@ function documentedRegistry(markdown, label) {
   return Array.from(line.matchAll(/`([^`]+)`/g), (match) => match[1]);
 }
 
-function javascriptSetRegistry(source, constantName) {
-  const declaration = source.match(
-    new RegExp(`const ${constantName} = new Set\\(\\[([\\s\\S]*?)\\]\\);`, "u"),
-  );
-  assert.ok(declaration, `missing JavaScript set registry: ${constantName}`);
-  return Array.from(declaration[1].matchAll(/"([^"]+)"/g), (match) => match[1]);
-}
-
 function supportingBlocks(document) {
   const blocks = [];
   const visit = (sections) => {
@@ -855,11 +848,7 @@ test("structured diagram documentation stays aligned", () => {
     documentedRegistry(references.style, "Rendered diagram roles"),
     registeredRoles,
   );
-  const validatorSource = fs.readFileSync(VALIDATOR, "utf8");
-  const optionalSupportingFields = javascriptSetRegistry(
-    validatorSource,
-    "SUPPORTING_SECTION_FIELDS",
-  )
+  const optionalSupportingFields = Array.from(SUPPORTING_SECTION_FIELDS)
     .filter((field) => !["heading", "content", "items"].includes(field))
     .sort();
   assert.deepEqual(

@@ -115,13 +115,13 @@
               { "type": "text", "text": " in JSON, use " },
               { "type": "emphasis", "text": "bounded primitives" },
               { "type": "text", "text": ", run " },
-              { "type": "code", "text": "./scripts/validate.sh" },
+              { "type": "code", "text": "node \"${CODEX_SKILLS_DIR:-$HOME/.codex/skills}/stenc/scripts/validate-stenc-doc.js\" docs/stenc/content/specs/yyyy-mm-dd-topic.spec.json" },
               { "type": "text", "text": ", press " },
               { "type": "kbd", "text": "Enter" },
               { "type": "text", "text": " to stop the preview, " },
               { "type": "mark", "text": "inspect the result" },
-              { "type": "text", "text": ", and read the " },
-              { "type": "link", "text": "field contract", "target": "skill/stenc/references/json-field-contract.md" },
+              { "type": "text", "text": ", and return to the " },
+              { "type": "link", "text": "docs home", "target": "../../" },
               { "type": "text", "text": "." }
             ]
           },

@@ -79,8 +79,8 @@
             "id": "step-3",
             "title": "Verify the slice",
             "status": "todo",
-            "command": "./scripts/validate.sh",
-            "expected": "All Stenc validation checks pass."
+            "command": "node \"${CODEX_SKILLS_DIR:-$HOME/.codex/skills}/stenc/scripts/validate-stenc-doc.js\" docs/stenc/content/plans/yyyy-mm-dd-topic.plan.json",
+            "expected": "Stenc validation passed."
           }
         ],
         "doneWhen": ["TBD"]
@@ -134,7 +134,7 @@
             "type": "paragraph",
             "spans": [
               { "type": "text", "text": "Run " },
-              { "type": "code", "text": "./scripts/validate.sh" },
+              { "type": "code", "text": "node \"${CODEX_SKILLS_DIR:-$HOME/.codex/skills}/stenc/scripts/validate-stenc-doc.js\" docs/stenc/content/plans/yyyy-mm-dd-topic.plan.json" },
               { "type": "text", "text": " before publishing." }
             ]
           },
