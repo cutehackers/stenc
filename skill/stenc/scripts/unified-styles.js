@@ -354,6 +354,7 @@ main {
 
 .status-approved,
 .status-canonical,
+.status-done,
 .pill.ok {
   border-color: var(--color-success-line);
   background: var(--color-success-tint);
@@ -461,7 +462,6 @@ button.panel:hover {
 }
 
 .scope-grid,
-.document-summary,
 .summary-grid,
 .split,
 .decision-summary,
@@ -474,7 +474,6 @@ button.panel:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.document-summary > *,
 .human-summary,
 .agent-summary {
   border: 1px solid var(--color-line);
@@ -1245,7 +1244,6 @@ caption {
 
   .grid,
   .scope-grid,
-  .document-summary,
   .summary-grid,
   .split,
   .decision-summary,

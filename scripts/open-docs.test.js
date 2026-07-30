@@ -4,7 +4,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
+const net = require("node:net");
 const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -15,9 +16,166 @@ test("open-docs server uses resolved path containment and image MIME types", () 
 
   assert.match(script, /path\.resolve\(root,'\.'\+pathname\)/);
   assert.match(script, /path\.relative\(root,file\)/);
+  assert.match(script, /root=fs\.realpathSync\(process\.cwd\(\)\)/);
+  assert.match(script, /fs\.realpathSync\(file\)/);
   assert.match(script, /image\/svg\+xml/);
   assert.match(script, /image\/png/);
   assert.doesNotMatch(script, /path\.join\(root,decodeURIComponent/);
+});
+
+function reservePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
+}
+
+function waitForOutput(child, pattern) {
+  return new Promise((resolve, reject) => {
+    let output = "";
+    let errorOutput = "";
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timed out waiting for ${pattern}: ${output}\n${errorOutput}`));
+    }, 15000);
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+      if (pattern.test(output)) {
+        clearTimeout(timeout);
+        resolve({ output, errorOutput });
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      errorOutput += chunk;
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timeout);
+      reject(new Error(`Server exited ${code}: ${output}\n${errorOutput}`));
+    });
+  });
+}
+
+async function stopServer(child) {
+  if (child.exitCode !== null) return;
+  child.stdin.write("\n");
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve();
+    }, 5000);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
+}
+
+async function assertServerContainsSymlinks(scriptPath, projectRoot, { generated = false } = {}) {
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-server-outside-"));
+  const sentinel = "TOP-SECRET-SYMLINK-SENTINEL";
+  const sentinelPath = path.join(outsideRoot, "sentinel.txt");
+  const port = await reservePort();
+  fs.writeFileSync(sentinelPath, sentinel);
+  fs.symlinkSync(sentinelPath, path.join(docsRoot, "escape.txt"));
+
+  const child = spawn(
+    "bash",
+    [
+      scriptPath,
+      ...(generated ? [] : ["--project-root", projectRoot]),
+      "--docs-dir",
+      "docs/stenc",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: projectRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        STENC_OPEN_BROWSER: "0",
+        STENC_SETUP_PROJECT_JS: path.join(
+          REPO_ROOT,
+          "skill",
+          "stenc",
+          "scripts",
+          "setup-project.js",
+        ),
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    },
+  );
+
+  try {
+    await waitForOutput(child, /Stenc docs running at/u);
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const [index, styles, image, escaped, missing] = await Promise.all([
+      fetch(`${baseUrl}/`),
+      fetch(`${baseUrl}/styles.css`),
+      fetch(`${baseUrl}/assets/normal.svg`),
+      fetch(`${baseUrl}/escape.txt`),
+      fetch(`${baseUrl}/missing.txt`),
+    ]);
+    assert.equal(index.status, 200);
+    assert.equal(styles.status, 200);
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-type"), "image/svg+xml");
+    assert.equal(escaped.status, 403);
+    assert.equal((await escaped.text()).includes(sentinel), false);
+    assert.equal(missing.status, 404);
+  } finally {
+    await stopServer(child);
+    fs.rmSync(outsideRoot, { recursive: true, force: true });
+  }
+}
+
+function prepareServerFixture() {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-server-project-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "site.json"),
+    '{"title":"Server Test","description":"Static server fixture."}\n',
+  );
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "assets", "normal.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>\n',
+  );
+  return projectRoot;
+}
+
+test("repository static server rejects symlink escapes without reading external bytes", async (t) => {
+  const projectRoot = prepareServerFixture();
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  await assertServerContainsSymlinks(SCRIPT_PATH, projectRoot);
+});
+
+test("generated static server rejects symlink escapes without reading external bytes", async (t) => {
+  const projectRoot = prepareServerFixture();
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  const setup = spawnSync(
+    process.execPath,
+    [
+      path.join(REPO_ROOT, "skill", "stenc", "scripts", "setup-project.js"),
+      "--project-root",
+      projectRoot,
+      "--docs-dir",
+      "docs/stenc",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(setup.status, 0, setup.stderr || setup.stdout);
+
+  await assertServerContainsSymlinks(
+    path.join(projectRoot, "open-docs.sh"),
+    projectRoot,
+    { generated: true },
+  );
 });
 
 test("open-docs defaults to the current project and docs/stenc", () => {

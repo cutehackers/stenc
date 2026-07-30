@@ -13,7 +13,8 @@ All document types use the same top-level shape:
   "docType": "spec | plan | decision | agent-context",
   "id": "spec:yyyy-mm-dd-topic",
   "slug": "yyyy-mm-dd-topic",
-  "status": "draft | proposed | approved | canonical | superseded",
+  "status": "draft | proposed | approved | canonical | done | superseded",
+  "language": "en",
   "title": "Human-readable page title",
   "description": "One-sentence page summary",
   "owner": "Team, package, module, or role",
@@ -34,6 +35,17 @@ All document types use the same top-level shape:
 `slug` must contain only lowercase letters, numbers, and hyphens. It is used as
 the generated route segment, so path separators, dots, whitespace, uppercase
 letters, and URL-like values are rejected.
+
+`language` is optional for backward compatibility. When present, it must be a
+safe BCP-47-like tag: an ASCII alphabetic primary subtag of 2–8 characters,
+followed by zero or more hyphen-separated ASCII alphanumeric subtags of 1–8
+characters. The validated value becomes the escaped detail-page `<html lang>`
+attribute. A missing value defaults to `en`; site and collection pages also
+explicitly use `en`.
+
+`status: "done"` records a completed execution document such as a plan whose
+steps and evidence checks are complete. Specs normally remain `approved` or
+`canonical` rather than using the plan completion state.
 
 ## Spec Body
 

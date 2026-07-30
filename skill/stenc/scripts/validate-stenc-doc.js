@@ -19,6 +19,7 @@ const VALID_STATUSES = new Set([
   "proposed",
   "approved",
   "canonical",
+  "done",
   "superseded",
 ]);
 const VALID_SCHEMA_VERSIONS = new Set([1, 2]);
@@ -72,7 +73,7 @@ const REQUIRED_TOP_LEVEL_FIELDS = [
   "page",
   "body",
 ];
-const TOP_LEVEL_FIELDS = new Set(REQUIRED_TOP_LEVEL_FIELDS);
+const TOP_LEVEL_FIELDS = new Set([...REQUIRED_TOP_LEVEL_FIELDS, "language"]);
 const PAGE_FIELDS = new Set(["humanSummary", "agentSummary", "styleTemplate"]);
 const LINK_FIELDS = {
   spec: new Set(["sourceOfTruth", "relatedPlans", "relatedDecisions"]),
@@ -579,6 +580,15 @@ function validateTopLevel(doc, errors) {
   if ("slug" in doc && !isSafeSlug(doc.slug)) {
     errors.push("slug must contain only lowercase letters, numbers, and hyphens");
   }
+  if (
+    "language" in doc
+    && (
+      !isNonEmptyString(doc.language)
+      || !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u.test(doc.language)
+    )
+  ) {
+    errors.push("language must be a valid BCP-47-like tag");
+  }
 
   if (isNonEmptyString(doc.id) && isNonEmptyString(doc.docType)) {
     const expectedPrefix = `${doc.docType}:`;
@@ -1076,27 +1086,51 @@ function validateFile(filePath) {
   return errors;
 }
 
-const targets = process.argv.slice(2);
-if (targets.length === 0) {
-  console.error("Usage: validate-stenc-doc.js <json-file-or-directory> [...]");
-  process.exit(2);
-}
-
-let failureCount = 0;
-for (const target of targets) {
-  for (const filePath of listFiles(path.resolve(target))) {
-    const errors = validateFile(filePath);
-    if (errors.length > 0) {
-      failureCount += 1;
-      console.error(`\n${filePath}`);
-      for (const error of errors) console.error(`  - ${error}`);
+function validationFailures(targets) {
+  const failures = [];
+  for (const target of targets) {
+    for (const filePath of listFiles(path.resolve(target))) {
+      const errors = validateFile(filePath);
+      if (errors.length > 0) failures.push({ filePath, errors });
     }
   }
+  return failures;
 }
 
-if (failureCount > 0) {
-  console.error(`\nStenc validation failed for ${failureCount} file(s).`);
-  process.exit(1);
+function formatValidationFailures(failures) {
+  const details = failures
+    .map(
+      ({ filePath, errors }) =>
+        `\n${filePath}\n${errors.map((error) => `  - ${error}`).join("\n")}`,
+    )
+    .join("");
+  return `${details}\n\nStenc validation failed for ${failures.length} file(s).`;
 }
 
-console.log("Stenc validation passed.");
+function runCli(targets) {
+  if (targets.length === 0) {
+    console.error("Usage: validate-stenc-doc.js <json-file-or-directory> [...]");
+    return 2;
+  }
+
+  const failures = validationFailures(targets);
+  if (failures.length > 0) {
+    console.error(formatValidationFailures(failures));
+    return 1;
+  }
+
+  console.log("Stenc validation passed.");
+  return 0;
+}
+
+if (require.main === module) {
+  process.exitCode = runCli(process.argv.slice(2));
+}
+
+module.exports = {
+  formatValidationFailures,
+  listFiles,
+  runCli,
+  validateFile,
+  validationFailures,
+};

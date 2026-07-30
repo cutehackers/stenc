@@ -465,6 +465,18 @@ test("interactive cards have scoped hover and a non-color anchor affordance", ()
   );
 });
 
+test("summary cards keep one readable content column inside the two-card grid", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.match(
+    css,
+    /\.summary-grid,[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u,
+  );
+  assert.doesNotMatch(css, /(?:^|\n)\.document-summary,\n/gu);
+  assert.doesNotMatch(css, /(?:^|\n)\.document-summary > \*/gu);
+});
+
 test("canonical styles do not expose unused legacy aliases", () => {
   const { buildUnifiedStyles } = require("./unified-styles");
   const root = cssDeclarations(buildUnifiedStyles(), ":root");
@@ -1240,10 +1252,12 @@ test("examples setup is byte-idempotent across repeated runs", () => {
     .split("\0")
     .filter(Boolean)
     .map((filePath) => path.relative("examples-app", filePath));
-  assert.ok(trackedPaths.includes("styles.css"));
-  assert.ok(trackedPaths.includes("index.html"));
-  assert.ok(trackedPaths.includes(path.join("specs", "index.html")));
-  assert.ok(trackedPaths.includes(path.join("plans", "index.html")));
+  assert.equal(trackedPaths.includes("styles.css"), false);
+  assert.equal(trackedPaths.includes("index.html"), false);
+  assert.equal(trackedPaths.some((filePath) => filePath.startsWith(`specs${path.sep}`)), false);
+  assert.equal(trackedPaths.some((filePath) => filePath.startsWith(`plans${path.sep}`)), false);
+  assert.ok(trackedPaths.includes(path.join("content", "site.json")));
+  assert.ok(trackedPaths.includes(path.join("content", "assets", "stenc-flow.svg")));
 
   let result = spawnSync("bash", [setupScript], {
     cwd: temporaryRepo,
@@ -2120,38 +2134,14 @@ test("removes stale generated document routes when source JSON is deleted", () =
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
-  writeJson(specPath, {
-    schemaVersion: 2,
-    docType: "spec",
-    id: "spec:old",
-    slug: "old",
-    status: "draft",
-    title: "Old Spec",
-    description: "Spec that will be removed.",
-    owner: "stenc",
-    createdAt: "2026-05-28",
-    updatedAt: "2026-05-28",
-    links: { sourceOfTruth: ["docs/stenc/content/specs/old.spec.json"] },
-    page: {
-      humanSummary: "Old rendered page.",
-      agentSummary: "Old rendered page.",
-      styleTemplate: "task-first",
-    },
-    body: {
-      goal: "Render old page.",
-      problem: "Old page exists.",
-      scope: { in: ["Render"], out: [] },
-      requirements: [],
-      approaches: [],
-      components: [],
-      dataFlow: [],
-      errorHandling: [],
-      testingStrategy: [],
-      validation: [],
-      agentInstructions: ["Render."],
-      openQuestions: [],
-    },
-  });
+  const oldSpec = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"), "utf8"),
+  );
+  oldSpec.id = "spec:old";
+  oldSpec.slug = "old";
+  oldSpec.title = "Old Spec";
+  oldSpec.description = "Spec that will be removed.";
+  writeJson(specPath, oldSpec);
 
   result = spawnSync(
     process.execPath,
@@ -3445,7 +3435,10 @@ test("refuses to render rich links with unsafe targets", () => {
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unsafe rich link target/);
+  assert.match(
+    result.stderr,
+    /body\.supportingSections\[0\]\.blocks\[0\]\.spans\[0\]\.target must be a safe link target/u,
+  );
 });
 
 test("refuses document slugs that would write outside the generated route directory", () => {
@@ -3471,7 +3464,7 @@ test("refuses document slugs that would write outside the generated route direct
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unsafe document slug/);
+  assert.match(result.stderr, /slug must contain only lowercase letters, numbers, and hyphens/u);
   assert.equal(fs.existsSync(path.join(projectRoot, "escaped-route", "index.html")), false);
 });
 
@@ -3552,4 +3545,110 @@ test("renders schemaVersion 1 plan string steps for compatibility", () => {
   const html = fs.readFileSync(path.join(docsRoot, "plans", "v1", "index.html"), "utf8");
   assert.match(html, /step-1/);
   assert.match(html, /Implement the contract/);
+});
+
+test("strict validation preserves prior generated output before rejecting an invalid flow endpoint", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-preflight-preserve-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const sourcePath = path.join(
+    docsRoot,
+    "content",
+    "specs",
+    "component-catalog.spec.json",
+  );
+  const assetPath = path.join(docsRoot, "content", "assets", "stenc-flow.svg");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+  fs.copyFileSync(COMPONENT_CATALOG_SPEC, sourcePath);
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples", "content", "assets", "stenc-flow.svg"),
+    assetPath,
+  );
+
+  const args = [
+    SCRIPT_PATH,
+    "--project-root",
+    projectRoot,
+    "--skip-install",
+    "--skip-open-docs-script",
+  ];
+  const initial = spawnSync(process.execPath, args, { encoding: "utf8" });
+  assert.equal(initial.status, 0, initial.stderr || initial.stdout);
+
+  const preservedPaths = [
+    "index.html",
+    "styles.css",
+    "assets/stenc-flow.svg",
+    "specs/component-catalog/index.html",
+  ];
+  const before = snapshotSelectedFiles(docsRoot, preservedPaths);
+  const source = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+  source.body.supportingSections[0].blocks[12].edges[0].to = "missing-node";
+  writeJson(sourcePath, source);
+
+  const rejected = spawnSync(process.execPath, args, { encoding: "utf8" });
+
+  assert.notEqual(rejected.status, 0);
+  assert.match(
+    rejected.stderr,
+    /body\.supportingSections\[0\]\.blocks\[12\]\.edges\[0\]\.to/u,
+  );
+  const after = snapshotSelectedFiles(docsRoot, preservedPaths);
+  assertSnapshotParity(after, before, "strict validation must precede generated output removal");
+});
+
+test("document routes use validated language tags and legacy documents default to English", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-render-language-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const koreanSource = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  const legacySource = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  koreanSource.slug = "korean-catalog";
+  koreanSource.id = "spec:korean-catalog";
+  koreanSource.language = "ko";
+  legacySource.slug = "legacy-catalog";
+  legacySource.id = "spec:legacy-catalog";
+  delete legacySource.language;
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  writeJson(
+    path.join(docsRoot, "content", "specs", "korean-catalog.spec.json"),
+    koreanSource,
+  );
+  writeJson(
+    path.join(docsRoot, "content", "specs", "legacy-catalog.spec.json"),
+    legacySource,
+  );
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples", "content", "assets", "stenc-flow.svg"),
+    path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "korean-catalog", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="ko">/u,
+  );
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "legacy-catalog", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
 });

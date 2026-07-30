@@ -1748,3 +1748,57 @@ test("rejects documents whose collection path does not match docType", () => {
   assert.match(result.stderr, /content\/specs requires docType spec/);
   assert.match(result.stderr, /spec files must end with \.spec\.json/);
 });
+
+test("accepts an optional safe document language and defaults legacy rendering to English", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-language-"));
+  const koreanSpec = validSingleSpec();
+  koreanSpec.language = "ko";
+  writeJson(path.join(dir, "korean.spec.json"), koreanSpec);
+  writeJson(path.join(dir, "legacy.spec.json"), validSingleSpec());
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(
+    renderLayout(
+      { title: "Docs" },
+      koreanSpec.title,
+      renderDocument(koreanSpec).html,
+      { language: koreanSpec.language },
+    ),
+    /^<!doctype html>\n<html lang="ko">/u,
+  );
+  assert.match(
+    renderLayout(
+      { title: "Docs" },
+      "Legacy",
+      renderDocument(validSingleSpec()).html,
+    ),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
+});
+
+test("rejects malformed or injectable document language at the exact top-level path", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-language-invalid-"));
+  const spec = validSingleSpec();
+  spec.language = 'ko"><script>alert(1)</script>';
+  writeJson(path.join(dir, "runner.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /language must be a valid BCP-47-like tag/);
+  assert.doesNotMatch(result.stdout, /<script>/u);
+});
+
+test("accepts done as a completed plan lifecycle status", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-plan-done-"));
+  const plan = validSinglePlan();
+  plan.status = "done";
+  writeJson(path.join(dir, "runner.plan.json"), plan);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(renderDocument(plan).html, /badge status-done[^"]*">done<\/span>/u);
+});

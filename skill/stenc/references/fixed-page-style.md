@@ -43,7 +43,8 @@ content width, and a `260px` desktop sidebar.
 Shared semantic components use neutral surfaces by default. Status, callout,
 template, and diagram role accents come from the common information, success,
 warning, danger, and relation tokens. Status and role meaning is also printed
-as text, so color is not the only signal.
+as text, so color is not the only signal. Completed execution documents use
+the printed `done` status with the shared success treatment.
 
 ## Header, First Content, and Navigation
 

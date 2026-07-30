@@ -37,6 +37,8 @@ Markdown or MDX.
    other documents inside it.
 5. Fill `links`, `page`, and the type-specific `body`. Keep arrays and object
    shapes intact.
+   - Set optional top-level `language` to a safe BCP-47-like tag such as `en`
+     or `ko`. Legacy documents without it render with `lang="en"`.
    - For Superpowers-derived specs, preserve requirements, approaches,
      components, data flow, error handling, testing strategy, self-review
      checks, handoff, and supporting sections in the matching fields.
@@ -145,7 +147,8 @@ index; install, setup, and open-docs must not run Git mutation commands.
 
 - Treat JSON as the source of truth.
 - Unless the user explicitly asks for a different language, write responses and
-  Stenc document content in the user's prompt language.
+  Stenc document content in the user's prompt language and set top-level
+  `language` accordingly.
 - Keep `page.humanSummary` short and useful for page scanning.
 - Keep `page.agentSummary`, `links.sourceOfTruth`, `body.surfaces`,
   `body.validation`, and `body.agentInstructions` exact enough for an AI coding
