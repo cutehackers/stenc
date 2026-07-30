@@ -1,0 +1,1266 @@
+{
+  "schemaVersion": 2,
+  "docType": "plan",
+  "id": "plan:2026-07-30-unified-readability-and-diagram-system",
+  "slug": "2026-07-30-unified-readability-and-diagram-system",
+  "status": "proposed",
+  "title": "Stenc 통합 가독성 및 구조화 Diagram 구현 계획",
+  "description": "승인된 B안 시각 언어와 spec·plan 전체 component coverage, 구조화 diagram을 TDD로 구현하는 실행 계획.",
+  "owner": "stenc",
+  "createdAt": "2026-07-30",
+  "updatedAt": "2026-07-30",
+  "links": {
+    "sourceOfTruth": [
+      "docs/stenc/content/specs/2026-07-30-unified-readability-and-diagram-system.spec.json",
+      "skill/stenc/SKILL.md",
+      "skill/stenc/references/json-field-contract.md",
+      "skill/stenc/references/fixed-page-style.md"
+    ],
+    "relatedSpec": "spec:2026-07-30-unified-readability-and-diagram-system"
+  },
+  "page": {
+    "humanSummary": "먼저 comprehensive fixture로 모든 component를 고정하고, diagram contract, renderer, B안 token과 component, 접근성, 문서를 순서대로 구현한다.",
+    "agentSummary": "각 slice를 TDD 순서로 실행하고 source JSON, validator, renderer, template, reference, example, generated-page 검증을 같은 변경에서 유지한다.",
+    "styleTemplate": "operator-console"
+  },
+  "body": {
+    "goal": "task-first, operator-console, evidence-led 전부에 B안의 통합 가독성 시스템을 적용하고 layerDiagram, flowDiagram, relationDiagram을 구조화 JSON에서 검증·렌더링하며 spec과 plan의 모든 component를 regression fixture로 보장한다.",
+    "architecture": "Comprehensive spec·plan fixture가 component coverage의 실행 가능한 계약이 된다. Validator는 구조화 diagram 의미와 안전성을 소유하고, renderer는 validator-known data만 B안의 고정 HTML/CSS와 text/table fallback으로 변환한다. 기존 source diagram과 schemaVersion 1·2는 그대로 유지한다.",
+    "techStack": [
+      "Node.js CommonJS",
+      "node:test and node:assert/strict",
+      "Dependency-free structured JSON validation",
+      "Deterministic static HTML/CSS generation",
+      "Local SVG/media assets"
+    ],
+    "workerInstructions": {
+      "requiredSubSkills": [
+        "superpowers:subagent-driven-development",
+        "superpowers:executing-plans"
+      ],
+      "trackingSyntax": "- [ ]",
+      "note": "For agentic workers: execute slices and steps in order, update each step from - [ ] to - [x], keep red-green evidence, and commit after every completed slice."
+    },
+    "scopeCheck": {
+      "assessment": "이 plan은 하나의 Stenc rendering pipeline을 개선한다. Fixture, validator, renderer, styling, accessibility, references는 독립 제품이 아니라 같은 JSON-to-static-page 계약의 연속 단계다.",
+      "decomposition": "별도 sub-project spec으로 나누지 않는다. 다만 작업 위험을 낮추기 위해 fixture, diagram contract, diagram renderer, shared visual system, semantic page components, accessibility, documentation의 reviewable slice로 분해한다."
+    },
+    "currentState": "Generated renderer는 setup-project.js 한 파일에서 문서 markup과 CSS를 생성한다. 본문은 브라우저 기본 16px이고 작은 metadata·table·timeline text가 많다. styleTemplate은 일부 header와 border만 다르게 처리한다. 기존 diagram block은 escaped source panel만 지원하고 examples-app fixture는 모든 spec·plan component를 한 번에 노출하지 않는다.",
+    "targetState": "모든 template이 17–18px 본문과 공통 B token·component를 사용한다. Spec과 plan 전체 native field, rich block, status, empty·missing·error state가 comprehensive fixture와 renderer tests로 보호된다. 새 structured diagram은 strict validator와 semantic visual, relation fallback, mobile linearization을 제공하며 기존 source diagram과 schemaVersion 1·2는 호환된다.",
+    "scope": {
+      "in": [
+        "Comprehensive spec and plan regression fixtures",
+        "Structured diagram common and type-specific validation",
+        "Layer, flow, relation fixed renderers and fallbacks",
+        "Unified B typography, color, spacing, radius, elevation, focus tokens",
+        "Document shell, collection navigation, on-this-page navigation, header, summaries",
+        "All spec, plan, rich block, status, empty, missing, error components",
+        "Responsive, keyboard, zoom, reduced-motion, color-independent behavior",
+        "Templates, references, examples, generated-page checks, repository validation"
+      ],
+      "out": [
+        "Raw HTML, CSS, Markdown, MDX, Mermaid or DOT runtime",
+        "Document-authored layout, variant, component, kind, color fields",
+        "Search, authentication, comments, collaborative editing",
+        "Dark mode or user theme editor",
+        "Changes outside the Stenc repository"
+      ]
+    },
+    "fileStructure": [
+      {
+        "action": "Create",
+        "path": "examples-app/content/specs/component-catalog.spec.json",
+        "responsibility": "Every spec native field, rich block, status, empty state, and structured diagram valid fixture."
+      },
+      {
+        "action": "Create",
+        "path": "examples-app/content/plans/component-catalog.plan.json",
+        "responsibility": "Every plan native field, file, step, command, expected result, handoff, and structured diagram valid fixture."
+      },
+      {
+        "action": "Create",
+        "path": "examples/component-catalog.spec.json",
+        "responsibility": "Installable skill example mirroring the comprehensive spec source."
+      },
+      {
+        "action": "Create",
+        "path": "examples/component-catalog.plan.json",
+        "responsibility": "Installable skill example mirroring the comprehensive plan source."
+      },
+      {
+        "action": "Create",
+        "path": "skill/stenc/scripts/structured-diagram-contract.js",
+        "responsibility": "Shared diagram types, roles, ID rules, text rules, and pure validation helpers."
+      },
+      {
+        "action": "Create",
+        "path": "skill/stenc/scripts/render-structured-diagram.js",
+        "responsibility": "Escaped deterministic layer, flow, relation markup and accessible fallback tables."
+      },
+      {
+        "action": "Create",
+        "path": "skill/stenc/scripts/unified-styles.js",
+        "responsibility": "Single B token and component stylesheet source consumed by the generator and samples."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/validate-stenc-doc.js",
+        "responsibility": "Register structured block types and delegate exact semantic validation."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/setup-project.js",
+        "responsibility": "Render unified shell, semantic components, structured diagrams, navigation, collection pages, and stylesheet."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/validate-stenc-doc.test.js",
+        "responsibility": "Valid and invalid diagram contract, backward compatibility, and comprehensive fixture tests."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/setup-project.test.js",
+        "responsibility": "Unified component markup, diagram fallback, escaping, navigation, accessibility, and style regression tests."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/scripts/check-rendered-pages.test.js",
+        "responsibility": "Comprehensive routes, copied media, and structured diagram output integrity tests."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/templates/spec.json",
+        "responsibility": "Show every existing rich primitive and optional structured diagram examples without adding required fields."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/templates/plan.json",
+        "responsibility": "Show every plan step field and optional structured diagram examples without adding required fields."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/references/json-field-contract.md",
+        "responsibility": "Normative diagram object shapes, order, identity, relation, text, and compatibility rules."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/references/fixed-page-style.md",
+        "responsibility": "B visual tokens, component hierarchy, template emphasis, responsive and accessibility rules."
+      },
+      {
+        "action": "Modify",
+        "path": "skill/stenc/SKILL.md",
+        "responsibility": "Authoring guidance for existing source diagrams versus new structured diagrams."
+      },
+      {
+        "action": "Modify",
+        "path": "samples/stenc-doc-styles/styles.css",
+        "responsibility": "Human-reviewable sample aligned exactly with generated unified styles."
+      },
+      {
+        "action": "Modify",
+        "path": "samples/stenc-doc-styles/task-first.html",
+        "responsibility": "Comprehensive spec visual specimen using shared B components."
+      },
+      {
+        "action": "Modify",
+        "path": "samples/stenc-doc-styles/operator-console.html",
+        "responsibility": "Comprehensive plan visual specimen using shared B components."
+      },
+      {
+        "action": "Modify",
+        "path": "samples/stenc-doc-styles/evidence-led.html",
+        "responsibility": "Evidence emphasis specimen using the same shared B components."
+      },
+      {
+        "action": "Modify",
+        "path": "scripts/setup-examples-app.sh",
+        "responsibility": "Deterministically synchronize comprehensive example sources and canonical styles into examples-app."
+      },
+      {
+        "action": "Modify",
+        "path": "README.md",
+        "responsibility": "User-facing unified style, diagram, authoring, generation, and validation guidance."
+      },
+      {
+        "action": "Modify",
+        "path": "docs/stenc/content/plans/2026-07-30-unified-readability-and-diagram-system.plan.json",
+        "responsibility": "Execution tracking source; each completed step and slice is marked done and committed at final handoff."
+      }
+    ],
+    "slices": [
+      {
+        "id": "slice-1",
+        "title": "Comprehensive fixture로 component coverage 잠금",
+        "status": "todo",
+        "surfaces": [
+          "examples-app/content/specs/",
+          "examples-app/content/plans/",
+          "examples/",
+          "skill/stenc/scripts/validate-stenc-doc.test.js",
+          "skill/stenc/scripts/setup-project.test.js"
+        ],
+        "files": [
+          {
+            "action": "Create",
+            "path": "examples-app/content/specs/component-catalog.spec.json",
+            "role": "All spec fields and current rich block fixture."
+          },
+          {
+            "action": "Create",
+            "path": "examples-app/content/plans/component-catalog.plan.json",
+            "role": "All plan fields and step variants fixture."
+          },
+          {
+            "action": "Create",
+            "path": "examples/component-catalog.spec.json",
+            "role": "Installable comprehensive spec example."
+          },
+          {
+            "action": "Create",
+            "path": "examples/component-catalog.plan.json",
+            "role": "Installable comprehensive plan example."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "Failing inventory assertions before renderer work."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-1-step-1",
+            "title": "현재 component inventory failing test 작성",
+            "status": "todo",
+            "instruction": "Add a node:test case named \"renders comprehensive spec and plan component catalogs\". Copy the two fixture JSON files into a temporary docs workspace, run setup-project.js, and assert exact headings or stable classes for every native spec and plan family. Assert the test currently fails on missing summary roles, scope roles, plan slice structure, or catalog files rather than weakening expectations.",
+            "codeBlocks": [
+              {
+                "language": "javascript",
+                "content": "test(\"renders comprehensive spec and plan component catalogs\", () => {\n  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), \"stenc-component-catalog-\"));\n  const docsRoot = path.join(projectRoot, \"docs\", \"stenc\");\n  const specTarget = path.join(docsRoot, \"content\", \"specs\", \"component-catalog.spec.json\");\n  const planTarget = path.join(docsRoot, \"content\", \"plans\", \"component-catalog.plan.json\");\n  fs.mkdirSync(path.dirname(specTarget), { recursive: true });\n  fs.mkdirSync(path.dirname(planTarget), { recursive: true });\n  fs.copyFileSync(path.join(REPO_ROOT, \"examples-app\", \"content\", \"specs\", \"component-catalog.spec.json\"), specTarget);\n  fs.copyFileSync(path.join(REPO_ROOT, \"examples-app\", \"content\", \"plans\", \"component-catalog.plan.json\"), planTarget);\n  const result = spawnSync(process.execPath, [SCRIPT_PATH, \"--project-root\", projectRoot, \"--docs-dir\", docsRoot, \"--skip-install\", \"--skip-open-docs-script\"], { encoding: \"utf8\" });\n  assert.equal(result.status, 0, result.stderr || result.stdout);\n  const specHtml = fs.readFileSync(path.join(docsRoot, \"specs\", \"component-catalog\", \"index.html\"), \"utf8\");\n  const planHtml = fs.readFileSync(path.join(docsRoot, \"plans\", \"component-catalog\", \"index.html\"), \"utf8\");\n  for (const token of [\"document-summary\", \"scope-in\", \"scope-out\", \"requirements\", \"approaches\", \"components\", \"validation\", \"supporting-section\"]) assert.match(specHtml, new RegExp(token));\n  for (const token of [\"worker-instructions\", \"scope-check\", \"file-structure\", \"plan-slice\", \"plan-step\", \"execution-handoff\"]) assert.match(planHtml, new RegExp(token));\n});"
+              }
+            ]
+          },
+          {
+            "id": "slice-1-step-2",
+            "title": "Inventory test red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"renders comprehensive spec and plan component catalogs\" skill/stenc/scripts/setup-project.test.js",
+            "expected": "FAIL because component-catalog fixtures or the new stable semantic classes do not exist."
+          },
+          {
+            "id": "slice-1-step-3",
+            "title": "Comprehensive spec fixture 작성",
+            "status": "todo",
+            "instruction": "Create component-catalog.spec.json from the current schemaVersion 2 spec template. Fill every required native spec field. Include all span types, five callout tones, quote, table, local media, taskList, and the existing source diagram. Do not add structured diagram blocks until Slice 2 registers their validator contract. Use concrete Stenc content; do not use TBD, lorem ipsum, or unsupported fields."
+          },
+          {
+            "id": "slice-1-step-4",
+            "title": "Comprehensive plan fixture 작성",
+            "status": "todo",
+            "instruction": "Create component-catalog.plan.json with workerInstructions, scopeCheck, currentState, targetState, complete fileStructure, at least two slices, and steps that cover instruction-only, codeBlocks, command+expected, and commit operations. Include risks, validation, selfReviewChecks, both executionHandoff options, rich blocks, and the existing source diagram. Add the three structured diagram types in Slice 2 after validator registration."
+          },
+          {
+            "id": "slice-1-step-5",
+            "title": "Fixture mirror와 validator 확인",
+            "status": "todo",
+            "command": "cp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json && cp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json && node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+            "expected": "Stenc validation passes for both comprehensive fixtures using current native fields and existing rich primitives."
+          },
+          {
+            "id": "slice-1-step-6",
+            "title": "Fixture slice commit",
+            "status": "todo",
+            "command": "git add examples examples-app/content skill/stenc/scripts/setup-project.test.js && git commit -m \"test(stenc): add comprehensive component fixtures\"",
+            "expected": "A commit records comprehensive spec and plan fixtures plus the intentionally red renderer inventory test."
+          }
+        ],
+        "doneWhen": [
+          "Spec fixture contains every spec native field and current rich primitive.",
+          "Plan fixture contains every plan native field and step shape.",
+          "Both fixtures validate before structured diagram support is introduced.",
+          "The renderer inventory test is red for explicit missing semantic output."
+        ]
+      },
+      {
+        "id": "slice-2",
+        "title": "구조화 Diagram validator contract",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/structured-diagram-contract.js",
+          "skill/stenc/scripts/validate-stenc-doc.js",
+          "skill/stenc/scripts/validate-stenc-doc.test.js"
+        ],
+        "files": [
+          {
+            "action": "Create",
+            "path": "skill/stenc/scripts/structured-diagram-contract.js",
+            "role": "Pure constants and semantic validators."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/validate-stenc-doc.js",
+            "role": "Register and delegate structured diagram block validation."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/validate-stenc-doc.test.js",
+            "role": "Valid and invalid contract matrix."
+          },
+          {
+            "action": "Modify",
+            "path": "examples-app/content/specs/component-catalog.spec.json",
+            "role": "Add valid layer, flow, and relation blocks after validator support exists."
+          },
+          {
+            "action": "Modify",
+            "path": "examples-app/content/plans/component-catalog.plan.json",
+            "role": "Add valid structured diagram blocks after validator support exists."
+          },
+          {
+            "action": "Modify",
+            "path": "examples/component-catalog.spec.json",
+            "role": "Mirror the validated structured spec catalog."
+          },
+          {
+            "action": "Modify",
+            "path": "examples/component-catalog.plan.json",
+            "role": "Mirror the validated structured plan catalog."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-2-step-1",
+            "title": "Valid structured diagram test 작성",
+            "status": "todo",
+            "instruction": "Add validLayerDiagram, validFlowDiagram, and validRelationDiagram helper builders in validate-stenc-doc.test.js. Add one test that appends all three to validSingleSpec and asserts exit 0 after support is implemented.",
+            "codeBlocks": [
+              {
+                "language": "javascript",
+                "content": "test(\"accepts bounded structured diagrams\", () => {\n  const dir = fs.mkdtempSync(path.join(os.tmpdir(), \"stenc-structured-diagram-valid-\"));\n  const spec = validSingleSpec();\n  spec.body.supportingSections[0].blocks.push(validLayerDiagram(), validFlowDiagram(), validRelationDiagram());\n  writeJson(path.join(dir, \"structured.spec.json\"), spec);\n  const result = runValidator(dir);\n  assert.equal(result.status, 0, result.stderr);\n});"
+              }
+            ]
+          },
+          {
+            "id": "slice-2-step-2",
+            "title": "Invalid matrix test 작성",
+            "status": "todo",
+            "instruction": "Add table-driven invalid cases for unknown field, bad id, duplicate layer or node id, unknown role, empty arrays and strings, transition on final layer, missing endpoint, self-edge, exact duplicate, unconnected node, and disallowed control character. Assert each error includes the exact JSON path."
+          },
+          {
+            "id": "slice-2-step-3",
+            "title": "Validator tests red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"structured diagram\" skill/stenc/scripts/validate-stenc-doc.test.js",
+            "expected": "FAIL because layerDiagram, flowDiagram, and relationDiagram are unknown block types."
+          },
+          {
+            "id": "slice-2-step-4",
+            "title": "공통 diagram contract module 구현",
+            "status": "todo",
+            "instruction": "Create the dependency-free module with exact approved constants and pure helpers. Keep label as escaped free text; do not add a relation vocabulary.",
+            "codeBlocks": [
+              {
+                "language": "javascript",
+                "content": "\"use strict\";\n\nconst STRUCTURED_DIAGRAM_TYPES = new Set([\"layerDiagram\", \"flowDiagram\", \"relationDiagram\"]);\nconst DIAGRAM_ROLES = new Set([\"consumer\", \"surface\", \"session\", \"engine\", \"boundary\", \"value\", \"neutral\"]);\nconst DIAGRAM_ID_PATTERN = /^[a-z][a-z0-9-]*$/;\nconst DISALLOWED_CONTROL = /[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/;\n\nfunction isDiagramId(value) {\n  return typeof value === \"string\" && DIAGRAM_ID_PATTERN.test(value);\n}\n\nfunction hasSafeDiagramText(value, { multiline = false } = {}) {\n  if (typeof value !== \"string\" || value.trim().length === 0 || DISALLOWED_CONTROL.test(value)) return false;\n  return multiline || (!value.includes(\"\\n\") && !value.includes(\"\\t\"));\n}\n\nmodule.exports = { STRUCTURED_DIAGRAM_TYPES, DIAGRAM_ROLES, DIAGRAM_ID_PATTERN, isDiagramId, hasSafeDiagramText };"
+              }
+            ]
+          },
+          {
+            "id": "slice-2-step-5",
+            "title": "타입별 semantic validation 구현",
+            "status": "todo",
+            "instruction": "Register exact allowed-field sets for common blocks, layers, nodes, edges, and relations. Add validators that preserve input order, enforce block-local uniqueness and endpoint participation, allow cycles, and reject self-edges and exact from/to/label duplicates. Return errors through the existing errors array with exact prefixes."
+          },
+          {
+            "id": "slice-2-step-6",
+            "title": "Catalog에 structured diagram 추가",
+            "status": "todo",
+            "instruction": "Append one valid layerDiagram, flowDiagram, and relationDiagram to both component catalogs, then mirror the two updated JSON files into examples/. Keep all examples concrete and identical across the mirrored source pairs."
+          },
+          {
+            "id": "slice-2-step-7",
+            "title": "Validator green과 전체 validator suite 확인",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/validate-stenc-doc.test.js && node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content",
+            "expected": "All validator tests pass and both comprehensive fixtures validate."
+          },
+          {
+            "id": "slice-2-step-8",
+            "title": "Validator slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/scripts/structured-diagram-contract.js skill/stenc/scripts/validate-stenc-doc.js skill/stenc/scripts/validate-stenc-doc.test.js examples examples-app/content && git commit -m \"feat(stenc): validate structured diagrams\"",
+            "expected": "A commit records the strict diagram contract and green fixture validation."
+          }
+        ],
+        "doneWhen": [
+          "All approved valid diagram examples pass.",
+          "Every invalid matrix case fails with an exact path.",
+          "Existing source diagram and schemaVersion 1·2 tests remain green."
+        ]
+      },
+      {
+        "id": "slice-3",
+        "title": "구조화 Diagram fixed renderer와 fallback",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/render-structured-diagram.js",
+          "skill/stenc/scripts/setup-project.js",
+          "skill/stenc/scripts/setup-project.test.js"
+        ],
+        "files": [
+          {
+            "action": "Create",
+            "path": "skill/stenc/scripts/render-structured-diagram.js",
+            "role": "Pure escaped markup for all diagram types."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.js",
+            "role": "Delegate structured diagram blocks to the pure renderer."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "Markup, escaping, fallback, order, cycle, and mobile-hook tests."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-3-step-1",
+            "title": "Diagram renderer failing tests 작성",
+            "status": "todo",
+            "instruction": "Render one fixture for each diagram type and assert figure, figcaption, accessible summary, role classes, node ids, directed labels, and fallback table rows. Include HTML-like label text and assert it is escaped. Assert source order in visual markup and fallback table."
+          },
+          {
+            "id": "slice-3-step-2",
+            "title": "Diagram renderer tests red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"renders structured diagrams\" skill/stenc/scripts/setup-project.test.js",
+            "expected": "FAIL because structured diagram blocks validate but have no renderer."
+          },
+          {
+            "id": "slice-3-step-3",
+            "title": "Pure renderer module 구현",
+            "status": "todo",
+            "instruction": "Implement renderLayerDiagram, renderFlowDiagram, renderRelationDiagram, and renderRelationFallback. Accept escapeHtml as an injected dependency so the module remains pure and cannot output unescaped author text.",
+            "codeBlocks": [
+              {
+                "language": "javascript",
+                "content": "\"use strict\";\n\nfunction renderStructuredDiagram(block, escapeHtml) {\n  if (block.type === \"layerDiagram\") return renderLayerDiagram(block, escapeHtml);\n  if (block.type === \"flowDiagram\") return renderFlowDiagram(block, escapeHtml);\n  if (block.type === \"relationDiagram\") return renderRelationDiagram(block, escapeHtml);\n  throw new Error(`Unsupported structured diagram type: ${block.type}`);\n}\n\nfunction roleClass(role, escapeHtml) {\n  return `diagram-role-${escapeHtml(role)}`;\n}\n\nmodule.exports = { renderStructuredDiagram };"
+              }
+            ]
+          },
+          {
+            "id": "slice-3-step-4",
+            "title": "Layer diagram markup 구현",
+            "status": "todo",
+            "instruction": "Render layers in source order as a figure containing diagram-layer rows, role rail, node cards, and optional transition rows. Include a visually hidden ordered text fallback that repeats layer label, summary, nodes, and transition."
+          },
+          {
+            "id": "slice-3-step-5",
+            "title": "Flow와 relation markup 구현",
+            "status": "todo",
+            "instruction": "Render nodes and directed connectors in source order without attempting arbitrary graph layout. Use a deterministic wrapping grid on desktop and linear stack hook on mobile. Render a visible-on-demand fallback table with From, Relation, To columns; relationDiagram and flowDiagram share the fallback builder."
+          },
+          {
+            "id": "slice-3-step-6",
+            "title": "기존 source diagram 호환 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"diagram\" skill/stenc/scripts/setup-project.test.js",
+            "expected": "Existing escaped source diagram and all structured diagram renderer tests pass."
+          },
+          {
+            "id": "slice-3-step-7",
+            "title": "Diagram renderer slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/scripts/render-structured-diagram.js skill/stenc/scripts/setup-project.js skill/stenc/scripts/setup-project.test.js && git commit -m \"feat(stenc): render structured diagrams\"",
+            "expected": "A commit records escaped deterministic diagram visuals and semantic fallbacks."
+          }
+        ],
+        "doneWhen": [
+          "All diagram text is escaped.",
+          "Source order is deterministic.",
+          "Every visual has equivalent fallback content.",
+          "Existing source diagram behavior remains unchanged."
+        ]
+      },
+      {
+        "id": "slice-4",
+        "title": "B안 unified token과 stylesheet source",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/unified-styles.js",
+          "skill/stenc/scripts/setup-project.js",
+          "samples/stenc-doc-styles/styles.css",
+          "skill/stenc/scripts/setup-project.test.js"
+        ],
+        "files": [
+          {
+            "action": "Create",
+            "path": "skill/stenc/scripts/unified-styles.js",
+            "role": "Canonical B stylesheet string."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.js",
+            "role": "Write the canonical stylesheet without duplicating CSS."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/styles.css",
+            "role": "Mirror or generate from the canonical source."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "Token and minimum-size contract tests."
+          },
+          {
+            "action": "Modify",
+            "path": "scripts/setup-examples-app.sh",
+            "role": "Synchronize comprehensive catalog sources and canonical styles."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-4-step-1",
+            "title": "B token failing tests 작성",
+            "status": "todo",
+            "instruction": "Assert generated styles define font-size 17px on body, line-height 1.6, 15px table and navigation text, 13px minimum metadata, 14px component radius, visible focus outline, semantic role colors, reduced-motion media query, and the 780px responsive breakpoint."
+          },
+          {
+            "id": "slice-4-step-2",
+            "title": "Token tests red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"unified B style tokens\" skill/stenc/scripts/setup-project.test.js",
+            "expected": "FAIL on the current 16px default body and missing unified token names."
+          },
+          {
+            "id": "slice-4-step-3",
+            "title": "Canonical stylesheet module 작성",
+            "status": "todo",
+            "instruction": "Move the CSS template out of writeStyles into unified-styles.js and export one buildUnifiedStyles function. Define semantic tokens rather than page-specific colors.",
+            "codeBlocks": [
+              {
+                "language": "css",
+                "content": ":root {\n  color-scheme: light;\n  --color-page: #f2f4f6;\n  --color-surface: #ffffff;\n  --color-text: #191f28;\n  --color-muted: #4e5968;\n  --color-subtle: #8b95a1;\n  --color-line: #d8dee6;\n  --color-info: #3182f6;\n  --color-success: #087f5b;\n  --color-warning: #b26a00;\n  --color-danger: #d92d3f;\n  --color-relation: #6f5ce7;\n  --radius-component: 14px;\n  --shadow-component: 0 2px 8px rgba(0,0,0,.05);\n  --font-body: 17px;\n  --line-body: 1.6;\n}\nbody { font-size: var(--font-body); line-height: var(--line-body); }\n:focus-visible { outline: 3px solid var(--color-info); outline-offset: 3px; }\n@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; } }"
+              }
+            ]
+          },
+          {
+            "id": "slice-4-step-4",
+            "title": "Generator와 sample CSS 동기화",
+            "status": "todo",
+            "instruction": "Make writeStyles write buildUnifiedStyles() and make scripts/setup-examples-app.sh refresh samples/stenc-doc-styles/styles.css from the same canonical output or add a deterministic sync check. Do not maintain two hand-edited CSS implementations."
+          },
+          {
+            "id": "slice-4-step-5",
+            "title": "Stylesheet tests green 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"unified B style tokens\" skill/stenc/scripts/setup-project.test.js && git diff --check",
+            "expected": "The B token contract passes and generated CSS has no whitespace errors."
+          },
+          {
+            "id": "slice-4-step-6",
+            "title": "Unified style slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/scripts/unified-styles.js skill/stenc/scripts/setup-project.js skill/stenc/scripts/setup-project.test.js samples/stenc-doc-styles/styles.css scripts/setup-examples-app.sh && git commit -m \"feat(stenc): unify readable page styles\"",
+            "expected": "A commit records one canonical B stylesheet source and green token tests."
+          }
+        ],
+        "doneWhen": [
+          "Generated and sample styles use one canonical source.",
+          "Minimum readable sizes and focus tokens match the spec.",
+          "No styleTemplate owns a separate design system."
+        ]
+      },
+      {
+        "id": "slice-5",
+        "title": "Semantic shell, navigation, header, spec·plan component",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/setup-project.js",
+          "skill/stenc/scripts/setup-project.test.js",
+          "samples/stenc-doc-styles/*.html"
+        ],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.js",
+            "role": "Unified document markup and template emphasis."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "All component and navigation regression assertions."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/task-first.html",
+            "role": "Full spec B specimen."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/operator-console.html",
+            "role": "Full plan B specimen."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/evidence-led.html",
+            "role": "Evidence emphasis using shared components."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-5-step-1",
+            "title": "Semantic shell failing tests 확장",
+            "status": "todo",
+            "instruction": "Extend the catalog test to assert main, nav, complementary or aside landmarks; separate collection-navigation and document-navigation; aria-current on active collection; document type kicker; metadata list; two labeled summary regions; stable section ids; and heading order."
+          },
+          {
+            "id": "slice-5-step-2",
+            "title": "Shell tests red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"comprehensive spec and plan component catalogs\" skill/stenc/scripts/setup-project.test.js",
+            "expected": "FAIL on missing semantic classes, navigation separation, or complete component inventory."
+          },
+          {
+            "id": "slice-5-step-3",
+            "title": "Document heading inventory 함수 구현",
+            "status": "todo",
+            "instruction": "Before layout rendering, derive a fixed list of visible section ids and labels from docType and non-empty native fields. Pass that list to renderLayout for on-this-page navigation. Never infer sections from arbitrary supporting prose."
+          },
+          {
+            "id": "slice-5-step-4",
+            "title": "Header와 summaries 구현",
+            "status": "todo",
+            "instruction": "Render kicker, h1, description, metadata list, human summary, and agent summary with stable classes. Preserve the first-viewport order from the spec and keep metadata text labels visible."
+          },
+          {
+            "id": "slice-5-step-5",
+            "title": "Spec native component 구현",
+            "status": "todo",
+            "instruction": "Replace generic sequential markup with stable semantic wrappers for goal/problem, scope, requirements, approaches, components, flow, errors, contracts, surfaces, testing, validation, instructions, review, self-review, handoff, supporting sections, and open questions. Keep every JSON value visible and escaped."
+          },
+          {
+            "id": "slice-5-step-6",
+            "title": "Plan native component 구현",
+            "status": "todo",
+            "instruction": "Render workerInstructions and scopeCheck before execution content. Give fileStructure, slice, files, steps, code, command, expected, doneWhen, order, risk, validation, self-review, and execution handoff stable wrappers. Do not convert body.slices[].steps into taskList blocks."
+          },
+          {
+            "id": "slice-5-step-7",
+            "title": "Template emphasis 통합",
+            "status": "todo",
+            "instruction": "Use one markup and component set for all templates. task-first emphasizes requirements and validation, operator-console emphasizes status and slices, evidence-led emphasizes facts and proof through limited modifier classes. Remove the full dark operator header and repeated evidence panel borders."
+          },
+          {
+            "id": "slice-5-step-8",
+            "title": "Component inventory green 확인",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/setup-project.test.js",
+            "expected": "All existing renderer tests and comprehensive spec/plan component catalog tests pass."
+          },
+          {
+            "id": "slice-5-step-9",
+            "title": "Semantic component slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/scripts/setup-project.js skill/stenc/scripts/setup-project.test.js samples/stenc-doc-styles && git commit -m \"feat(stenc): render unified document components\"",
+            "expected": "A commit records the complete shared shell and native spec/plan component system."
+          }
+        ],
+        "doneWhen": [
+          "Every catalog component appears with a stable semantic wrapper.",
+          "Collection and document navigation are distinct.",
+          "Template differences are limited to information emphasis.",
+          "All author text remains escaped."
+        ]
+      },
+      {
+        "id": "slice-6",
+        "title": "Responsive, accessibility, empty·missing·error state",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/scripts/unified-styles.js",
+          "skill/stenc/scripts/setup-project.js",
+          "skill/stenc/scripts/setup-project.test.js",
+          "skill/stenc/scripts/check-rendered-pages.test.js"
+        ],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/unified-styles.js",
+            "role": "Mobile reflow, focus, reduced motion, high contrast hooks."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.js",
+            "role": "Accessible labels, fallbacks, and explicit states."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/setup-project.test.js",
+            "role": "Static accessibility contract tests."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/scripts/check-rendered-pages.test.js",
+            "role": "Missing media and generated route regression checks."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-6-step-1",
+            "title": "Accessibility failing tests 작성",
+            "status": "todo",
+            "instruction": "Assert skip link, landmark labels, aria-current, diagram summary linkage, table captions or accessible labels, explicit checked text or accessible name, missing-media alert role, empty-state text, focus CSS, reduced-motion CSS, and mobile diagram linearization hooks."
+          },
+          {
+            "id": "slice-6-step-2",
+            "title": "Accessibility tests red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"accessible|missing|empty|responsive\" skill/stenc/scripts/setup-project.test.js skill/stenc/scripts/check-rendered-pages.test.js",
+            "expected": "FAIL on at least the new skip-link, diagram fallback linkage, or responsive hook assertions."
+          },
+          {
+            "id": "slice-6-step-3",
+            "title": "Keyboard와 landmark 계약 구현",
+            "status": "todo",
+            "instruction": "Add a skip link targeting main content, label navigation regions, keep heading anchors focusable without tabindex pollution, use aria-current for active links, and ensure all buttons used for sorting remain native buttons."
+          },
+          {
+            "id": "slice-6-step-4",
+            "title": "Color-independent states 구현",
+            "status": "todo",
+            "instruction": "Keep visible text for document status, step status, callout tone, task completion, diagram role, missing media, empty open questions, and validation error. Role colors supplement but never replace labels."
+          },
+          {
+            "id": "slice-6-step-5",
+            "title": "Responsive reflow 구현",
+            "status": "todo",
+            "instruction": "At 780px, stack shell, summaries, scope, grids, and relation spine in source reading order. Keep wide tables in a labeled contained scroll region. Use scroll-margin-top for anchored headings and avoid page-level horizontal overflow."
+          },
+          {
+            "id": "slice-6-step-6",
+            "title": "Accessibility와 rendered state green 확인",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/setup-project.test.js && node skill/stenc/scripts/check-rendered-pages.test.js",
+            "expected": "All static accessibility, missing media, empty state, responsive hook, and rendered-page tests pass."
+          },
+          {
+            "id": "slice-6-step-7",
+            "title": "Accessibility slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/scripts/unified-styles.js skill/stenc/scripts/setup-project.js skill/stenc/scripts/setup-project.test.js skill/stenc/scripts/check-rendered-pages.test.js && git commit -m \"feat(stenc): harden accessible responsive pages\"",
+            "expected": "A commit records accessibility and responsive behavior with green regression tests."
+          }
+        ],
+        "doneWhen": [
+          "All required information has a non-color label.",
+          "Keyboard and landmarks are explicit.",
+          "Mobile order preserves diagram and document meaning.",
+          "Missing and empty states are visible and tested."
+        ]
+      },
+      {
+        "id": "slice-7",
+        "title": "Template, reference, skill, sample 정합성",
+        "status": "todo",
+        "surfaces": [
+          "skill/stenc/templates/",
+          "skill/stenc/references/",
+          "skill/stenc/SKILL.md",
+          "samples/stenc-doc-styles/",
+          "README.md"
+        ],
+        "files": [
+          {
+            "action": "Modify",
+            "path": "skill/stenc/templates/spec.json",
+            "role": "Optional structured diagrams and complete existing rich primitive examples."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/templates/plan.json",
+            "role": "Complete step shapes and optional structured diagram examples."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/references/json-field-contract.md",
+            "role": "Normative exact structured diagram schema."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/references/fixed-page-style.md",
+            "role": "Unified B style and accessibility contract."
+          },
+          {
+            "action": "Modify",
+            "path": "skill/stenc/SKILL.md",
+            "role": "Author workflow and compatibility guidance."
+          },
+          {
+            "action": "Modify",
+            "path": "README.md",
+            "role": "User-facing capabilities and commands."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/styles.css",
+            "role": "Human-reviewable CSS synchronized from the canonical B style source."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/task-first.html",
+            "role": "Comprehensive spec visual sample."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/operator-console.html",
+            "role": "Comprehensive plan visual sample."
+          },
+          {
+            "action": "Modify",
+            "path": "samples/stenc-doc-styles/evidence-led.html",
+            "role": "Evidence emphasis sample using shared components."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-7-step-1",
+            "title": "Reference drift failing test 추가",
+            "status": "todo",
+            "instruction": "Add a focused validator or setup test that reads templates and asserts every registered structured diagram type and role appears in json-field-contract.md, while the forbidden runtime phrases remain absent from generated output."
+          },
+          {
+            "id": "slice-7-step-2",
+            "title": "Reference drift test red 확인",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"structured diagram documentation stays aligned\" skill/stenc/scripts/validate-stenc-doc.test.js",
+            "expected": "FAIL because templates and references do not yet describe the new types."
+          },
+          {
+            "id": "slice-7-step-3",
+            "title": "JSON field contract 갱신",
+            "status": "todo",
+            "instruction": "Copy the approved normative shapes, minimum arrays, ID pattern, role vocabulary, order, cycle, self-edge, duplicate, connectivity, label, control-character, escaping, and invalid matrix rules into json-field-contract.md. State that structured diagrams are optional and existing source diagrams remain valid."
+          },
+          {
+            "id": "slice-7-step-4",
+            "title": "Fixed page style와 skill 갱신",
+            "status": "todo",
+            "instruction": "Document B typography sizes, shared component rules, template emphasis, navigation, responsive behavior, accessibility, and new diagram authoring selection. Remove the old source-only statement only where it incorrectly claims all diagrams are source panels; keep the existing diagram block rule intact."
+          },
+          {
+            "id": "slice-7-step-5",
+            "title": "Templates와 README 갱신",
+            "status": "todo",
+            "instruction": "Add optional valid structured diagram examples to spec and plan supportingSections without making them required. Update README with the unified page language, supported diagram choices, validation, regeneration, and rendered-page commands."
+          },
+          {
+            "id": "slice-7-step-6",
+            "title": "Docs alignment green 확인",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/validate-stenc-doc.js skill/stenc/templates examples examples-app/content && node --test --test-name-pattern=\"structured diagram documentation stays aligned\" skill/stenc/scripts/validate-stenc-doc.test.js",
+            "expected": "Templates and examples validate, and the documentation alignment test passes."
+          },
+          {
+            "id": "slice-7-step-7",
+            "title": "Documentation slice commit",
+            "status": "todo",
+            "command": "git add skill/stenc/templates skill/stenc/references skill/stenc/SKILL.md README.md samples/stenc-doc-styles && git commit -m \"docs(stenc): document unified diagrams and styles\"",
+            "expected": "A commit records templates, references, skill guidance, README, and visual samples aligned to implementation."
+          }
+        ],
+        "doneWhen": [
+          "Templates, validator, renderer, references, and skill name the same types and roles.",
+          "Existing source diagram guidance remains correct.",
+          "No template makes structured diagrams required for old documents."
+        ]
+      },
+      {
+        "id": "slice-8",
+        "title": "Generated app, compatibility, final validation",
+        "status": "todo",
+        "surfaces": [
+          "examples-app/",
+          "docs/stenc/",
+          "scripts/validate.sh",
+          "skill/stenc/scripts/check-rendered-pages.js"
+        ],
+        "files": [
+          {
+            "action": "Regenerate",
+            "path": "examples-app/",
+            "role": "Human-reviewable generated comprehensive pages."
+          },
+          {
+            "action": "Regenerate",
+            "path": "docs/stenc/",
+            "role": "Canonical spec and plan generated pages."
+          },
+          {
+            "action": "Modify",
+            "path": "docs/stenc/content/plans/2026-07-30-unified-readability-and-diagram-system.plan.json",
+            "role": "Mark completed slices only after evidence exists."
+          }
+        ],
+        "steps": [
+          {
+            "id": "slice-8-step-1",
+            "title": "Examples app 재생성",
+            "status": "todo",
+            "command": "./scripts/setup-examples-app.sh",
+            "expected": "The examples app regenerates all collection, catalog, media, and structured diagram pages without error."
+          },
+          {
+            "id": "slice-8-step-2",
+            "title": "Canonical docs 재생성",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/setup-project.js --project-root \"$(pwd)\" --docs-dir docs/stenc",
+            "expected": "The approved spec and implementation plan routes regenerate with the unified renderer."
+          },
+          {
+            "id": "slice-8-step-3",
+            "title": "Rendered-page checks 실행",
+            "status": "todo",
+            "command": "node skill/stenc/scripts/check-rendered-pages.js examples-app && node skill/stenc/scripts/check-rendered-pages.js docs/stenc",
+            "expected": "Both checks pass; every JSON source and local media asset has matching generated output."
+          },
+          {
+            "id": "slice-8-step-4",
+            "title": "Full repository validation 실행",
+            "status": "todo",
+            "command": "./scripts/validate.sh",
+            "expected": "All validator, renderer, rendered-page, CLI, install, migration, bootstrap, open-docs, and release tests pass with zero failures."
+          },
+          {
+            "id": "slice-8-step-5",
+            "title": "Backward compatibility spot check",
+            "status": "todo",
+            "command": "node --test --test-name-pattern=\"schemaVersion 1|diagram source\" skill/stenc/scripts/validate-stenc-doc.test.js skill/stenc/scripts/setup-project.test.js",
+            "expected": "SchemaVersion 1 compatibility and existing escaped source diagram tests pass."
+          },
+          {
+            "id": "slice-8-step-6",
+            "title": "Whitespace와 source status 확인",
+            "status": "todo",
+            "command": "git diff --check && git status --short",
+            "expected": "No whitespace errors; only intentional source files are modified, and generated ignored artifacts are not staged."
+          },
+          {
+            "id": "slice-8-step-7",
+            "title": "Plan execution status final commit",
+            "status": "todo",
+            "instruction": "After all validation evidence is recorded, change every completed plan step and slice status to done in this plan JSON. Do not modify the approved spec status or stage generated artifacts.",
+            "command": "git add docs/stenc/content/plans/2026-07-30-unified-readability-and-diagram-system.plan.json && git commit -m \"docs(stenc): record unified renderer execution\"",
+            "expected": "A final commit records the completed plan execution statuses; generated HTML, CSS, routes, and copied assets remain ignored."
+          }
+        ],
+        "doneWhen": [
+          "Repository-wide validation passes.",
+          "Both generated docs workspaces pass rendered-page checks.",
+          "Backward compatibility tests pass.",
+          "Only source JSON and source assets are tracked."
+        ]
+      }
+    ],
+    "executionOrder": [
+      "slice-1",
+      "slice-2",
+      "slice-3",
+      "slice-4",
+      "slice-5",
+      "slice-6",
+      "slice-7",
+      "slice-8"
+    ],
+    "risks": [
+      {
+        "risk": "Comprehensive fixture가 너무 커져 authoring template처럼 오해될 수 있다.",
+        "mitigation": "Fixture는 component-catalog로 명명하고 template은 최소 valid shape를 유지한다. Skill 문서에서 fixture는 regression specimen이라고 명시한다."
+      },
+      {
+        "risk": "setup-project.js에 component markup이 계속 누적되어 변경 신뢰도가 떨어질 수 있다.",
+        "mitigation": "이번 범위에서 diagram renderer와 stylesheet만 focused module로 분리한다. 더 큰 renderer 재구성은 별도 spec 없이는 수행하지 않는다."
+      },
+      {
+        "risk": "자유 relation label이 style이나 script injection 통로가 될 수 있다.",
+        "mitigation": "Label은 URL이나 markup으로 해석하지 않고 control-character validation 후 escapeHtml을 거친 plain text로만 렌더링한다."
+      },
+      {
+        "risk": "Arbitrary graph layout이 결정성·반응형·dependency-light 원칙을 해칠 수 있다.",
+        "mitigation": "Source order 기반 wrapping grid와 linear mobile order만 사용하고 client runtime이나 layout engine을 도입하지 않는다."
+      },
+      {
+        "risk": "큰 typography가 plan table과 code의 정보 밀도를 지나치게 낮출 수 있다.",
+        "mitigation": "본문 17px을 유지하되 table·step은 15px 이상, code는 14px 이상으로 bounded density를 사용하고 contained scroll을 허용한다."
+      },
+      {
+        "risk": "StyleTemplate 차이를 줄이면서 문서 목적 구분까지 약해질 수 있다.",
+        "mitigation": "문서 type kicker, status, section ordering, 제한된 modifier를 유지하고 component visual language만 통합한다."
+      },
+      {
+        "risk": "Samples와 generated stylesheet가 다시 drift할 수 있다.",
+        "mitigation": "unified-styles.js를 단일 source로 만들고 deterministic sync 또는 equality test를 validation gate에 포함한다."
+      }
+    ],
+    "validation": [
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js skill/stenc/templates examples examples-app/content docs/stenc/content",
+        "purpose": "All template, example, catalog, spec, and plan JSON contracts."
+      },
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.test.js",
+        "purpose": "Diagram and document valid/invalid validator matrix."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.test.js",
+        "purpose": "Unified component, diagram, escaping, accessibility, and generation regression suite."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.test.js",
+        "purpose": "Route and media integrity behavior."
+      },
+      {
+        "command": "./scripts/setup-examples-app.sh",
+        "purpose": "Deterministic generated catalog and sample refresh."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.js examples-app",
+        "purpose": "Every example JSON and media source has generated output."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.js --project-root \"$(pwd)\" --docs-dir docs/stenc && node skill/stenc/scripts/check-rendered-pages.js docs/stenc",
+        "purpose": "Canonical approved spec and plan routes render completely."
+      },
+      {
+        "command": "./scripts/validate.sh",
+        "purpose": "Full repository validation gate."
+      },
+      {
+        "command": "git diff --check",
+        "purpose": "Whitespace and patch integrity."
+      }
+    ],
+    "agentInstructions": [
+      "Read the related approved spec before executing any slice.",
+      "Use superpowers:test-driven-development for every behavior change.",
+      "Execute slices in executionOrder and keep red-green evidence for each test step.",
+      "Do not skip the comprehensive fixtures; they are the visual and semantic coverage contract.",
+      "Keep existing diagram source blocks, schemaVersion 1, and schemaVersion 2 documents valid.",
+      "Do not add raw HTML, Markdown, MDX, Mermaid, DOT, CDN, script execution, or document-authored visual control fields.",
+      "Use source array order for deterministic diagram output and fallback order.",
+      "Reject self-edges, exact duplicate relations, unconnected nodes, unknown roles, bad ids, unsafe targets, and disallowed control characters exactly as specified.",
+      "Do not edit generated HTML or CSS directly; regenerate from source.",
+      "Commit after every slice with the stated scope and run the slice validation before moving on.",
+      "If live repository facts contradict a file path or helper assumption in this plan, stop that slice, update the plan source, revalidate it, and then continue."
+    ],
+    "selfReviewChecks": [
+      {
+        "name": "Spec requirement coverage",
+        "purpose": "Map VIS-01 through VIS-12 to at least one slice, test, and doneWhen condition."
+      },
+      {
+        "name": "TDD completeness",
+        "purpose": "Every implementation slice begins with a failing test and names the expected red and green commands."
+      },
+      {
+        "name": "Exact file map",
+        "purpose": "Every created or modified source file has one clear responsibility and appears in the relevant slice."
+      },
+      {
+        "name": "Compatibility",
+        "purpose": "Existing source diagrams and schemaVersion 1·2 have explicit tests and no migration requirement."
+      },
+      {
+        "name": "No placeholders",
+        "purpose": "No TBD, lorem ipsum, similar-to instruction, missing expected output, or empty executable step remains."
+      },
+      {
+        "name": "Determinism and safety",
+        "purpose": "Diagram order, escaping, endpoint validation, fallback, and no-runtime rules are explicit in code and tests."
+      },
+      {
+        "name": "Scope discipline",
+        "purpose": "The plan changes the Stenc rendering pipeline only and excludes unrelated product features."
+      }
+    ],
+    "executionHandoff": {
+      "defaultPath": "docs/stenc/content/plans/2026-07-30-unified-readability-and-diagram-system.plan.json",
+      "options": [
+        {
+          "label": "Subagent-Driven",
+          "description": "Dispatch a fresh implementation subagent per slice and run spec plus quality review between slices.",
+          "requiredSkill": "superpowers:subagent-driven-development"
+        },
+        {
+          "label": "Inline Execution",
+          "description": "Execute slices in this session with checkpointed batches and explicit validation after each slice.",
+          "requiredSkill": "superpowers:executing-plans"
+        }
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "Plan header contract",
+        "content": "For agentic workers: REQUIRED SUB-SKILL is superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox syntax for task-by-task tracking.",
+        "items": [
+          "Goal: ship the approved unified B visual language and structured diagrams.",
+          "Architecture: fixture first, strict validator, fixed renderer, shared styles, semantic components, accessibility, documentation.",
+          "Tech stack: dependency-free Node.js and deterministic static output."
+        ],
+        "facts": [
+          {
+            "label": "Tracking syntax",
+            "value": "- [ ]"
+          },
+          {
+            "label": "Default execution",
+            "value": "Subagent-Driven"
+          },
+          {
+            "label": "Slice count",
+            "value": "8"
+          },
+          {
+            "label": "Required order",
+            "value": "Fixture to validation to rendering to style to accessibility to docs"
+          }
+        ],
+        "links": [
+          {
+            "label": "Approved spec",
+            "target": "docs/stenc/content/specs/2026-07-30-unified-readability-and-diagram-system.spec.json",
+            "purpose": "Canonical product and behavior contract."
+          },
+          {
+            "label": "Repository validation",
+            "target": "scripts/validate.sh",
+            "purpose": "Final deterministic validation gate."
+          }
+        ],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "TDD order",
+            "body": "Write the failing test, run it red, implement the minimum behavior, run it green, then commit the slice."
+          },
+          {
+            "type": "callout",
+            "tone": "warning",
+            "title": "Generated artifacts",
+            "body": "Do not stage docs/stenc generated HTML, generated CSS, generated route directories, or generated assets."
+          },
+          {
+            "type": "taskList",
+            "items": [
+              {
+                "label": "Read approved spec",
+                "checked": false
+              },
+              {
+                "label": "Confirm current worktree and Node version",
+                "checked": false
+              },
+              {
+                "label": "Execute slices in order",
+                "checked": false
+              },
+              {
+                "label": "Run full validation",
+                "checked": false
+              },
+              {
+                "label": "Review generated pages at desktop and mobile widths",
+                "checked": false
+              }
+            ]
+          }
+        ],
+        "subSections": [
+          {
+            "heading": "No placeholders",
+            "content": "Every executable step names an exact file, instruction or command, and expected output. Implementation must not replace code with comments, TODOs, or similar-to references.",
+            "items": [
+              "No TBD values",
+              "No command without expected output",
+              "No empty code block used as a substitute for instructions",
+              "No per-document visual workaround"
+            ],
+            "facts": [],
+            "links": [],
+            "steps": [],
+            "blocks": [],
+            "subSections": [],
+            "codeBlocks": []
+          }
+        ],
+        "codeBlocks": []
+      },
+      {
+        "heading": "Spec-to-slice traceability",
+        "content": "Each approved requirement maps to concrete execution slices.",
+        "items": [
+          "VIS-01 single visual language: slices 4 and 5",
+          "VIS-02 typography: slice 4",
+          "VIS-03 first viewport hierarchy: slice 5",
+          "VIS-04 spec components: slices 1 and 5",
+          "VIS-05 plan components: slices 1 and 5",
+          "VIS-06 rich blocks: slices 1, 4, and 5",
+          "VIS-07 structured diagrams: slices 2 and 3",
+          "VIS-08 navigation: slices 5 and 6",
+          "VIS-09 color and status: slices 4 and 6",
+          "VIS-10 responsive and accessibility: slice 6",
+          "VIS-11 determinism and compatibility: slices 2, 3, and 8",
+          "VIS-12 specimen and regression coverage: slices 1 and 8"
+        ],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "table",
+            "columns": [
+              "Phase",
+              "Primary evidence",
+              "Exit gate"
+            ],
+            "rows": [
+              [
+                "Contract",
+                "Comprehensive fixtures and validator matrix",
+                "All valid fixtures pass and invalid cases fail"
+              ],
+              [
+                "Rendering",
+                "Diagram and component markup tests",
+                "All meaning visible, escaped, and deterministic"
+              ],
+              [
+                "Visual system",
+                "Token and component inventory tests",
+                "B minimum sizes and shared language pass"
+              ],
+              [
+                "Accessibility",
+                "Landmark, fallback, state, responsive hook tests",
+                "No color-only or visual-only meaning"
+              ],
+              [
+                "Release",
+                "Full validation and rendered-page checks",
+                "Zero test failures and complete generated routes"
+              ]
+            ]
+          }
+        ],
+        "subSections": [],
+        "codeBlocks": []
+      }
+    ],
+    "openQuestions": []
+  }
+}

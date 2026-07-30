@@ -3,7 +3,7 @@
   "docType": "spec",
   "id": "spec:2026-07-30-unified-readability-and-diagram-system",
   "slug": "2026-07-30-unified-readability-and-diagram-system",
-  "status": "proposed",
+  "status": "approved",
   "title": "Stenc 통합 가독성 및 구조화 Diagram 시스템",
   "description": "Spec과 plan의 모든 고정 컴포넌트를 B안의 단일 시각 언어로 통합하고 구조화 diagram을 추가하는 제품 계약.",
   "owner": "stenc",
@@ -16,7 +16,9 @@
       "skill/stenc/references/json-field-contract.md",
       "skill/stenc/scripts/setup-project.js"
     ],
-    "relatedPlans": [],
+    "relatedPlans": [
+      "plan:2026-07-30-unified-readability-and-diagram-system"
+    ],
     "relatedDecisions": [
       "docs/DECISIONS.md"
     ]
@@ -708,7 +710,7 @@
           {
             "id": "design-review-3",
             "title": "Review canonical JSON spec",
-            "status": "todo",
+            "status": "done",
             "instruction": "Review this generated spec page before implementation plan authoring.",
             "codeBlocks": []
           }
