@@ -3,7 +3,8 @@
   "docType": "plan",
   "id": "plan:2026-07-30-unified-readability-and-diagram-system",
   "slug": "2026-07-30-unified-readability-and-diagram-system",
-  "status": "proposed",
+  "status": "done",
+  "language": "ko",
   "title": "Stenc 통합 가독성 및 구조화 Diagram 구현 계획",
   "description": "승인된 B안 시각 언어와 spec·plan 전체 component coverage, 구조화 diagram을 TDD로 구현하는 실행 계획.",
   "owner": "stenc",
@@ -1159,23 +1160,23 @@
             "items": [
               {
                 "label": "Read approved spec",
-                "checked": false
+                "checked": true
               },
               {
                 "label": "Confirm current worktree and Node version",
-                "checked": false
+                "checked": true
               },
               {
                 "label": "Execute slices in order",
-                "checked": false
+                "checked": true
               },
               {
                 "label": "Run full validation",
-                "checked": false
+                "checked": true
               },
               {
                 "label": "Review generated pages at desktop and mobile widths",
-                "checked": false
+                "checked": true
               }
             ]
           }

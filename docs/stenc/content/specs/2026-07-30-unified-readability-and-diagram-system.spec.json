@@ -4,6 +4,7 @@
   "id": "spec:2026-07-30-unified-readability-and-diagram-system",
   "slug": "2026-07-30-unified-readability-and-diagram-system",
   "status": "approved",
+  "language": "ko",
   "title": "Stenc 통합 가독성 및 구조화 Diagram 시스템",
   "description": "Spec과 plan의 모든 고정 컴포넌트를 B안의 단일 시각 언어로 통합하고 구조화 diagram을 추가하는 제품 계약.",
   "owner": "stenc",
