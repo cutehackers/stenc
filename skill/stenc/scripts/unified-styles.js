@@ -1,4 +1,7 @@
-:root {
+"use strict";
+
+function buildUnifiedStyles() {
+  return `:root {
   color-scheme: light;
   --color-page: #f2f4f6;
   --color-surface: #ffffff;
@@ -1251,3 +1254,7 @@ caption {
     animation-iteration-count: 1 !important;
   }
 }
+`;
+}
+
+module.exports = { buildUnifiedStyles };

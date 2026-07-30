@@ -198,6 +198,200 @@ function assertByteIdentical(sourcePath, mirrorPath) {
   );
 }
 
+function cssDeclarations(css, selector) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const match = css.match(new RegExp(`(?:^|\\n)${escapedSelector}\\s*\\{([^}]*)\\}`, "u"));
+  assert.ok(match, `Missing CSS selector: ${selector}`);
+
+  return Object.fromEntries(
+    match[1]
+      .split(";")
+      .map((declaration) => declaration.trim())
+      .filter(Boolean)
+      .map((declaration) => {
+        const separator = declaration.indexOf(":");
+        assert.notEqual(separator, -1, `Invalid CSS declaration in ${selector}: ${declaration}`);
+        return [
+          declaration.slice(0, separator).trim(),
+          declaration.slice(separator + 1).trim(),
+        ];
+      }),
+  );
+}
+
+test("unified B style tokens", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unified-styles-"));
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const css = fs.readFileSync(
+    path.join(projectRoot, "docs", "stenc", "styles.css"),
+    "utf8",
+  );
+  const root = cssDeclarations(css, ":root");
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-page",
+        "--color-surface",
+        "--color-text",
+        "--color-muted",
+        "--color-subtle",
+        "--color-line",
+        "--color-info",
+        "--color-success",
+        "--color-warning",
+        "--color-danger",
+        "--color-relation",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-page": "#f2f4f6",
+      "--color-surface": "#ffffff",
+      "--color-text": "#191f28",
+      "--color-muted": "#4e5968",
+      "--color-subtle": "#6b7684",
+      "--color-line": "#d8dee6",
+      "--color-info": "#1769c2",
+      "--color-success": "#087f5b",
+      "--color-warning": "#9a5b00",
+      "--color-danger": "#c5293d",
+      "--color-relation": "#6f5ce7",
+    },
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-diagram-consumer",
+        "--color-diagram-surface",
+        "--color-diagram-session",
+        "--color-diagram-engine",
+        "--color-diagram-boundary",
+        "--color-diagram-value",
+        "--color-diagram-neutral",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-diagram-consumer": "var(--color-info)",
+      "--color-diagram-surface": "#2878d0",
+      "--color-diagram-session": "var(--color-relation)",
+      "--color-diagram-engine": "var(--color-warning)",
+      "--color-diagram-boundary": "var(--color-danger)",
+      "--color-diagram-value": "var(--color-success)",
+      "--color-diagram-neutral": "var(--color-muted)",
+    },
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--font-body",
+        "--line-body",
+        "--font-lead",
+        "--font-h1",
+        "--font-h2",
+        "--font-h3",
+        "--font-table",
+        "--font-nav",
+        "--font-metadata",
+        "--font-code",
+        "--space-1",
+        "--space-2",
+        "--space-3",
+        "--space-4",
+        "--space-5",
+        "--space-6",
+        "--radius-component",
+        "--shadow-component",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--font-body": "17px",
+      "--line-body": "1.6",
+      "--font-lead": "18px",
+      "--font-h1": "clamp(34px, 5vw, 48px)",
+      "--font-h2": "24px",
+      "--font-h3": "17px",
+      "--font-table": "15px",
+      "--font-nav": "15px",
+      "--font-metadata": "13px",
+      "--font-code": "14px",
+      "--space-1": "4px",
+      "--space-2": "8px",
+      "--space-3": "12px",
+      "--space-4": "16px",
+      "--space-5": "24px",
+      "--space-6": "32px",
+      "--radius-component": "14px",
+      "--shadow-component": "0 2px 8px rgba(0, 0, 0, 0.05)",
+    },
+  );
+
+  assert.deepEqual(cssDeclarations(css, "body"), {
+    margin: "0",
+    background: "var(--color-page)",
+    color: "var(--color-text)",
+    "font-family":
+      'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    "font-size": "var(--font-body)",
+    "line-height": "var(--line-body)",
+  });
+  assert.equal(cssDeclarations(css, ".table")["font-size"], "var(--font-table)");
+  assert.equal(cssDeclarations(css, ".nav-link")["font-size"], "var(--font-nav)");
+  assert.equal(cssDeclarations(css, ".badge")["font-size"], "var(--font-metadata)");
+  assert.deepEqual(cssDeclarations(css, ":focus-visible"), {
+    outline: "3px solid var(--color-info)",
+    "outline-offset": "3px",
+  });
+  assert.deepEqual(
+    cssDeclarations(css, "@media (prefers-reduced-motion: reduce) {\n  *,\n  *::before,\n  *::after"),
+    {
+      "scroll-behavior": "auto !important",
+      "transition-duration": "0.001ms !important",
+      "animation-duration": "0.001ms !important",
+      "animation-iteration-count": "1 !important",
+    },
+  );
+  assert.match(css, /@media \(max-width: 780px\) \{/u);
+});
+
+test("canonical unified styles stay byte-identical across generated and sample CSS", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-style-parity-"));
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const canonical = Buffer.from(buildUnifiedStyles());
+  const generated = fs.readFileSync(
+    path.join(projectRoot, "docs", "stenc", "styles.css"),
+  );
+  const sample = fs.readFileSync(
+    path.join(REPO_ROOT, "samples", "stenc-doc-styles", "styles.css"),
+  );
+
+  assert.equal(Buffer.compare(generated, canonical), 0, "generated CSS differs");
+  assert.equal(Buffer.compare(sample, canonical), 0, "sample CSS differs");
+
+  const setupSource = fs.readFileSync(SCRIPT_PATH, "utf8");
+  assert.equal(
+    (setupSource.match(/buildUnifiedStyles\(\)/gu) || []).length,
+    1,
+    "setup-project must write the canonical stylesheet exactly once",
+  );
+  assert.doesNotMatch(
+    setupSource,
+    /`?:root\s*\{/u,
+    "setup-project must not retain a second inline stylesheet",
+  );
+});
+
 function assertAppearsInOrder(text, values, label) {
   let previousIndex = -1;
   for (const value of values) {
