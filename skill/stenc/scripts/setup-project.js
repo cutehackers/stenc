@@ -418,7 +418,12 @@ function readCollection(docsDir, collection) {
 function renderLayout(site, title, body, options = {}) {
   const pageTitle = title ? `${title} · ${site.title}` : site.title;
   const nav = COLLECTIONS.map(
-    (collection) => `<a class="nav-link" href="/${collection.dir}/"${options.collectionDir === collection.dir ? ' aria-current="page"' : ""}>${collection.label}</a>`,
+    (collection) => {
+      const ariaCurrent = options.collectionDir === collection.dir
+        ? options.collectionAriaCurrent
+        : null;
+      return `<a class="nav-link" href="/${collection.dir}/"${ariaCurrent ? ` aria-current="${ariaCurrent}"` : ""}>${collection.label}</a>`;
+    },
   ).join("");
   const documentNavigation = toList(options.sections).length > 0
     ? `<nav class="document-navigation" aria-label="On this page">
@@ -517,7 +522,7 @@ function renderMediaBlock(block, context) {
 
 function renderTaskListBlock(block) {
   return `<ul class="rich-block rich-task-list">${toList(block.items)
-    .map((item) => `<li><span class="task-check" aria-hidden="true">${item.checked ? "x" : ""}</span><span>${escapeHtml(item.label)}</span></li>`)
+    .map((item) => `<li><input class="task-check" type="checkbox" disabled aria-label="${escapeHtml(item.label)}"${item.checked ? " checked" : ""} /><span>${escapeHtml(item.label)}</span></li>`)
     .join("")}</ul>`;
 }
 
@@ -531,7 +536,7 @@ function renderSupportingBlock(block, context = {}) {
     return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
   }
   if (block.type === "callout") {
-    return `<aside class="rich-block rich-callout tone-${escapeHtml(block.tone)}">${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></aside>`;
+    return `<div class="rich-block rich-callout tone-${escapeHtml(block.tone)}" role="note" aria-label="${escapeHtml(block.title)}">${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></div>`;
   }
   if (block.type === "quote") {
     return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
@@ -612,81 +617,6 @@ function renderSupportingSection(section, depth = 0, context = {}) {
   return `<section class="panel supporting-section depth-${depth}">${renderHeadingOrLabel(section.heading, headingLevel, "supporting-section-title")}<p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `${renderHeadingOrLabel("Facts", groupHeadingLevel, "supporting-label")}${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `${renderHeadingOrLabel("Links", groupHeadingLevel, "supporting-label")}${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `${renderHeadingOrLabel("Steps", groupHeadingLevel, "supporting-label")}<div class="step-list">${toList(section.steps).map((step, index) => renderSupportingStep(step, index, stepHeadingLevel)).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, { ...context, headingLevel })}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
-const DOCUMENT_SECTION_DEFINITIONS = {
-  spec: [
-    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
-    ["related-plans", "Related Plans", (doc) => toList(doc.links?.relatedPlans).length > 0],
-    ["related-decisions", "Related Decisions", (doc) => toList(doc.links?.relatedDecisions).length > 0],
-    ["goal", "Goal", (doc) => Boolean(doc.body?.goal)],
-    ["problem", "Problem", (doc) => Boolean(doc.body?.problem)],
-    ["scope", "Scope", (doc) => Boolean(doc.body?.scope)],
-    ["architecture", "Architecture", (doc) => Boolean(doc.body?.architecture)],
-    ["requirements", "Requirements", (doc) => toList(doc.body?.requirements).length > 0],
-    ["approaches", "Approaches", (doc) => toList(doc.body?.approaches).length > 0],
-    ["components", "Components", (doc) => toList(doc.body?.components).length > 0],
-    ["data-flow", "Data Flow", (doc) => toList(doc.body?.dataFlow).length > 0],
-    ["error-handling", "Error Handling", (doc) => toList(doc.body?.errorHandling).length > 0],
-    ["contracts", "Contracts", (doc) => toList(doc.body?.contracts).length > 0],
-    ["surfaces", "Surfaces", (doc) => toList(doc.body?.surfaces).length > 0],
-    ["testing-strategy", "Testing Strategy", (doc) => toList(doc.body?.testingStrategy).length > 0],
-    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
-    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
-    ["review-checklist", "Review Checklist", (doc) => toList(doc.body?.reviewChecklist).length > 0],
-    ["self-review-checks", "Self Review Checks", (doc) => toList(doc.body?.selfReviewChecks).length > 0],
-    ["implementation-handoff", "Implementation Handoff", (doc) => Boolean(doc.body?.implementationHandoff)],
-    ["supporting-sections", "Supporting Sections", (doc) => toList(doc.body?.supportingSections).length > 0],
-    ["open-questions", "Open Questions", () => true],
-  ],
-  plan: [
-    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
-    ["related-spec", "Related Spec", (doc) => Boolean(doc.links?.relatedSpec)],
-    ["goal", "Goal", (doc) => Boolean(doc.body?.goal)],
-    ["worker-instructions", "Worker Instructions", (doc) => Boolean(doc.body?.workerInstructions)],
-    ["scope-check", "Scope Check", (doc) => Boolean(doc.body?.scopeCheck)],
-    ["architecture", "Architecture", (doc) => Boolean(doc.body?.architecture)],
-    ["tech-stack", "Tech Stack", (doc) => toList(doc.body?.techStack).length > 0],
-    ["current-state", "Current State", (doc) => Boolean(doc.body?.currentState)],
-    ["target-state", "Target State", (doc) => Boolean(doc.body?.targetState)],
-    ["scope", "Scope", (doc) => Boolean(doc.body?.scope)],
-    ["file-structure", "File Structure", (doc) => toList(doc.body?.fileStructure).length > 0],
-    ["plan-slices", "Implementation Slices", (doc) => toList(doc.body?.slices).length > 0],
-    ["execution-order", "Execution Order", (doc) => toList(doc.body?.executionOrder).length > 0],
-    ["risks", "Risks", (doc) => toList(doc.body?.risks).length > 0],
-    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
-    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
-    ["self-review-checks", "Self Review Checks", (doc) => toList(doc.body?.selfReviewChecks).length > 0],
-    ["execution-handoff", "Execution Handoff", (doc) => Boolean(doc.body?.executionHandoff)],
-    ["supporting-sections", "Supporting Sections", (doc) => toList(doc.body?.supportingSections).length > 0],
-    ["open-questions", "Open Questions", () => true],
-  ],
-  decision: [
-    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
-    ["related-spec", "Related Spec", (doc) => Boolean(doc.links?.relatedSpec)],
-    ["context", "Context", (doc) => Boolean(doc.body?.context)],
-    ["decision", "Decision", (doc) => Boolean(doc.body?.decision)],
-    ["options-considered", "Options Considered", (doc) => toList(doc.body?.optionsConsidered).length > 0],
-    ["consequences", "Consequences", (doc) => toList(doc.body?.consequences).length > 0],
-    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
-    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
-    ["open-questions", "Open Questions", () => true],
-  ],
-  "agent-context": [
-    ["source-of-truth", "Source Of Truth", (doc) => toList(doc.links?.sourceOfTruth).length > 0],
-    ["when-to-use", "When To Use", (doc) => toList(doc.body?.whenToUse).length > 0],
-    ["required-reading", "Required Reading", (doc) => toList(doc.body?.requiredReading).length > 0],
-    ["working-rules", "Working Rules", (doc) => toList(doc.body?.workingRules).length > 0],
-    ["validation", "Validation", (doc) => toList(doc.body?.validation).length > 0],
-    ["agent-instructions", "Agent Instructions", (doc) => toList(doc.body?.agentInstructions).length > 0],
-    ["open-questions", "Open Questions", () => true],
-  ],
-};
-
-function deriveDocumentSections(doc) {
-  return toList(DOCUMENT_SECTION_DEFINITIONS[doc.docType])
-    .filter(([, , isVisible]) => isVisible(doc))
-    .map(([id, label]) => ({ id, label }));
-}
-
 function sectionClass(baseClass, template, emphasis) {
   const emphasized =
     (template === "task-first" && emphasis === "task")
@@ -698,10 +628,14 @@ function sectionClass(baseClass, template, emphasis) {
 }
 
 function renderSection(id, label, className, content) {
-  return `<section id="${id}" class="${className}"><h2>${label}</h2>${content}</section>`;
+  return {
+    id,
+    label,
+    html: `<section id="${id}" class="${className}"><h2>${label}</h2>${content}</section>`,
+  };
 }
 
-function renderDocument(doc, collection, context = {}) {
+function renderDocument(doc, context = {}) {
   const links = doc.links || {};
   const page = doc.page || {};
   const body = doc.body || {};
@@ -709,6 +643,11 @@ function renderDocument(doc, collection, context = {}) {
   const architecture = body.architecture || {};
   const template = STYLE_TEMPLATES.has(page.styleTemplate) ? page.styleTemplate : "task-first";
   const parts = [];
+  const sections = [];
+  const addSection = (section) => {
+    sections.push({ id: section.id, label: section.label });
+    parts.push(section.html);
+  };
 
   parts.push(`<article class="document ${template}">
     <header class="document-header">
@@ -729,115 +668,126 @@ function renderDocument(doc, collection, context = {}) {
     </div>`);
 
   if (toList(links.sourceOfTruth).length > 0) {
-    parts.push(renderSection("source-of-truth", "Source Of Truth", "source-of-truth", listItems(links.sourceOfTruth, true)));
+    addSection(renderSection("source-of-truth", "Source Of Truth", "source-of-truth", listItems(links.sourceOfTruth, true)));
   }
   if (links.relatedSpec) {
-    parts.push(renderSection("related-spec", "Related Spec", "related-spec", `<p><code>${escapeHtml(links.relatedSpec)}</code></p>`));
+    addSection(renderSection("related-spec", "Related Spec", "related-spec", `<p><code>${escapeHtml(links.relatedSpec)}</code></p>`));
   }
   if (toList(links.relatedPlans).length > 0) {
-    parts.push(renderSection("related-plans", "Related Plans", "related-plans", listItems(links.relatedPlans, true)));
+    addSection(renderSection("related-plans", "Related Plans", "related-plans", listItems(links.relatedPlans, true)));
   }
   if (toList(links.relatedDecisions).length > 0) {
-    parts.push(renderSection("related-decisions", "Related Decisions", "related-decisions", listItems(links.relatedDecisions, true)));
+    addSection(renderSection("related-decisions", "Related Decisions", "related-decisions", listItems(links.relatedDecisions, true)));
   }
-  if (body.goal) parts.push(renderSection("goal", "Goal", "goal", `<p>${escapeHtml(body.goal)}</p>`));
+  if (body.goal) addSection(renderSection("goal", "Goal", "goal", `<p>${escapeHtml(body.goal)}</p>`));
 
   if (doc.docType === "plan" && body.workerInstructions) {
-    parts.push(renderSection("worker-instructions", "Worker Instructions", "worker-instructions", `<p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h3>Required Sub-Skills</h3>${listItems(body.workerInstructions.requiredSubSkills, true)}`));
+    addSection(renderSection("worker-instructions", "Worker Instructions", "worker-instructions", `<p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h3>Required Sub-Skills</h3>${listItems(body.workerInstructions.requiredSubSkills, true)}`));
   }
   if (doc.docType === "plan" && body.scopeCheck) {
-    parts.push(renderSection("scope-check", "Scope Check", "scope-check", `<div class="grid"><section class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></section><section class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></section></div>`));
+    addSection(renderSection("scope-check", "Scope Check", "scope-check", `<div class="grid"><section class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></section><section class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></section></div>`));
   }
 
-  if (body.problem) parts.push(renderSection("problem", "Problem", "problem", `<p>${escapeHtml(body.problem)}</p>`));
+  if (body.problem) addSection(renderSection("problem", "Problem", "problem", `<p>${escapeHtml(body.problem)}</p>`));
   if (doc.docType !== "plan" && (scope.in || scope.out)) {
-    parts.push(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
+    addSection(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
   }
   if (typeof body.architecture === "string" && body.architecture) {
-    parts.push(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(body.architecture)}</p>`));
+    addSection(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(body.architecture)}</p>`));
   } else if (architecture.summary) {
-    parts.push(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(architecture.summary)}</p>${toList(architecture.flow).length > 0 ? `<div class="architecture-flow"><h3>Flow</h3>${listItems(architecture.flow)}</div>` : ""}`));
+    addSection(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(architecture.summary)}</p>${toList(architecture.flow).length > 0 ? `<div class="architecture-flow"><h3>Flow</h3>${listItems(architecture.flow)}</div>` : ""}`));
   }
   if (toList(body.techStack).length > 0) {
-    parts.push(renderSection("tech-stack", "Tech Stack", "tech-stack", listItems(body.techStack, true)));
+    addSection(renderSection("tech-stack", "Tech Stack", "tech-stack", listItems(body.techStack, true)));
   }
-  if (body.currentState) parts.push(renderSection("current-state", "Current State", "current-state", `<p>${escapeHtml(body.currentState)}</p>`));
-  if (body.targetState) parts.push(renderSection("target-state", "Target State", "target-state", `<p>${escapeHtml(body.targetState)}</p>`));
+  if (body.currentState) addSection(renderSection("current-state", "Current State", "current-state", `<p>${escapeHtml(body.currentState)}</p>`));
+  if (body.targetState) addSection(renderSection("target-state", "Target State", "target-state", `<p>${escapeHtml(body.targetState)}</p>`));
   if (doc.docType === "plan" && (scope.in || scope.out)) {
-    parts.push(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
+    addSection(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
   }
   if (toList(body.requirements).length > 0) {
-    parts.push(renderSection("requirements", "Requirements", sectionClass("requirements", template, "task"), body.requirements
+    addSection(renderSection("requirements", "Requirements", sectionClass("requirements", template, "task"), body.requirements
       .map((requirement) => `<section class="requirement"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
       .join("")));
   }
   if (toList(body.approaches).length > 0) {
-    parts.push(renderSection("approaches", "Approaches", "approaches", body.approaches
+    addSection(renderSection("approaches", "Approaches", "approaches", body.approaches
       .map((approach) => `<section class="approach"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
       .join("")));
   }
   if (toList(body.components).length > 0) {
-    parts.push(renderSection("components", "Components", "components", body.components
+    addSection(renderSection("components", "Components", "components", body.components
       .map((component) => `<section class="component"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
       .join("")));
   }
-  if (toList(body.dataFlow).length > 0) parts.push(renderSection("data-flow", "Data Flow", "data-flow", listItems(body.dataFlow)));
+  if (toList(body.dataFlow).length > 0) addSection(renderSection("data-flow", "Data Flow", "data-flow", listItems(body.dataFlow)));
   if (toList(body.errorHandling).length > 0) {
-    parts.push(renderSection("error-handling", "Error Handling", "error-handling", renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))));
+    addSection(renderSection("error-handling", "Error Handling", "error-handling", renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))));
   }
   if (toList(body.contracts).length > 0) {
-    parts.push(renderSection("contracts", "Contracts", "contracts", body.contracts
+    addSection(renderSection("contracts", "Contracts", "contracts", body.contracts
       .map((contract) => `<section class="contract"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
       .join("")));
   }
   if (toList(body.fileStructure).length > 0) {
-    parts.push(renderSection("file-structure", "File Structure", "file-structure", renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr class="file-structure-entry"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))));
+    addSection(renderSection("file-structure", "File Structure", "file-structure", renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr class="file-structure-entry"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))));
   }
   if (toList(body.slices).length > 0) {
-    parts.push(renderSection("plan-slices", "Implementation Slices", sectionClass("plan-slices", template, "operator"), body.slices
+    addSection(renderSection("plan-slices", "Implementation Slices", sectionClass("plan-slices", template, "operator"), body.slices
       .map((slice) => `<section class="plan-slice"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><div class="slice-surfaces"><h4>Surfaces</h4>${listItems(slice.surfaces, true)}</div>${toList(slice.files).length > 0 ? `<div class="slice-files"><h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr class="plan-file"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}</div>` : ""}<div class="slice-steps"><h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div></div><div class="done-when"><h4>Done When</h4>${listItems(slice.doneWhen)}</div></section>`)
       .join("")));
   }
-  if (toList(body.executionOrder).length > 0) parts.push(renderSection("execution-order", "Execution Order", "execution-order", listItems(body.executionOrder)));
+  if (toList(body.executionOrder).length > 0) addSection(renderSection("execution-order", "Execution Order", "execution-order", listItems(body.executionOrder)));
   if (toList(body.risks).length > 0) {
-    parts.push(renderSection("risks", "Risks", "risks", body.risks.map((row) => `<article class="risk"><h3>Risk</h3><p>${escapeHtml(row.risk)}</p><h4>Mitigation</h4><p>${escapeHtml(row.mitigation)}</p></article>`).join("")));
+    addSection(renderSection("risks", "Risks", "risks", body.risks.map((row) => `<article class="risk"><h3>Risk</h3><p>${escapeHtml(row.risk)}</p><h4>Mitigation</h4><p>${escapeHtml(row.mitigation)}</p></article>`).join("")));
   }
-  if (body.context) parts.push(renderSection("context", "Context", "context", `<p>${escapeHtml(body.context)}</p>`));
-  if (body.decision) parts.push(renderSection("decision", "Decision", "decision", `<p>${escapeHtml(body.decision)}</p>`));
+  if (body.context) addSection(renderSection("context", "Context", "context", `<p>${escapeHtml(body.context)}</p>`));
+  if (body.decision) addSection(renderSection("decision", "Decision", "decision", `<p>${escapeHtml(body.decision)}</p>`));
   if (toList(body.optionsConsidered).length > 0) {
-    parts.push(renderSection("options-considered", "Options Considered", "options-considered", renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))));
+    addSection(renderSection("options-considered", "Options Considered", "options-considered", renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))));
   }
-  if (toList(body.consequences).length > 0) parts.push(renderSection("consequences", "Consequences", "consequences", listItems(body.consequences)));
-  if (toList(body.whenToUse).length > 0) parts.push(renderSection("when-to-use", "When To Use", "when-to-use", listItems(body.whenToUse)));
-  if (toList(body.requiredReading).length > 0) parts.push(renderSection("required-reading", "Required Reading", "required-reading", listItems(body.requiredReading, true)));
-  if (toList(body.workingRules).length > 0) parts.push(renderSection("working-rules", "Working Rules", "working-rules", listItems(body.workingRules)));
+  if (toList(body.consequences).length > 0) addSection(renderSection("consequences", "Consequences", "consequences", listItems(body.consequences)));
+  if (toList(body.whenToUse).length > 0) addSection(renderSection("when-to-use", "When To Use", "when-to-use", listItems(body.whenToUse)));
+  if (toList(body.requiredReading).length > 0) addSection(renderSection("required-reading", "Required Reading", "required-reading", listItems(body.requiredReading, true)));
+  if (toList(body.workingRules).length > 0) addSection(renderSection("working-rules", "Working Rules", "working-rules", listItems(body.workingRules)));
   if (toList(body.surfaces).length > 0) {
-    parts.push(renderSection("surfaces", "File Or Surface Map", "surfaces", renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr class="surface"><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))));
+    addSection(renderSection("surfaces", "File Or Surface Map", "surfaces", renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr class="surface"><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))));
   }
   if (toList(body.testingStrategy).length > 0) {
-    parts.push(renderSection("testing-strategy", "Testing Strategy", "testing-strategy", renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))));
+    addSection(renderSection("testing-strategy", "Testing Strategy", "testing-strategy", renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))));
   }
   if (toList(body.validation).length > 0) {
-    parts.push(renderSection("validation", "Validation", sectionClass("validation", template, template === "evidence-led" ? "evidence" : "task"), renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))));
+    addSection(renderSection("validation", "Validation", sectionClass("validation", template, template === "evidence-led" ? "evidence" : "task"), renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
-  if (toList(body.agentInstructions).length > 0) parts.push(renderSection("agent-instructions", "Agent Instructions", "agent-instructions", listItems(body.agentInstructions)));
-  if (toList(body.reviewChecklist).length > 0) parts.push(renderSection("review-checklist", "Review Checklist", "review-checklist", listItems(body.reviewChecklist)));
+  if (toList(body.agentInstructions).length > 0) addSection(renderSection("agent-instructions", "Agent Instructions", "agent-instructions", listItems(body.agentInstructions)));
+  if (toList(body.reviewChecklist).length > 0) addSection(renderSection("review-checklist", "Review Checklist", "review-checklist", listItems(body.reviewChecklist)));
   if (toList(body.selfReviewChecks).length > 0) {
-    parts.push(renderSection("self-review-checks", "Self Review Checks", "self-review-checks", renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))));
+    addSection(renderSection("self-review-checks", "Self Review Checks", "self-review-checks", renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
   if (body.implementationHandoff) {
-    parts.push(renderSection("implementation-handoff", "Implementation Handoff", "implementation-handoff", `<p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}`));
+    addSection(renderSection("implementation-handoff", "Implementation Handoff", "implementation-handoff", `<p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}`));
   }
   if (body.executionHandoff) {
-    parts.push(renderSection("execution-handoff", "Execution Handoff", "execution-handoff", `<p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}`));
+    addSection(renderSection("execution-handoff", "Execution Handoff", "execution-handoff", `<p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}`));
   }
   if (toList(body.supportingSections).length > 0) {
-    parts.push(renderSection("supporting-sections", "Supporting Sections", "supporting-sections", body.supportingSections
+    addSection(renderSection("supporting-sections", "Supporting Sections", "supporting-sections", body.supportingSections
       .map((section) => renderSupportingSection(section, 0, { ...context, template }))
       .join("")));
   }
-  parts.push(`${renderSection("open-questions", "Open Questions", "open-questions", toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>")}</article>`);
-  return parts.join("\n");
+  addSection(renderSection(
+    "open-questions",
+    "Open Questions",
+    "open-questions",
+    toList(body.openQuestions).length > 0
+      ? listItems(body.openQuestions)
+      : "<p>No open questions.</p>",
+  ));
+  parts.push("</article>");
+  return {
+    html: parts.join("\n"),
+    sections,
+  };
 }
 
 function writeStyles(docsDir) {
@@ -968,19 +918,24 @@ function writeStaticPages(docsDir, title) {
         site,
         collection.label,
         `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${sortingControls}<section class="grid">${cards || "<p>No documents yet.</p>"}</section>${sortingScript}`,
-        { collectionDir: collection.dir },
+        {
+          collectionDir: collection.dir,
+          collectionAriaCurrent: "page",
+        },
       ),
     );
     for (const doc of docs) {
+      const renderedDocument = renderDocument(doc, { docsDir });
       writeFile(
         documentPagePath(docsDir, collection.dir, doc.slug),
         renderLayout(
           site,
           doc.title,
-          renderDocument(doc, collection, { docsDir }),
+          renderedDocument.html,
           {
             collectionDir: collection.dir,
-            sections: deriveDocumentSections(doc),
+            collectionAriaCurrent: "location",
+            sections: renderedDocument.sections,
           },
         ),
       );

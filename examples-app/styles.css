@@ -575,7 +575,7 @@ caption {
   padding: var(--space-4);
 }
 
-.rich-callout h4 {
+.rich-callout .rich-block-title {
   color: var(--color-text);
   margin-top: 0;
 }
@@ -661,7 +661,6 @@ caption {
   grid-template-columns: 20px minmax(0, 1fr);
 }
 
-.task-check,
 .task-list li > span:first-child {
   align-items: center;
   border: 2px solid var(--color-success);
@@ -670,6 +669,13 @@ caption {
   height: 20px;
   justify-content: center;
   margin-top: 3px;
+  width: 20px;
+}
+
+.task-check {
+  accent-color: var(--color-success);
+  height: 20px;
+  margin: 3px 0 0;
   width: 20px;
 }
 

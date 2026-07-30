@@ -220,8 +220,62 @@ function assertDocumentNavigation(html, expectedIds, label) {
   const targets = [...navigationMatch[1].matchAll(/href="#([^"]+)"/gu)]
     .map((match) => match[1]);
   assert.deepEqual(targets, expectedIds, `${label}: native section inventory changed`);
-  for (const target of targets) {
-    assert.match(html, new RegExp(`id="${target}"`, "u"), `${label}: missing target #${target}`);
+  const renderedNativeSectionIds = [
+    ...html.matchAll(/<section id="([^"]+)" class="[^"]*">/gu),
+  ]
+    .map((match) => match[1])
+    .filter((id) => id !== "human-summary-title" && id !== "agent-summary-title");
+  assert.deepEqual(
+    renderedNativeSectionIds,
+    expectedIds,
+    `${label}: navigation and rendered native sections must share one inventory`,
+  );
+  const ids = [...html.matchAll(/\sid="([^"]+)"/gu)].map((match) => match[1]);
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `${label}: every rendered id must be unique`,
+  );
+  const onPageTargets = [...html.matchAll(/href="#([^"]+)"/gu)]
+    .map((match) => match[1]);
+  for (const target of onPageTargets) {
+    assert.equal(
+      ids.filter((id) => id === target).length,
+      1,
+      `${label}: #${target} must resolve to exactly one id`,
+    );
+  }
+}
+
+function extractPlanStepWrappers(html) {
+  return [...html.matchAll(
+    /<section class="plan-step step">(?:(?!<section\b)[\s\S])*?<\/section>/gu,
+  )].map((match) => match[0]);
+}
+
+function assertPlanStepContract(html, expectedSteps, label) {
+  const wrappers = extractPlanStepWrappers(html);
+  assert.equal(wrappers.length, expectedSteps.length, `${label}: plan-step wrapper count`);
+  for (const [stepId, expectedClasses] of expectedSteps) {
+    const matches = wrappers.filter((wrapper) =>
+      wrapper.includes(`<span class="badge">${stepId}</span>`));
+    assert.equal(matches.length, 1, `${label}: ${stepId} must have exactly one wrapper`);
+    const wrapper = matches[0];
+    assert.match(wrapper, /^<section class="plan-step step">/u);
+    assert.match(wrapper, /<\/section>$/u);
+    for (const className of [
+      "step-instruction",
+      "step-code-blocks",
+      "step-command",
+      "step-expected",
+    ]) {
+      const expectedCount = expectedClasses.includes(className) ? 1 : 0;
+      assert.equal(
+        (wrapper.match(new RegExp(`class="${className}"`, "gu")) || []).length,
+        expectedCount,
+        `${label}: ${stepId} ${className} wrapper count`,
+      );
+    }
   }
 }
 
@@ -273,6 +327,20 @@ function assertSnapshotParity(actual, expected, label) {
   const paths = [...new Set([...Object.keys(actual), ...Object.keys(expected)])].sort();
   const drift = paths.filter((filePath) => actual[filePath] !== expected[filePath]);
   assert.deepEqual(drift, [], `${label}: ${drift.join(", ")}`);
+}
+
+function extractSampleNavigation(html, label) {
+  const navigationMatch = html.match(
+    /<nav class="collection-navigation" aria-label="Style examples">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch, `${label}: missing Style examples navigation`);
+  return [...navigationMatch[1].matchAll(
+    /<a class="nav-link" href="([^"]+)"(?: aria-current="page")?>([^<]+)<\/a>/gu,
+  )].map((match) => ({
+    href: match[1],
+    label: match[2],
+    current: match[0].includes('aria-current="page"'),
+  }));
 }
 
 function cssDeclarations(css, selector) {
@@ -626,6 +694,11 @@ test("unified B style tokens", () => {
 
 test("canonical unified styles stay byte-identical across generated and sample CSS", () => {
   const { buildUnifiedStyles } = require("./unified-styles");
+  const calloutTitle = cssDeclarations(
+    buildUnifiedStyles(),
+    ".rich-callout .rich-block-title",
+  );
+  assert.equal(calloutTitle["margin-top"], "0");
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-style-parity-"));
   const result = spawnSync(
     process.execPath,
@@ -664,6 +737,69 @@ test("canonical unified styles stay byte-identical across generated and sample C
     /`?:root\s*\{/u,
     "setup-project must not retain a second inline stylesheet",
   );
+});
+
+test("sample pages use truthful titles and a deterministic style navigation contract", () => {
+  const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
+  const expectedNavigation = [
+    { href: "./task-first.html", label: "Task-first" },
+    { href: "./operator-console.html", label: "Operator console" },
+    { href: "./evidence-led.html", label: "Evidence-led" },
+  ];
+  const pages = [
+    ["index.html", "Stenc Style Examples", null],
+    ["task-first.html", "Task-first · Stenc Style Examples", "./task-first.html"],
+    ["operator-console.html", "Operator console · Stenc Style Examples", "./operator-console.html"],
+    ["evidence-led.html", "Evidence-led · Stenc Style Examples", "./evidence-led.html"],
+  ];
+
+  for (const [fileName, expectedTitle, currentHref] of pages) {
+    const filePath = path.join(sampleRoot, fileName);
+    const html = fs.readFileSync(filePath, "utf8");
+    assert.match(
+      html,
+      new RegExp(`<title>${expectedTitle.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}</title>`, "u"),
+      `${fileName}: document title`,
+    );
+    const navigation = extractSampleNavigation(html, fileName);
+    assert.deepEqual(
+      navigation.map(({ href, label }) => ({ href, label })),
+      expectedNavigation,
+      `${fileName}: style link contract`,
+    );
+    assert.deepEqual(
+      navigation.filter(({ current }) => current).map(({ href }) => href),
+      currentHref ? [currentHref] : [],
+      `${fileName}: current style contract`,
+    );
+    for (const { href } of navigation) {
+      assert.equal(
+        fs.existsSync(path.resolve(sampleRoot, href)),
+        true,
+        `${fileName}: missing local sample target ${href}`,
+      );
+    }
+    for (const match of html.matchAll(/(?:href|src)="((?:\.{1,2}\/)[^"#?]+)(?:\?[^"]*)?"/gu)) {
+      assert.equal(
+        fs.existsSync(path.resolve(sampleRoot, match[1])),
+        true,
+        `${fileName}: missing local path ${match[1]}`,
+      );
+    }
+    if (currentHref) {
+      assert.doesNotMatch(html, /<aside class="rich-block rich-callout/u);
+      assert.ok(
+        (html.match(/class="rich-block rich-callout[^"]*" role="note" aria-label="[^"]+"/gu)
+          || []).length > 0,
+        `${fileName}: callouts must be named notes`,
+      );
+      assert.equal((html.match(/<input class="task-check" type="checkbox"/gu) || []).length, 2);
+      assert.equal(
+        (html.match(/<input class="task-check" type="checkbox"[^>]* checked/gu) || []).length,
+        1,
+      );
+    }
+  }
 });
 
 test("examples setup is byte-idempotent across repeated runs", () => {
@@ -918,6 +1054,10 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     path.join(docsRoot, "specs", "evidence-component-catalog", "index.html"),
     "utf8",
   );
+  const specCollectionHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "index.html"),
+    "utf8",
+  );
 
   assertClassTokenInventory([
     {
@@ -945,8 +1085,13 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     );
     assert.match(
       html,
+      new RegExp(`<a class="nav-link" href="/${activeCollection}/" aria-current="location">`, "u"),
+      `${label}: parent collection location must be announced`,
+    );
+    assert.doesNotMatch(
+      html,
       new RegExp(`<a class="nav-link" href="/${activeCollection}/" aria-current="page">`, "u"),
-      `${label}: active collection must be announced`,
+      `${label}: detail page must not identify its collection index as the current page`,
     );
     assert.match(html, /<dl class="document-metadata">/u);
     for (const metadataLabel of ["Status", "Owner", "Updated", "Schema", "Template"]) {
@@ -962,6 +1107,12 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     );
     assertHeadingOrder(html, label);
   }
+
+  assert.match(
+    specCollectionHtml,
+    /<a class="nav-link" href="\/specs\/" aria-current="page">Specs<\/a>/u,
+  );
+  assert.doesNotMatch(specCollectionHtml, /aria-current="location"/u);
 
   assertMarkupOrder(
     specHtml,
@@ -1067,10 +1218,19 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     ],
     "plan execution hierarchy",
   );
-  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-instruction"/u);
-  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-code-blocks"/u);
-  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-command"/u);
-  assert.match(planHtml, /class="plan-step[\s"][^>]*>[\s\S]*class="step-expected"/u);
+  assertPlanStepContract(
+    planHtml,
+    [
+      ["slice-1-step-1", ["step-instruction"]],
+      ["slice-1-step-2", ["step-code-blocks"]],
+      ["slice-1-step-3", ["step-command", "step-expected"]],
+      ["slice-2-step-1", ["step-instruction"]],
+      ["slice-2-step-2", ["step-code-blocks"]],
+      ["slice-2-step-3", ["step-command", "step-expected"]],
+      ["slice-2-step-4", ["step-command", "step-expected"]],
+    ],
+    "component catalog plan",
+  );
   assert.match(planHtml, /Commit the fixture inventory/u);
 
   assert.match(
@@ -1587,7 +1747,7 @@ test("renders extended supporting section fields recursively", () => {
         {
           name: "Renderer",
           responsibility: "Render supporting section extensions.",
-          interfaces: ["renderDocument(doc, collection)"],
+          interfaces: ["renderDocument(doc, context)"],
           dependencies: ["Node.js"],
         },
       ],
@@ -2022,8 +2182,13 @@ test("renders Phase 1 rich supporting blocks with escaped fixed output", () => {
   assert.match(html, /href="docs\/spec\.md"/);
   assert.match(html, /spec &lt;link&gt;/);
   assert.match(html, /rich-callout tone-danger/);
-  assert.match(html, /Unsafe &lt;title&gt;/);
+  assert.match(
+    html,
+    /<div class="rich-block rich-callout tone-danger" role="note" aria-label="Unsafe &lt;title&gt;">/u,
+  );
+  assert.match(html, /<h4 class="rich-block-title">Unsafe &lt;title&gt;<\/h4>/u);
   assert.match(html, /Escape &lt;script&gt;alert\(1\)&lt;\/script&gt;\./);
+  assert.doesNotMatch(html, /<aside class="rich-block rich-callout/u);
   assert.match(html, /rich-quote/);
   assert.match(html, /Quote &lt;body&gt;/);
   assert.match(html, /Source &lt;file&gt;/);
@@ -2089,17 +2254,55 @@ test("renders Phase 2 media and task lists with copied local assets", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
   const html = fs.readFileSync(path.join(docsRoot, "specs", "rich-phase2", "index.html"), "utf8");
+  assertDocumentNavigation(
+    html,
+    [
+      "source-of-truth",
+      "goal",
+      "problem",
+      "scope",
+      "architecture",
+      "agent-instructions",
+      "implementation-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "minimal spec",
+  );
+  for (const emptySectionId of [
+    "requirements",
+    "approaches",
+    "components",
+    "data-flow",
+    "error-handling",
+    "contracts",
+    "surfaces",
+    "testing-strategy",
+    "validation",
+    "review-checklist",
+    "self-review-checks",
+  ]) {
+    assert.doesNotMatch(html, new RegExp(`id="${emptySectionId}"`, "u"));
+  }
   assert.match(html, /rich-media/);
   assert.match(html, /src="\.\.\/\.\.\/assets\/stenc-flow\.svg"/);
   assert.match(html, /alt="Flow &lt;diagram&gt;"/);
   assert.match(html, /Copy &lt;local&gt; asset\./);
   assert.match(html, /rich-task-list/);
-  assert.match(html, /task-check/);
+  assert.match(
+    html,
+    /<input class="task-check" type="checkbox" disabled aria-label="Validate &lt;source&gt;" checked \/>/u,
+  );
+  assert.match(
+    html,
+    /<input class="task-check" type="checkbox" disabled aria-label="Render page" \/>/u,
+  );
   assert.match(html, /Validate &lt;source&gt;/);
   assert.match(html, /Render page/);
   assert.equal(fs.existsSync(path.join(docsRoot, "assets", "stenc-flow.svg")), true);
   assert.doesNotMatch(html, /<local>/);
-  assert.doesNotMatch(html, /<input/);
+  assert.equal((html.match(/type="checkbox"/gu) || []).length, 2);
+  assert.equal((html.match(/type="checkbox"[^>]* checked/gu) || []).length, 1);
 });
 
 test("renders structured diagrams with escaped deterministic visuals and fallbacks", (t) => {
