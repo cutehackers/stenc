@@ -32,13 +32,21 @@ ${transition}</li>`;
   return `<ol class="diagram-fallback diagram-layer-fallback visually-hidden">${layers}</ol>`;
 }
 
-function renderLayerDiagram(block, escapeHtml) {
+function renderHeadingOrLabel(text, level, className, escapeHtml) {
+  const escapedText = escapeHtml(text);
+  if (level <= 6) {
+    return `<h${level} class="${className}">${escapedText}</h${level}>`;
+  }
+  return `<p class="${className} semantic-label"><strong>${escapedText}</strong></p>`;
+}
+
+function renderLayerDiagram(block, escapeHtml, headingLevel) {
   const layers = block.layers.map((layer, index) => {
     const nodes = layer.nodes.map((node) => renderLayerNode(node, escapeHtml)).join("");
     const transition = layer.transition
       ? `<div class="diagram-layer-transition" data-from="${escapeHtml(layer.id)}" data-to="${escapeHtml(block.layers[index + 1].id)}"><span class="diagram-directed-label">${escapeHtml(layer.transition)}</span></div>`
       : "";
-    return `<section class="diagram-layer ${roleClass(layer.role, escapeHtml)}" data-layer-id="${escapeHtml(layer.id)}"><div class="diagram-role-rail"><span class="diagram-role-label">${escapeHtml(layer.role)}</span></div><div class="diagram-layer-content"><h5>${escapeHtml(layer.label)}</h5><p>${escapeHtml(layer.summary)}</p><div class="diagram-layer-nodes">${nodes}</div></div></section>${transition}`;
+    return `<section class="diagram-layer ${roleClass(layer.role, escapeHtml)}" data-layer-id="${escapeHtml(layer.id)}"><div class="diagram-role-rail"><span class="diagram-role-label">${escapeHtml(layer.role)}</span></div><div class="diagram-layer-content">${renderHeadingOrLabel(layer.label, headingLevel, "diagram-layer-title", escapeHtml)}<p>${escapeHtml(layer.summary)}</p><div class="diagram-layer-nodes">${nodes}</div></div></section>${transition}`;
   }).join("");
 
   return `<figure class="rich-block rich-structured-diagram layer-diagram">${renderFigureHeading(block, "Layer diagram", escapeHtml)}<div class="diagram-visual diagram-layer-stack" aria-hidden="true"><div class="diagram-mobile-linear">${layers}</div></div>${renderLayerFallback(block, escapeHtml)}</figure>`;
@@ -121,8 +129,11 @@ function renderRelationDiagram(block, escapeHtml) {
   });
 }
 
-function renderStructuredDiagram(block, escapeHtml) {
-  if (block.type === "layerDiagram") return renderLayerDiagram(block, escapeHtml);
+function renderStructuredDiagram(block, escapeHtml, context = {}) {
+  const headingLevel = context.headingLevel || 5;
+  if (block.type === "layerDiagram") {
+    return renderLayerDiagram(block, escapeHtml, headingLevel);
+  }
   if (block.type === "flowDiagram") return renderFlowDiagram(block, escapeHtml);
   if (block.type === "relationDiagram") return renderRelationDiagram(block, escapeHtml);
   throw new Error(`Unsupported structured diagram type: ${block.type}`);

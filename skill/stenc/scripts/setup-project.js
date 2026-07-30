@@ -526,11 +526,12 @@ function renderDiagramBlock(block) {
 }
 
 function renderSupportingBlock(block, context = {}) {
+  const richHeadingLevel = (context.headingLevel || 3) + 1;
   if (block.type === "paragraph") {
     return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
   }
   if (block.type === "callout") {
-    return `<aside class="rich-block rich-callout tone-${escapeHtml(block.tone)}"><h4>${escapeHtml(block.title)}</h4><p>${escapeHtml(block.body)}</p></aside>`;
+    return `<aside class="rich-block rich-callout tone-${escapeHtml(block.tone)}">${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></aside>`;
   }
   if (block.type === "quote") {
     return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
@@ -544,7 +545,9 @@ function renderSupportingBlock(block, context = {}) {
     || block.type === "flowDiagram"
     || block.type === "relationDiagram"
   ) {
-    return renderStructuredDiagram(block, escapeHtml);
+    return renderStructuredDiagram(block, escapeHtml, {
+      headingLevel: richHeadingLevel + 1,
+    });
   }
   return "";
 }
@@ -606,7 +609,7 @@ function renderSupportingSection(section, depth = 0, context = {}) {
   const childSections = toList(section.subSections)
     .map((subSection) => renderSupportingSection(subSection, depth + 1, context))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}">${renderHeadingOrLabel(section.heading, headingLevel, "supporting-section-title")}<p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `${renderHeadingOrLabel("Facts", groupHeadingLevel, "supporting-label")}${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `${renderHeadingOrLabel("Links", groupHeadingLevel, "supporting-label")}${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `${renderHeadingOrLabel("Steps", groupHeadingLevel, "supporting-label")}<div class="step-list">${toList(section.steps).map((step, index) => renderSupportingStep(step, index, stepHeadingLevel)).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}">${renderHeadingOrLabel(section.heading, headingLevel, "supporting-section-title")}<p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `${renderHeadingOrLabel("Facts", groupHeadingLevel, "supporting-label")}${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `${renderHeadingOrLabel("Links", groupHeadingLevel, "supporting-label")}${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `${renderHeadingOrLabel("Steps", groupHeadingLevel, "supporting-label")}<div class="step-list">${toList(section.steps).map((step, index) => renderSupportingStep(step, index, stepHeadingLevel)).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, { ...context, headingLevel })}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
 const DOCUMENT_SECTION_DEFINITIONS = {

@@ -1654,7 +1654,92 @@ test("renders extended supporting section fields recursively", () => {
                     },
                   ],
                   codeBlocks: [],
-                  blocks: [],
+                  blocks: [
+                    {
+                      type: "callout",
+                      tone: "info",
+                      title: "Depth Two <Callout>",
+                      body: "The rich title follows the enclosing section.",
+                    },
+                    {
+                      type: "diagram",
+                      language: "plain",
+                      title: "Depth Two <Source Diagram>",
+                      source: "source -> output",
+                    },
+                    {
+                      type: "layerDiagram",
+                      title: "Depth Two <Layer Diagram>",
+                      summary: "A layer diagram nested under depth two.",
+                      layers: [
+                        {
+                          id: "depth-two-layer",
+                          label: "Depth Two <Layer>",
+                          role: "boundary",
+                          summary: "The visual label stays below the rich block.",
+                          nodes: [
+                            {
+                              id: "depth-two-node",
+                              label: "Depth Two Node",
+                              detail: "Fallback detail remains available.",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      type: "flowDiagram",
+                      title: "Depth Two <Flow Diagram>",
+                      summary: "A flow diagram nested under depth two.",
+                      nodes: [
+                        {
+                          id: "flow-source",
+                          label: "Flow Source",
+                          detail: "Starts the flow.",
+                          role: "value",
+                        },
+                        {
+                          id: "flow-target",
+                          label: "Flow Target",
+                          detail: "Ends the flow.",
+                          role: "surface",
+                        },
+                      ],
+                      edges: [
+                        {
+                          from: "flow-source",
+                          to: "flow-target",
+                          label: "provides",
+                        },
+                      ],
+                    },
+                    {
+                      type: "relationDiagram",
+                      title: "Depth Two <Relation Diagram>",
+                      summary: "A relation diagram nested under depth two.",
+                      nodes: [
+                        {
+                          id: "relation-source",
+                          label: "Relation Source",
+                          detail: "Owns the relation.",
+                          role: "value",
+                        },
+                        {
+                          id: "relation-target",
+                          label: "Relation Target",
+                          detail: "Consumes the relation.",
+                          role: "consumer",
+                        },
+                      ],
+                      relations: [
+                        {
+                          from: "relation-source",
+                          to: "relation-target",
+                          label: "owns",
+                        },
+                      ],
+                    },
+                  ],
                   subSections: [
                     {
                       heading: "Depth Three Operations",
@@ -1671,7 +1756,34 @@ test("renders extended supporting section fields recursively", () => {
                         },
                       ],
                       codeBlocks: [],
-                      blocks: [],
+                      blocks: [
+                        {
+                          type: "callout",
+                          tone: "warning",
+                          title: "Depth Three Callout",
+                          body: "The callout title crosses the h6 boundary.",
+                        },
+                        {
+                          type: "layerDiagram",
+                          title: "Depth Three Layer Diagram",
+                          summary: "A layer diagram nested under depth three.",
+                          layers: [
+                            {
+                              id: "depth-three-layer",
+                              label: "Depth Three Layer",
+                              role: "engine",
+                              summary: "The layer label uses a semantic label.",
+                              nodes: [
+                                {
+                                  id: "depth-three-node",
+                                  label: "Depth Three Node",
+                                  detail: "Fallback detail remains available.",
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
                       subSections: [
                         {
                           heading: "Depth Four Operations",
@@ -1681,7 +1793,34 @@ test("renders extended supporting section fields recursively", () => {
                           links: [],
                           steps: [],
                           codeBlocks: [],
-                          blocks: [],
+                          blocks: [
+                            {
+                              type: "callout",
+                              tone: "danger",
+                              title: "Depth Four Callout",
+                              body: "Overflow remains a non-heading label.",
+                            },
+                            {
+                              type: "layerDiagram",
+                              title: "Depth Four Layer Diagram",
+                              summary: "A layer diagram nested beyond h6.",
+                              layers: [
+                                {
+                                  id: "depth-four-layer",
+                                  label: "Depth Four Layer",
+                                  role: "boundary",
+                                  summary: "The label remains semantic without h7.",
+                                  nodes: [
+                                    {
+                                      id: "depth-four-node",
+                                      label: "Depth Four Node",
+                                      detail: "Fallback detail remains available.",
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                          ],
                           subSections: [],
                         },
                       ],
@@ -1725,9 +1864,15 @@ test("renders extended supporting section fields recursively", () => {
       "Depth Two Step",
       "Run",
       "Expected",
+      "Depth Two &lt;Callout&gt;",
+      "Depth Two &lt;Layer&gt;",
       "Depth Three Operations",
       "Depth Three Step",
+      "Depth Three Callout",
+      "Depth Three Layer",
       "Depth Four Operations",
+      "Depth Four Callout",
+      "Depth Four Layer",
     ].includes(text),
   );
   assert.deepEqual(nestedOutline, [
@@ -1737,12 +1882,33 @@ test("renders extended supporting section fields recursively", () => {
     { text: "Depth Two Step", kind: "label", parent: "depth-2" },
     { text: "Run", kind: "label", parent: "depth-2" },
     { text: "Expected", kind: "label", parent: "depth-2" },
+    { text: "Depth Two &lt;Callout&gt;", kind: "h6", parent: "depth-2" },
+    { text: "Depth Two &lt;Layer&gt;", kind: "label", parent: "depth-2" },
     { text: "Depth Three Operations", kind: "h6", parent: "depth-3" },
     { text: "Facts", kind: "label", parent: "depth-3" },
     { text: "Steps", kind: "label", parent: "depth-3" },
     { text: "Depth Three Step", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Callout", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Layer", kind: "label", parent: "depth-3" },
     { text: "Depth Four Operations", kind: "label", parent: "depth-4" },
+    { text: "Depth Four Callout", kind: "label", parent: "depth-4" },
+    { text: "Depth Four Layer", kind: "label", parent: "depth-4" },
   ]);
+  for (const title of [
+    "Depth Two &lt;Source Diagram&gt;",
+    "Depth Two &lt;Layer Diagram&gt;",
+    "Depth Two &lt;Flow Diagram&gt;",
+    "Depth Two &lt;Relation Diagram&gt;",
+  ]) {
+    assert.match(html, new RegExp(`<strong>${title}</strong>`, "u"));
+  }
+  assert.doesNotMatch(html, /Depth Two <(?:Callout|Source Diagram|Layer Diagram)>/u);
+  assert.equal((html.match(/class="rich-block rich-callout/gu) || []).length, 3);
+  assert.equal((html.match(/class="rich-block rich-diagram/gu) || []).length, 1);
+  assert.equal(
+    (html.match(/class="rich-block rich-structured-diagram/gu) || []).length,
+    5,
+  );
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
   assert.doesNotMatch(html, /<strong>Team<\/strong>/);
 });
