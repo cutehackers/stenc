@@ -471,8 +471,48 @@ function renderLayout(site, title, body, options = {}) {
         <a class="brand" href="${escapeHtml(options.brandHref || "/")}">${escapeHtml(options.brandLabel || site.title)}</a>
         <nav class="collection-navigation" aria-label="${escapeHtml(options.navigationLabel || "Document collections")}">${nav}</nav>
 ${documentNavigation ? `        ${documentNavigation}\n` : ""}      </aside>
-      <main id="main-content">${body}</main>
+      <main id="main-content" tabindex="-1">${body}</main>
     </div>
+    <script>
+      const skipLink = document.querySelector('.skip-link');
+      const mainContent = document.getElementById('main-content');
+      if (skipLink && mainContent) {
+        skipLink.addEventListener('click', () => {
+          requestAnimationFrame(() => mainContent.focus());
+        });
+      }
+
+      const updateTableScrollRegions = () => {
+        const states = Array.from(document.querySelectorAll('.table-scroll-region'))
+          .map((region) => ({
+            region,
+            overflowing: region.scrollWidth > region.clientWidth,
+          }));
+
+        states.forEach(({ region, overflowing }) => {
+          if (overflowing) {
+            region.setAttribute('role', 'region');
+            region.setAttribute('aria-label', region.dataset.tableLabel);
+            region.setAttribute('tabindex', '0');
+            return;
+          }
+          region.removeAttribute('role');
+          region.removeAttribute('aria-label');
+          region.removeAttribute('tabindex');
+        });
+      };
+      let tableRegionFrame = null;
+      const scheduleTableRegionUpdate = () => {
+        if (tableRegionFrame !== null) cancelAnimationFrame(tableRegionFrame);
+        tableRegionFrame = requestAnimationFrame(() => {
+          tableRegionFrame = null;
+          updateTableScrollRegions();
+        });
+      };
+      scheduleTableRegionUpdate();
+      window.addEventListener('resize', scheduleTableRegionUpdate);
+      document.addEventListener('toggle', scheduleTableRegionUpdate, true);
+    </script>
   </body>
 </html>
 `;
@@ -497,7 +537,7 @@ function codeBlocks(blocks) {
 function renderTable(headers, rows, caption = `${headers.join(", ")} table`) {
   if (rows.length === 0) return "";
   const accessibleCaption = escapeHtml(caption);
-  return `<div class="table-scroll-region" role="region" aria-label="${accessibleCaption}" tabindex="0"><table class="table"><caption>${accessibleCaption}</caption><thead><tr>${headers
+  return `<div class="table-scroll-region" data-table-label="${accessibleCaption}"><table class="table"><caption>${accessibleCaption}</caption><thead><tr>${headers
     .map((header) => `<th scope="col">${escapeHtml(header)}</th>`)
     .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
@@ -924,7 +964,9 @@ function writeStaticPages(docsDir, title) {
       )
       .join("");
     const collectionContent = cards
-      || `<div class="empty-state" role="status"><p>No ${escapeHtml(collection.docType)} documents yet.</p></div>`;
+      || (validationErrors.length > 0
+        ? '<div class="empty-state" role="status"><p>No valid documents could be rendered.</p></div>'
+        : `<div class="empty-state" role="status"><p>No ${escapeHtml(collection.docType)} documents yet.</p></div>`);
 
     const sortingControls = `<div class="sorting-controls">
       <span class="sorting-label">Sort by:</span>
@@ -971,7 +1013,7 @@ function writeStaticPages(docsDir, title) {
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${validationErrorHtml}${sortingControls}<section class="grid">${collectionContent}</section>${sortingScript}`,
+        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${validationErrorHtml}${docs.length > 0 ? sortingControls : ""}<section class="grid">${collectionContent}</section>${docs.length > 0 ? sortingScript : ""}`,
         {
           collectionDir: collection.dir,
           collectionAriaCurrent: "page",

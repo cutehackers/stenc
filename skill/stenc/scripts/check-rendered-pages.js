@@ -107,7 +107,7 @@ function checkRenderedPages(docsDir) {
 
     const documentFiles = fs
       .readdirSync(contentDir)
-      .filter((name) => name.endsWith(collection.suffix))
+      .filter((name) => name.endsWith(".json"))
       .sort();
 
     for (const fileName of documentFiles) {

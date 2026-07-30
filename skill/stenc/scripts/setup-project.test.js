@@ -1135,7 +1135,9 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
     /<a class="skip-link" href="#main-content">Skip to main content<\/a>/u,
   );
   assert.equal((html.match(/\sid="main-content"/gu) || []).length, 1);
-  assert.match(html, /<main id="main-content">/u);
+  assert.match(html, /<main id="main-content" tabindex="-1">/u);
+  assert.match(html, /const skipLink = document\.querySelector\('\.skip-link'\);/u);
+  assert.match(html, /requestAnimationFrame\(\(\) => mainContent\.focus\(\)\);/u);
   assert.doesNotMatch(html, /<h[1-6][^>]*\stabindex=/u);
   assert.match(
     html,
@@ -1166,7 +1168,7 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
   );
   assert.match(
     diagram,
-    /<div class="table-scroll-region" role="region" aria-label="Accessible flow directed relations table" tabindex="0">/u,
+    /<div class="table-scroll-region" data-table-label="Accessible flow directed relations table">/u,
   );
 
   const tables = [...html.matchAll(/<table\b[\s\S]*?<\/table>/gu)].map((match) => match[0]);
@@ -1174,11 +1176,20 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
   for (const table of tables) {
     assert.match(table, /(?:<caption>|aria-label=|aria-labelledby=)/u);
   }
-  assert.ok(
-    (html.match(/class="table-scroll-region" role="region" aria-label="[^"]+" tabindex="0"/gu)
-      || []).length >= tables.length,
-    "every table must have a labeled contained scroll region",
+  assert.equal(
+    (html.match(/class="table-scroll-region" data-table-label="[^"]+"/gu) || []).length,
+    tables.length,
+    "every table must retain a deterministic enhancement label",
   );
+  assert.doesNotMatch(
+    html,
+    /class="table-scroll-region"[^>]*(?:role="region"|tabindex="0")/u,
+    "non-overflow tables must not be static landmarks or tab stops",
+  );
+  assert.match(html, /region\.scrollWidth > region\.clientWidth/u);
+  assert.match(html, /region\.setAttribute\('role', 'region'\)/u);
+  assert.match(html, /region\.removeAttribute\('role'\)/u);
+  assert.match(html, /window\.addEventListener\('resize', scheduleTableRegionUpdate\)/u);
 
   assert.match(html, /<span class="callout-tone-label">Warning<\/span>/u);
   assert.match(html, /<span class="task-state">Complete:<\/span> Ready/u);
@@ -1195,7 +1206,7 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
   assert.match(html, /<span class="diagram-role-label">consumer<\/span>/u);
 });
 
-test("renders explicit empty collection and validation-error states", (t) => {
+test("renders truthful pure empty, invalid-only, and mixed collection states", (t) => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-empty-state-"));
   const docsRoot = path.join(projectRoot, "docs", "stenc");
   t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
@@ -1203,11 +1214,11 @@ test("renders explicit empty collection and validation-error states", (t) => {
   fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
   fs.mkdirSync(path.join(docsRoot, "content", "decisions"), { recursive: true });
   fs.writeFileSync(
-    path.join(docsRoot, "content", "specs", "broken.spec.json"),
+    path.join(docsRoot, "content", "specs", "broken.json"),
     '{"title": "Broken source",',
   );
 
-  const result = spawnSync(
+  let result = spawnSync(
     process.execPath,
     [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
     { encoding: "utf8" },
@@ -1217,8 +1228,11 @@ test("renders explicit empty collection and validation-error states", (t) => {
   const specIndex = fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8");
   assert.match(
     specIndex,
-    /<section class="validation-error" role="alert">[\s\S]*<strong>Validation error:<\/strong>[\s\S]*content\/specs\/broken\.spec\.json[\s\S]*Invalid JSON/u,
+    /<section class="validation-error" role="alert">[\s\S]*<strong>Validation error:<\/strong>[\s\S]*content\/specs\/broken\.json[\s\S]*Invalid JSON/u,
   );
+  assert.match(specIndex, /No valid documents could be rendered\./u);
+  assert.doesNotMatch(specIndex, /No spec documents yet\./u);
+  assert.doesNotMatch(specIndex, /class="sorting-controls"/u);
   const decisionIndex = fs.readFileSync(
     path.join(docsRoot, "decisions", "index.html"),
     "utf8",
@@ -1227,6 +1241,27 @@ test("renders explicit empty collection and validation-error states", (t) => {
     decisionIndex,
     /<div class="empty-state" role="status"><p>No decision documents yet\.<\/p><\/div>/u,
   );
+  assert.doesNotMatch(decisionIndex, /class="sorting-controls"/u);
+
+  writeJson(
+    path.join(docsRoot, "content", "specs", "minimal.spec.json"),
+    minimalSpec(),
+  );
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const mixedSpecIndex = fs.readFileSync(
+    path.join(docsRoot, "specs", "index.html"),
+    "utf8",
+  );
+  assert.match(mixedSpecIndex, /class="validation-error" role="alert"/u);
+  assert.match(mixedSpecIndex, /href="\/specs\/minimal\/"/u);
+  assert.match(mixedSpecIndex, /class="sorting-controls"/u);
+  assert.doesNotMatch(mixedSpecIndex, /No valid documents could be rendered\./u);
 });
 
 test("accessible responsive styles expose keyboard, contrast, and source-order hooks", () => {
@@ -1376,7 +1411,11 @@ test("renders comprehensive spec and plan component catalogs", (t) => {
     ["spec", specHtml, "specs"],
     ["plan", planHtml, "plans"],
   ]) {
-    assert.match(html, /<main id="main-content">/u, `${label}: missing main landmark`);
+    assert.match(
+      html,
+      /<main id="main-content" tabindex="-1">/u,
+      `${label}: missing focusable main landmark`,
+    );
     assert.match(html, /<aside class="sidebar"/u, `${label}: missing complementary landmark`);
     assert.match(
       html,

@@ -13,7 +13,7 @@
         <a class="brand" href="/">Stenc</a>
         <nav class="collection-navigation" aria-label="Document collections"><a class="nav-link" href="/specs/">Specs</a><a class="nav-link" href="/plans/" aria-current="page">Plans</a><a class="nav-link" href="/decisions/">Decisions</a><a class="nav-link" href="/agent-context/">Agent Context</a></nav>
       </aside>
-      <main id="main-content"><header class="document-header"><div class="kicker">Stenc</div><h1>Plans</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><div class="sorting-controls">
+      <main id="main-content" tabindex="-1"><header class="document-header"><div class="kicker">Stenc</div><h1>Plans</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><div class="sorting-controls">
       <span class="sorting-label">Sort by:</span>
       <button class="sort-btn active" type="button" data-sort="updated" data-order="desc" aria-pressed="true">Last Updated</button>
       <button class="sort-btn" type="button" data-sort="created" data-order="desc" aria-pressed="false">Date Created</button>
@@ -51,5 +51,45 @@
       });
     </script></main>
     </div>
+    <script>
+      const skipLink = document.querySelector('.skip-link');
+      const mainContent = document.getElementById('main-content');
+      if (skipLink && mainContent) {
+        skipLink.addEventListener('click', () => {
+          requestAnimationFrame(() => mainContent.focus());
+        });
+      }
+
+      const updateTableScrollRegions = () => {
+        const states = Array.from(document.querySelectorAll('.table-scroll-region'))
+          .map((region) => ({
+            region,
+            overflowing: region.scrollWidth > region.clientWidth,
+          }));
+
+        states.forEach(({ region, overflowing }) => {
+          if (overflowing) {
+            region.setAttribute('role', 'region');
+            region.setAttribute('aria-label', region.dataset.tableLabel);
+            region.setAttribute('tabindex', '0');
+            return;
+          }
+          region.removeAttribute('role');
+          region.removeAttribute('aria-label');
+          region.removeAttribute('tabindex');
+        });
+      };
+      let tableRegionFrame = null;
+      const scheduleTableRegionUpdate = () => {
+        if (tableRegionFrame !== null) cancelAnimationFrame(tableRegionFrame);
+        tableRegionFrame = requestAnimationFrame(() => {
+          tableRegionFrame = null;
+          updateTableScrollRegions();
+        });
+      };
+      scheduleTableRegionUpdate();
+      window.addEventListener('resize', scheduleTableRegionUpdate);
+      document.addEventListener('toggle', scheduleTableRegionUpdate, true);
+    </script>
   </body>
 </html>

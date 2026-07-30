@@ -82,7 +82,7 @@ function renderRelationFallback(block, connections, escapeHtml, fallbackId) {
   const tableLabel = escapeHtml(`${block.title} directed relations table`);
   return `<details id="${fallbackId}" class="diagram-fallback diagram-relation-fallback"><summary>View ${escapeHtml(block.title)} text and relation table.</summary>
 ${renderFallbackNodeList(block.nodes, escapeHtml)}
-<div class="table-scroll-region" role="region" aria-label="${tableLabel}" tabindex="0"><table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
+<div class="table-scroll-region" data-table-label="${tableLabel}"><table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
 <thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
 <tbody>${rows}</tbody></table></div></details>`;
 }

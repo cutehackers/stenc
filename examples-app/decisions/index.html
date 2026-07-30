@@ -13,43 +13,47 @@
         <a class="brand" href="/">Stenc</a>
         <nav class="collection-navigation" aria-label="Document collections"><a class="nav-link" href="/specs/">Specs</a><a class="nav-link" href="/plans/">Plans</a><a class="nav-link" href="/decisions/" aria-current="page">Decisions</a><a class="nav-link" href="/agent-context/">Agent Context</a></nav>
       </aside>
-      <main id="main-content"><header class="document-header"><div class="kicker">Stenc</div><h1>Decisions</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><div class="sorting-controls">
-      <span class="sorting-label">Sort by:</span>
-      <button class="sort-btn active" type="button" data-sort="updated" data-order="desc" aria-pressed="true">Last Updated</button>
-      <button class="sort-btn" type="button" data-sort="created" data-order="desc" aria-pressed="false">Date Created</button>
-      <button class="sort-btn" type="button" data-sort="title" data-order="asc" aria-pressed="false">Title</button>
-    </div><section class="grid"><div class="empty-state" role="status"><p>No decision documents yet.</p></div></section><script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const grid = document.querySelector('.grid');
-        if (!grid) return;
-        const cards = Array.from(grid.querySelectorAll('.panel[data-updated]'));
-        const buttons = document.querySelectorAll('.sort-btn');
-        
-        buttons.forEach(btn => {
-          btn.addEventListener('click', () => {
-            buttons.forEach(b => {
-              b.classList.remove('active');
-              b.setAttribute('aria-pressed', 'false');
-            });
-            btn.classList.add('active');
-            btn.setAttribute('aria-pressed', 'true');
-            
-            const sortBy = btn.getAttribute('data-sort');
-            const order = btn.getAttribute('data-order');
-            
-            cards.sort((a, b) => {
-              const valA = a.getAttribute('data-' + sortBy) || '';
-              const valB = b.getAttribute('data-' + sortBy) || '';
-              
-              const cmp = valA.localeCompare(valB);
-              return order === 'desc' ? -cmp : cmp;
-            });
-            
-            cards.forEach(card => grid.appendChild(card));
-          });
-        });
-      });
-    </script></main>
+      <main id="main-content" tabindex="-1"><header class="document-header"><div class="kicker">Stenc</div><h1>Decisions</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><section class="grid"><div class="empty-state" role="status"><p>No decision documents yet.</p></div></section></main>
     </div>
+    <script>
+      const skipLink = document.querySelector('.skip-link');
+      const mainContent = document.getElementById('main-content');
+      if (skipLink && mainContent) {
+        skipLink.addEventListener('click', () => {
+          requestAnimationFrame(() => mainContent.focus());
+        });
+      }
+
+      const updateTableScrollRegions = () => {
+        const states = Array.from(document.querySelectorAll('.table-scroll-region'))
+          .map((region) => ({
+            region,
+            overflowing: region.scrollWidth > region.clientWidth,
+          }));
+
+        states.forEach(({ region, overflowing }) => {
+          if (overflowing) {
+            region.setAttribute('role', 'region');
+            region.setAttribute('aria-label', region.dataset.tableLabel);
+            region.setAttribute('tabindex', '0');
+            return;
+          }
+          region.removeAttribute('role');
+          region.removeAttribute('aria-label');
+          region.removeAttribute('tabindex');
+        });
+      };
+      let tableRegionFrame = null;
+      const scheduleTableRegionUpdate = () => {
+        if (tableRegionFrame !== null) cancelAnimationFrame(tableRegionFrame);
+        tableRegionFrame = requestAnimationFrame(() => {
+          tableRegionFrame = null;
+          updateTableScrollRegions();
+        });
+      };
+      scheduleTableRegionUpdate();
+      window.addEventListener('resize', scheduleTableRegionUpdate);
+      document.addEventListener('toggle', scheduleTableRegionUpdate, true);
+    </script>
   </body>
 </html>

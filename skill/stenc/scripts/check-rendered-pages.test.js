@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const CHECKER = path.join(__dirname, "check-rendered-pages.js");
 const SETUP_PROJECT = path.join(__dirname, "setup-project.js");
+const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 function writeJson(filePath, value) {
@@ -90,6 +91,40 @@ test("fails when a JSON document has no rendered styled web page", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /missing rendered page/);
   assert.match(result.stderr, /specs\/artifact-identity\/index\.html/);
+});
+
+test("fails malformed JSON sources even when the collection suffix is wrong", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-render-check-wrong-suffix-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const sourcePath = path.join(docsRoot, "content", "specs", "broken.json");
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.writeFileSync(sourcePath, '{"title": "Broken source",');
+
+  result = spawnSync(process.execPath, [VALIDATOR, docsRoot], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /broken\.json[\s\S]*invalid JSON:/u);
+
+  result = spawnSync(
+    process.execPath,
+    [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const collectionHtml = fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8");
+  assert.match(collectionHtml, /content\/specs\/broken\.json/u);
+  assert.match(collectionHtml, /No valid documents could be rendered\./u);
+
+  result = spawnSync(process.execPath, [CHECKER, docsRoot], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/specs\/broken\.json: invalid JSON:/u);
 });
 
 test("passes after the docs app is regenerated from JSON documents", () => {
