@@ -13,9 +13,15 @@ It creates fixed web pages for:
 The source is one JSON file per document. The generated web pages are only the
 human-readable view.
 
+Every page uses the unified B visual language: 17px reading text, shared
+spacing/color/focus tokens, consistent semantic cards and tables, responsive
+navigation, explicit empty/error states, and accessible diagram fallbacks.
+`task-first`, `operator-console`, and `evidence-led` select a bounded
+information emphasis within that shared system.
+
 ## Install
 
-Run this from the project where you want Stenc docs(from your **target-repo**):
+Run this from the project where you want Stenc docs (your **target repo**):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cutehackers/stenc/main/scripts/bootstrap.sh | bash
@@ -69,6 +75,20 @@ After install, open the generated docs from the target project root:
 stops the server when you press Enter. It regenerates the static HTML/CSS before
 serving, so collaborators do not need generated pages committed to Git.
 
+## Diagram Choices
+
+Diagrams are optional supporting blocks. Choose them by meaning:
+
+- `diagram`: escaped Mermaid, DOT, or plain source notation; Stenc displays the
+  source and does not execute it.
+- `layerDiagram`: ordered architecture or ownership layers.
+- `flowDiagram`: directed processing or data movement.
+- `relationDiagram`: directed ownership, adaptation, or lifecycle relations.
+
+Structured diagrams use validator-known IDs, roles, nodes, and connections.
+The renderer creates the visual and its text/table fallback from the same JSON.
+It does not load a diagram CDN or client-side diagram runtime.
+
 ## Migrate Existing Docs
 
 If an existing repository already committed generated Stenc HTML/CSS, run the
@@ -104,11 +124,22 @@ Validate a single document:
 node ~/.codex/skills/stenc/scripts/validate-stenc-doc.js path/to/doc.json
 ```
 
-Validate the rendered pages for a docs app:
+Regenerate a target project's static app after editing canonical JSON:
+
+```bash
+node ~/.codex/skills/stenc/scripts/setup-project.js \
+  --project-root "$(pwd)" \
+  --docs-dir docs/stenc
+```
+
+Validate the regenerated pages and local media assets:
 
 ```bash
 node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
 ```
+
+The normal authoring loop is validate JSON, regenerate, check rendered pages,
+then inspect the page with `./open-docs.sh`.
 
 ## Developing Stenc
 
@@ -133,9 +164,40 @@ Useful repo commands:
 ```bash
 ./scripts/install.sh
 ./scripts/setup-examples-app.sh
+node skill/stenc/scripts/validate-stenc-doc.js skill/stenc/templates examples examples-app/content
+node skill/stenc/scripts/check-rendered-pages.js examples-app
 ./scripts/open-docs.sh --docs-dir examples-app
 ./scripts/validate.sh
 ```
+
+`./scripts/setup-examples-app.sh` regenerates both the local examples app and
+the tracked style specimens from the canonical renderer. Do not hand-edit their
+generated HTML or CSS.
+
+After starting the examples app, use the printed local port with these routes:
+
+- `/specs/component-catalog/`
+- `/plans/component-catalog/`
+
+The corresponding generated files are
+`examples-app/specs/component-catalog/index.html` and
+`examples-app/plans/component-catalog/index.html`. Renderer-owned style
+specimens are tracked at:
+
+- `samples/stenc-doc-styles/task-first.html`
+- `samples/stenc-doc-styles/operator-console.html`
+- `samples/stenc-doc-styles/evidence-led.html`
+- `samples/stenc-doc-styles/styles.css`
+
+## Compatibility
+
+- Schema-version 1 and 2 documents remain supported.
+- Existing source `diagram` blocks remain valid escaped-source panels.
+- Structured diagrams are optional; existing documents do not need them.
+- Canonical documents remain JSON. Markdown, MDX, raw HTML, per-document CSS,
+  and custom visual-component fields are not Stenc source formats.
+- Generated pages and `styles.css` are reproducible renderer output; commit and
+  review canonical JSON and tracked source assets.
 
 ## Releasing Stenc
 

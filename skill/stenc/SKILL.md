@@ -45,13 +45,19 @@ Markdown or MDX.
      structured steps, code blocks, commands, expected output, no-placeholder
      guidance, self-review checks, and execution handoff in the matching
      fields.
+   - When a supporting diagram is useful, choose the representation by
+     meaning: `diagram` for escaped source notation, `layerDiagram` for ordered
+     boundaries, `flowDiagram` for directed processing, or `relationDiagram`
+     for ownership and lifecycle relations. Structured diagrams are optional.
 6. Validate the document:
 
 ```bash
 node ~/.codex/skills/stenc/scripts/validate-stenc-doc.js path/to/doc.json
 ```
 
-7. Regenerate the styled static web pages from the target project root:
+7. Regenerate the styled static web pages from the target project root. This
+   refreshes renderer-owned HTML, CSS, routes, navigation, fallbacks, and local
+   assets:
 
 ```bash
 node ~/.codex/skills/stenc/scripts/setup-project.js \
@@ -59,14 +65,23 @@ node ~/.codex/skills/stenc/scripts/setup-project.js \
   --docs-dir docs/stenc
 ```
 
-8. Verify that every JSON document has a matching styled web page:
+8. Verify that every JSON document has a matching styled web page and that its
+   local media sources resolve:
 
 ```bash
 node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
 ```
 
-Do not call Stenc authoring complete until the JSON source and generated web
-page both exist and pass these checks.
+9. Inspect the generated document route in the local preview, including its
+   narrow layout and any diagram fallback:
+
+```bash
+./open-docs.sh
+```
+
+Do not call Stenc authoring complete until the canonical JSON validates, pages
+have been regenerated, rendered-page checks pass, and the generated route has
+been inspected.
 
 ## Target Project Setup
 
@@ -146,8 +161,16 @@ index; install, setup, and open-docs must not run Git mutation commands.
   renderer output.
 - Use `taskList` blocks only for read-only supporting checklists. Do not
   replace plan `body.slices[].steps[]`.
-- Use `diagram` blocks as escaped source panels only. Do not add Mermaid, DOT,
-  CDN, script, or client-side diagram execution.
+- Use `diagram` blocks when the exact notation is useful as an escaped source
+  panel. `language` may identify `mermaid`, `dot`, or `plain`, but Stenc never
+  executes that source.
+- Use only `layerDiagram`, `flowDiagram`, or `relationDiagram` for rendered
+  structured diagrams. Follow the exact shapes, ID pattern, registered roles,
+  endpoint, order, and fallback rules in
+  `references/json-field-contract.md`.
+- Do not add Mermaid or DOT runtimes, CDN dependencies, raw HTML, authored
+  scripts, document-authored CSS, custom layout/component fields, or
+  client-side diagram execution.
 - When converting existing spec or plan Markdown, fill native Stenc body fields
   first and use `body.supportingSections` only for bounded legacy outline
   content that has no dedicated core field.
@@ -157,6 +180,23 @@ index; install, setup, and open-docs must not run Git mutation commands.
   run `check-rendered-pages.js`.
 - Do not hide contract meaning in rendered-only UI.
 - Do not add Markdown, MDX imports, or per-document visual components.
+
+## Diagram and Source Compatibility
+
+- JSON is the only canonical Stenc document source. Generated HTML and CSS are
+  reproducible views and must not be hand-edited.
+- Existing schema-version 1 and 2 documents remain valid without structured
+  diagrams.
+- Existing `diagram` blocks remain valid and continue to render escaped source
+  text.
+- Structured diagrams are optional additions under
+  `body.supportingSections[].blocks`; they do not replace native spec or plan
+  fields.
+- `layerDiagram` preserves layer and node order. `flowDiagram` and
+  `relationDiagram` preserve node and connection order, allow directed cycles,
+  and render text/table fallbacks.
+- The renderer owns B typography, shared components, role colors, responsive
+  behavior, focus states, and fallback markup. Authors own semantic JSON only.
 
 ## Templates
 

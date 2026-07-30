@@ -8,6 +8,13 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+const {
+  STRUCTURED_DIAGRAM_TYPES,
+  DIAGRAM_ROLES,
+  DIAGRAM_ID_PATTERN,
+} = require("./structured-diagram-contract");
+const { renderDocument } = require("./setup-project");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -512,6 +519,25 @@ function runValidator(target) {
   return spawnSync(process.execPath, [VALIDATOR, target], { encoding: "utf8" });
 }
 
+function documentedRegistry(markdown, label) {
+  const prefix = `- ${label}:`;
+  const line = markdown.split("\n").find((candidate) => candidate.startsWith(prefix));
+  assert.ok(line, `missing documentation registry: ${label}`);
+  return Array.from(line.matchAll(/`([^`]+)`/g), (match) => match[1]);
+}
+
+function supportingBlocks(document) {
+  const blocks = [];
+  const visit = (sections) => {
+    for (const section of sections || []) {
+      blocks.push(...(section.blocks || []));
+      visit(section.subSections);
+    }
+  };
+  visit(document.body.supportingSections);
+  return blocks;
+}
+
 function validSuperpowersPlan() {
   const plan = validSinglePlan();
   plan.id = "plan:2026-05-19-superpowers-coverage";
@@ -756,6 +782,108 @@ test("accepts bounded structured diagrams", () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Stenc validation passed/);
+});
+
+test("structured diagram documentation stays aligned", () => {
+  const registeredTypes = Array.from(STRUCTURED_DIAGRAM_TYPES).sort();
+  const registeredRoles = Array.from(DIAGRAM_ROLES).sort();
+  const templates = ["spec.json", "plan.json"].map((name) => JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, "skill", "stenc", "templates", name), "utf8"),
+  ));
+  const references = {
+    contract: fs.readFileSync(
+      path.join(REPO_ROOT, "skill", "stenc", "references", "json-field-contract.md"),
+      "utf8",
+    ),
+    style: fs.readFileSync(
+      path.join(REPO_ROOT, "skill", "stenc", "references", "fixed-page-style.md"),
+      "utf8",
+    ),
+  };
+  const structuredBlocks = templates.flatMap(supportingBlocks).filter(
+    (block) => STRUCTURED_DIAGRAM_TYPES.has(block.type),
+  );
+  assert.ok(
+    templates.flatMap(supportingBlocks).some((block) => block.type === "diagram"),
+    "templates must preserve the escaped source diagram example",
+  );
+  const templateTypes = Array.from(new Set(structuredBlocks.map((block) => block.type))).sort();
+  const templateRoles = Array.from(new Set(structuredBlocks.flatMap((block) => {
+    if (block.type === "layerDiagram") return block.layers.map((layer) => layer.role);
+    return block.nodes.map((node) => node.role);
+  }))).sort();
+  const templateIds = structuredBlocks.flatMap((block) => {
+    if (block.type === "layerDiagram") {
+      return block.layers.flatMap((layer) => [
+        layer.id,
+        ...layer.nodes.map((node) => node.id),
+      ]);
+    }
+    return block.nodes.map((node) => node.id);
+  });
+
+  assert.deepEqual(templateTypes, registeredTypes);
+  assert.deepEqual(templateRoles, registeredRoles);
+  assert.ok(templateIds.length > 0);
+  for (const id of templateIds) assert.match(id, DIAGRAM_ID_PATTERN);
+
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered structured diagram types"),
+    registeredTypes,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered diagram roles"),
+    registeredRoles,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered diagram ID pattern"),
+    [DIAGRAM_ID_PATTERN.source],
+  );
+  assert.deepEqual(
+    documentedRegistry(references.style, "Rendered structured diagram types"),
+    registeredTypes,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.style, "Rendered diagram roles"),
+    registeredRoles,
+  );
+
+  const forbiddenVisualKeys = new Set([
+    "component",
+    "css",
+    "html",
+    "layout",
+    "rawHtml",
+    "runtime",
+    "sourceFormat",
+    "style",
+    "styleSheet",
+    "variant",
+  ]);
+  const findForbiddenKeys = (value, location = "$") => {
+    if (!value || typeof value !== "object") return [];
+    if (Array.isArray(value)) {
+      return value.flatMap((entry, index) => findForbiddenKeys(entry, `${location}[${index}]`));
+    }
+    return Object.entries(value).flatMap(([key, entry]) => [
+      ...(forbiddenVisualKeys.has(key) ? [`${location}.${key}`] : []),
+      ...findForbiddenKeys(entry, `${location}.${key}`),
+    ]);
+  };
+  for (const template of templates) {
+    assert.deepEqual(findForbiddenKeys(template), []);
+    const outputs = [JSON.stringify(template), renderDocument(template).html];
+    for (const forbidden of [
+      /<script\b/i,
+      /<style\b/i,
+      /\bmermaid(?:\.initialize|\s+runtime)\b/i,
+      /\braw html\b/i,
+      /\bper-document (?:css|styles?)\b/i,
+      /\b(?:markdown|mdx) (?:is|as) (?:the )?(?:document )?source\b/i,
+    ]) {
+      for (const output of outputs) assert.doesNotMatch(output, forbidden);
+    }
+  }
 });
 
 test("rejects invalid structured diagram contracts with exact paths", () => {

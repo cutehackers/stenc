@@ -60,10 +60,27 @@
         "steps": [
           {
             "id": "step-1",
-            "title": "TBD",
+            "title": "Describe the implementation",
             "status": "todo",
-            "instruction": "TBD",
-            "codeBlocks": []
+            "instruction": "State the exact implementation action and the file it changes."
+          },
+          {
+            "id": "step-2",
+            "title": "Show the intended code shape",
+            "status": "todo",
+            "codeBlocks": [
+              {
+                "language": "text",
+                "content": "Replace this block with implementation-ready code."
+              }
+            ]
+          },
+          {
+            "id": "step-3",
+            "title": "Verify the slice",
+            "status": "todo",
+            "command": "./scripts/validate.sh",
+            "expected": "All Stenc validation checks pass."
           }
         ],
         "doneWhen": ["TBD"]
@@ -132,6 +149,35 @@
             "items": [
               { "label": "Keep execution steps in body.slices[].steps", "checked": true },
               { "label": "Use this checklist only as supporting material", "checked": false }
+            ]
+          },
+          {
+            "type": "flowDiagram",
+            "title": "Implementation flow",
+            "summary": "A validated change moves from authoring through review to evidence.",
+            "nodes": [
+              {
+                "id": "author-change",
+                "label": "Author change",
+                "detail": "Updates canonical JSON or implementation.",
+                "role": "consumer"
+              },
+              {
+                "id": "validate-change",
+                "label": "Validate change",
+                "detail": "Checks the bounded contract.",
+                "role": "engine"
+              },
+              {
+                "id": "review-result",
+                "label": "Review result",
+                "detail": "Exposes the generated evidence.",
+                "role": "surface"
+              }
+            ],
+            "edges": [
+              { "from": "author-change", "to": "validate-change", "label": "submits" },
+              { "from": "validate-change", "to": "review-result", "label": "produces evidence" }
             ]
           }
         ],
