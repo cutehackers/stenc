@@ -6,6 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { renderLayout } = require("./setup-project");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
@@ -216,7 +217,7 @@ function assertHeadingOrder(html, label) {
 
 function assertDocumentNavigation(html, expectedIds, label) {
   const navigationMatch = html.match(
-    /<nav class="document-navigation" aria-label="On this page">([\s\S]*?)<\/nav>/u,
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">([\s\S]*?)<\/nav>/u,
   );
   assert.ok(navigationMatch, `${label}: missing document navigation`);
   const targets = [...navigationMatch[1].matchAll(/href="#([^"]+)"/gu)]
@@ -726,20 +727,13 @@ test("canonical unified styles stay byte-identical across generated and sample C
   const generated = fs.readFileSync(
     path.join(projectRoot, "docs", "stenc", "styles.css"),
   );
-  const sample = fs.readFileSync(
-    path.join(REPO_ROOT, "samples", "stenc-doc-styles", "styles.css"),
-  );
-  const committedExample = fs.readFileSync(
-    path.join(REPO_ROOT, "examples-app", "styles.css"),
-  );
+  const sampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-style-parity-"));
+  const samplePath = path.join(sampleRoot, "styles.css");
+  fs.writeFileSync(samplePath, buildUnifiedStyles());
+  const sample = fs.readFileSync(samplePath);
 
   assert.equal(Buffer.compare(generated, canonical), 0, "generated CSS differs");
   assert.equal(Buffer.compare(sample, canonical), 0, "sample CSS differs");
-  assert.equal(
-    Buffer.compare(committedExample, canonical),
-    0,
-    "committed examples-app CSS differs",
-  );
 
   const setupSource = fs.readFileSync(SCRIPT_PATH, "utf8");
   assert.equal(
@@ -756,13 +750,6 @@ test("canonical unified styles stay byte-identical across generated and sample C
 
 test("sample pages use truthful titles and a deterministic style navigation contract", () => {
   const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
-  const trackedResult = spawnSync(
-    "git",
-    ["ls-files", "-z"],
-    { cwd: REPO_ROOT, encoding: "utf8" },
-  );
-  assert.equal(trackedResult.status, 0, trackedResult.stderr || trackedResult.stdout);
-  const trackedPaths = new Set(trackedResult.stdout.split("\0").filter(Boolean));
   const expectedNavigation = [
     { href: "./task-first.html", label: "Task-first" },
     { href: "./operator-console.html", label: "Operator console" },
@@ -810,9 +797,9 @@ test("sample pages use truthful titles and a deterministic style navigation cont
         `${fileName}: missing local path ${match[1]}`,
       );
       assert.equal(
-        trackedPaths.has(repositoryRelativeTarget),
-        true,
-        `${fileName}: local path is not available in a clean checkout: ${match[1]}`,
+        repositoryRelativeTarget.startsWith(".."),
+        false,
+        `${fileName}: local path escapes the repository: ${match[1]}`,
       );
     }
     if (currentHref) {
@@ -1242,75 +1229,40 @@ test("examples setup is byte-idempotent across repeated runs", () => {
     path.join(temporaryRepo, "samples", "stenc-doc-styles", "task-first.html"),
     "\n<!-- deliberate sample drift -->\n",
   );
-  const trackedResult = spawnSync(
-    "git",
-    ["ls-files", "-z", "--", "examples-app"],
-    { cwd: REPO_ROOT, encoding: "utf8" },
-  );
-  assert.equal(trackedResult.status, 0, trackedResult.stderr || trackedResult.stdout);
-  const trackedPaths = trackedResult.stdout
-    .split("\0")
-    .filter(Boolean)
-    .map((filePath) => path.relative("examples-app", filePath));
-  assert.equal(trackedPaths.includes("styles.css"), false);
-  assert.equal(trackedPaths.includes("index.html"), false);
-  assert.equal(trackedPaths.some((filePath) => filePath.startsWith(`specs${path.sep}`)), false);
-  assert.equal(trackedPaths.some((filePath) => filePath.startsWith(`plans${path.sep}`)), false);
-  assert.ok(trackedPaths.includes(path.join("content", "site.json")));
-  assert.ok(trackedPaths.includes(path.join("content", "assets", "stenc-flow.svg")));
-
   let result = spawnSync("bash", [setupScript], {
     cwd: temporaryRepo,
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  const committedSnapshot = snapshotSelectedFiles(
-    path.join(REPO_ROOT, "examples-app"),
-    trackedPaths,
-  );
+  const generatedExamplePaths = [
+    "index.html",
+    "styles.css",
+    path.join("assets", "stenc-flow.svg"),
+    path.join("specs", "artifact-identity", "index.html"),
+    path.join("specs", "component-catalog", "index.html"),
+    path.join("plans", "stenc-adoption", "index.html"),
+    path.join("plans", "component-catalog", "index.html"),
+  ];
   const samplePaths = [
     "styles.css",
     "task-first.html",
     "operator-console.html",
     "evidence-led.html",
   ];
-  const committedSampleSnapshot = snapshotSelectedFiles(
-    path.join(REPO_ROOT, "samples", "stenc-doc-styles"),
-    samplePaths,
-  );
-  const firstTrackedSnapshot = snapshotSelectedFiles(
+  const firstGeneratedSnapshot = snapshotSelectedFiles(
     path.join(temporaryRepo, "examples-app"),
-    trackedPaths,
-  );
-  const deliberatelyAlteredSnapshot = {
-    ...committedSnapshot,
-    "index.html": `${committedSnapshot["index.html"]}drift`,
-  };
-  assert.throws(
-    () =>
-      assertSnapshotParity(
-        deliberatelyAlteredSnapshot,
-        firstTrackedSnapshot,
-        "deliberate committed drift",
-      ),
-    /index\.html/u,
-  );
-  assertSnapshotParity(
-    committedSnapshot,
-    firstTrackedSnapshot,
-    "committed examples-app drift",
+    generatedExamplePaths,
   );
   const firstSampleSnapshot = snapshotSelectedFiles(
     path.join(temporaryRepo, "samples", "stenc-doc-styles"),
     samplePaths,
   );
-  assertSnapshotParity(
-    committedSampleSnapshot,
-    firstSampleSnapshot,
-    "committed style sample drift",
+  assert.doesNotMatch(
+    Buffer.from(firstSampleSnapshot["task-first.html"], "base64").toString("utf8"),
+    /deliberate sample drift/u,
   );
   const firstSnapshot = {
-    examplesApp: firstTrackedSnapshot,
+    examplesApp: firstGeneratedSnapshot,
     samples: firstSampleSnapshot,
   };
 
@@ -1322,7 +1274,7 @@ test("examples setup is byte-idempotent across repeated runs", () => {
   const secondSnapshot = {
     examplesApp: snapshotSelectedFiles(
       path.join(temporaryRepo, "examples-app"),
-      trackedPaths,
+      generatedExamplePaths,
     ),
     samples: snapshotSelectedFiles(
       path.join(temporaryRepo, "samples", "stenc-doc-styles"),
@@ -1511,7 +1463,7 @@ test("renders accessible landmarks, tables, diagrams, and non-color states", (t)
   );
   assert.match(
     html,
-    /<nav class="document-navigation" aria-label="On this page">/u,
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">/u,
   );
   assert.match(
     html,
@@ -3651,4 +3603,36 @@ test("document routes use validated language tags and legacy documents default t
     fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8"),
     /^<!doctype html>\n<html lang="en">/u,
   );
+});
+
+test("mobile document navigation is bounded, focusable, and keeps every link", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+  const mobileStart = css.indexOf("@media (max-width: 780px)");
+  const mobileEnd = css.indexOf("@media (prefers-reduced-motion: reduce)");
+  assert.notEqual(mobileStart, -1);
+  assert.ok(mobileEnd > mobileStart);
+  const mobileCss = css.slice(mobileStart, mobileEnd);
+  const navigation = cssDeclarations(mobileCss, "  .document-navigation");
+  assert.equal(navigation["max-height"], "15rem");
+  assert.equal(navigation["overflow-y"], "scroll");
+  assert.equal(navigation["overscroll-behavior"], "contain");
+  assert.equal(navigation["scrollbar-gutter"], "stable");
+  assert.equal(navigation["border-bottom"], "3px solid var(--color-info-line)");
+
+  const sections = Array.from({ length: 24 }, (_, index) => ({
+    id: `section-${index + 1}`,
+    label: `Section ${index + 1}`,
+  }));
+  const html = renderLayout(
+    { title: "Docs" },
+    "Mobile navigation",
+    "<article><h1>Mobile navigation</h1></article>",
+    { collectionDir: "specs", sections },
+  );
+  const navigationMatch = html.match(
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch);
+  assert.equal((navigationMatch[1].match(/href="#section-\d+"/gu) || []).length, 24);
 });

@@ -128,6 +128,9 @@ At `780px` and below:
 
 - the two-column shell becomes a block layout;
 - the sticky sidebar becomes a static top region and its links wrap;
+- the `On this page` navigation becomes a labeled, focusable 15rem scroll
+  region with a visible lower boundary while preserving every link in source
+  order;
 - main padding tightens;
 - summary, scope, grid, guide, evidence, catalog, and API layouts become one
   column;

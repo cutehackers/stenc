@@ -597,7 +597,7 @@ function renderLayout(site, title, body, options = {}) {
     .map((item) => `<a class="nav-link" href="${escapeHtml(item.href)}"${item.ariaCurrent ? ` aria-current="${escapeHtml(item.ariaCurrent)}"` : ""}>${escapeHtml(item.label)}</a>`)
     .join("");
   const documentNavigation = toList(options.sections).length > 0
-    ? `<nav class="document-navigation" aria-label="On this page">
+    ? `<nav class="document-navigation" aria-label="On this page" tabindex="0">
           <p class="eyebrow">On this page</p>
           ${options.sections
             .map((section) => `<a class="nav-link" href="#${escapeHtml(section.id)}">${escapeHtml(section.label)}</a>`)

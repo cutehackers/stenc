@@ -28,8 +28,30 @@ function run(command, args, options = {}) {
 
 function trackedFiles() {
   const result = run("git", ["ls-files", "-z"]);
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return result.stdout.split("\0").filter(Boolean);
+  if (result.status === 0) {
+    return result.stdout.split("\0").filter(Boolean);
+  }
+
+  assert.equal(
+    fs.existsSync(path.join(REPO_ROOT, ".git")),
+    false,
+    result.stderr || result.stdout,
+  );
+
+  const files = [];
+  function visit(currentPath) {
+    for (const entry of fs.readdirSync(currentPath, { withFileTypes: true })) {
+      const entryPath = path.join(currentPath, entry.name);
+      const relativePath = path.relative(REPO_ROOT, entryPath);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+      } else {
+        files.push(relativePath);
+      }
+    }
+  }
+  visit(REPO_ROOT);
+  return files.sort();
 }
 
 function isGeneratedExamplesPath(filePath) {

@@ -1234,6 +1234,23 @@ caption {
     flex-wrap: wrap;
   }
 
+  .document-navigation {
+    border: 1px solid var(--color-line);
+    border-bottom: 3px solid var(--color-info-line);
+    border-radius: var(--radius-control);
+    margin-top: var(--space-3);
+    max-height: 15rem;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    padding: var(--space-2);
+    scrollbar-gutter: stable;
+  }
+
+  .document-navigation .eyebrow {
+    flex-basis: 100%;
+    margin-bottom: 0;
+  }
+
   .brand {
     margin-bottom: var(--space-3);
   }
