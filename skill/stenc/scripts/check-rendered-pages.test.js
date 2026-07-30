@@ -145,6 +145,15 @@ test("fails when a rendered document references a missing media asset", () => {
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
+  const renderedHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "media-check", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    renderedHtml,
+    /<figure class="rich-block rich-media missing-media" role="alert">[\s\S]*Missing media asset[\s\S]*content\/assets\/nested-flow\.svg[\s\S]*Nested Stenc flow/u,
+  );
+
   result = spawnSync(process.execPath, [CHECKER, docsRoot], {
     encoding: "utf8",
   });

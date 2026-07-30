@@ -4,16 +4,16 @@ function roleClass(role, escapeHtml) {
   return `diagram-role-${escapeHtml(role)}`;
 }
 
-function renderFigureHeading(block, kindLabel, escapeHtml) {
-  return `<figcaption><span class="badge">${kindLabel}</span> <strong>${escapeHtml(block.title)}</strong></figcaption>
-<p class="diagram-summary">${escapeHtml(block.summary)}</p>`;
+function renderFigureHeading(block, kindLabel, escapeHtml, ids) {
+  return `<figcaption id="${ids.caption}"><span class="badge">${kindLabel}</span> <strong>${escapeHtml(block.title)}</strong></figcaption>
+<p id="${ids.summary}" class="diagram-summary">${escapeHtml(block.summary)}</p>`;
 }
 
 function renderLayerNode(node, escapeHtml) {
   return `<article class="diagram-node-card" data-node-id="${escapeHtml(node.id)}"><strong class="diagram-node-label">${escapeHtml(node.label)}</strong><p class="diagram-node-detail">${escapeHtml(node.detail)}</p></article>`;
 }
 
-function renderLayerFallback(block, escapeHtml) {
+function renderLayerFallback(block, escapeHtml, fallbackId) {
   const layers = block.layers.map((layer) => {
     const nodes = layer.nodes
       .map(
@@ -29,7 +29,7 @@ function renderLayerFallback(block, escapeHtml) {
 ${transition}</li>`;
   }).join("\n");
 
-  return `<ol class="diagram-fallback diagram-layer-fallback visually-hidden">${layers}</ol>`;
+  return `<ol id="${fallbackId}" class="diagram-fallback diagram-layer-fallback visually-hidden">${layers}</ol>`;
 }
 
 function renderHeadingOrLabel(text, level, className, escapeHtml) {
@@ -40,7 +40,7 @@ function renderHeadingOrLabel(text, level, className, escapeHtml) {
   return `<p class="${className} semantic-label"><strong>${escapedText}</strong></p>`;
 }
 
-function renderLayerDiagram(block, escapeHtml, headingLevel) {
+function renderLayerDiagram(block, escapeHtml, headingLevel, ids) {
   const layers = block.layers.map((layer, index) => {
     const nodes = layer.nodes.map((node) => renderLayerNode(node, escapeHtml)).join("");
     const transition = layer.transition
@@ -49,7 +49,7 @@ function renderLayerDiagram(block, escapeHtml, headingLevel) {
     return `<section class="diagram-layer ${roleClass(layer.role, escapeHtml)}" data-layer-id="${escapeHtml(layer.id)}"><div class="diagram-role-rail"><span class="diagram-role-label">${escapeHtml(layer.role)}</span></div><div class="diagram-layer-content">${renderHeadingOrLabel(layer.label, headingLevel, "diagram-layer-title", escapeHtml)}<p>${escapeHtml(layer.summary)}</p><div class="diagram-layer-nodes">${nodes}</div></div></section>${transition}`;
   }).join("");
 
-  return `<figure class="rich-block rich-structured-diagram layer-diagram">${renderFigureHeading(block, "Layer diagram", escapeHtml)}<div class="diagram-visual diagram-layer-stack" aria-hidden="true"><div class="diagram-mobile-linear">${layers}</div></div>${renderLayerFallback(block, escapeHtml)}</figure>`;
+  return `<figure class="rich-block rich-structured-diagram layer-diagram" aria-labelledby="${ids.caption}" aria-describedby="${ids.summary}" aria-details="${ids.fallback}">${renderFigureHeading(block, "Layer diagram", escapeHtml, ids)}<div class="diagram-visual diagram-layer-stack" aria-hidden="true"><div class="diagram-mobile-linear">${layers}</div></div>${renderLayerFallback(block, escapeHtml, ids.fallback)}</figure>`;
 }
 
 function renderGraphNode(node, escapeHtml) {
@@ -71,7 +71,7 @@ function renderFallbackNodeList(nodes, escapeHtml) {
 <ol class="diagram-fallback-node-list">${items}</ol>`;
 }
 
-function renderRelationFallback(block, connections, escapeHtml) {
+function renderRelationFallback(block, connections, escapeHtml, fallbackId) {
   const nodeById = new Map(block.nodes.map((node) => [node.id, node]));
   const rows = connections.map((connection) => {
     const fromNode = nodeById.get(connection.from);
@@ -79,11 +79,12 @@ function renderRelationFallback(block, connections, escapeHtml) {
     return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong> <code>(${escapeHtml(fromNode.id)})</code></td> <td>${escapeHtml(connection.label)}</td> <td><strong>${escapeHtml(toNode.label)}</strong> <code>(${escapeHtml(toNode.id)})</code></td></tr>`;
   }).join("\n");
 
-  return `<details class="diagram-fallback diagram-relation-fallback"><summary>View ${escapeHtml(block.title)} text and relation table.</summary>
+  const tableLabel = escapeHtml(`${block.title} directed relations table`);
+  return `<details id="${fallbackId}" class="diagram-fallback diagram-relation-fallback"><summary>View ${escapeHtml(block.title)} text and relation table.</summary>
 ${renderFallbackNodeList(block.nodes, escapeHtml)}
-<table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
+<div class="table-scroll-region" role="region" aria-label="${tableLabel}" tabindex="0"><table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
 <thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
-<tbody>${rows}</tbody></table></details>`;
+<tbody>${rows}</tbody></table></div></details>`;
 }
 
 function renderGraphDiagram(
@@ -95,6 +96,7 @@ function renderGraphDiagram(
     visualClass,
     connectionField,
     connectionClass,
+    ids,
   },
 ) {
   const nodeById = new Map(block.nodes.map((node) => [node.id, node]));
@@ -106,36 +108,44 @@ function renderGraphDiagram(
     )
     .join("");
 
-  return `<figure class="rich-block rich-structured-diagram ${figureClass}">${renderFigureHeading(block, kindLabel, escapeHtml)}<div class="diagram-visual ${visualClass}" aria-hidden="true"><div class="diagram-mobile-linear"><div class="diagram-node-grid">${nodes}</div><div class="diagram-connection-sequence">${directedConnections}</div></div></div>${renderRelationFallback(block, connections, escapeHtml)}</figure>`;
+  return `<figure class="rich-block rich-structured-diagram ${figureClass}" aria-labelledby="${ids.caption}" aria-describedby="${ids.summary}" aria-details="${ids.fallback}">${renderFigureHeading(block, kindLabel, escapeHtml, ids)}<div class="diagram-visual ${visualClass}" aria-hidden="true"><div class="diagram-mobile-linear"><div class="diagram-node-grid">${nodes}</div><div class="diagram-connection-sequence">${directedConnections}</div></div></div>${renderRelationFallback(block, connections, escapeHtml, ids.fallback)}</figure>`;
 }
 
-function renderFlowDiagram(block, escapeHtml) {
+function renderFlowDiagram(block, escapeHtml, ids) {
   return renderGraphDiagram(block, escapeHtml, {
     kindLabel: "Flow diagram",
     figureClass: "flow-diagram",
     visualClass: "diagram-flow-grid",
     connectionField: "edges",
     connectionClass: "diagram-edge",
+    ids,
   });
 }
 
-function renderRelationDiagram(block, escapeHtml) {
+function renderRelationDiagram(block, escapeHtml, ids) {
   return renderGraphDiagram(block, escapeHtml, {
     kindLabel: "Relation diagram",
     figureClass: "relation-diagram",
     visualClass: "diagram-relation-spine",
     connectionField: "relations",
     connectionClass: "diagram-relation",
+    ids,
   });
 }
 
 function renderStructuredDiagram(block, escapeHtml, context = {}) {
   const headingLevel = context.headingLevel || 5;
+  const idPrefix = context.idPrefix || "diagram-1";
+  const ids = {
+    caption: `${idPrefix}-caption`,
+    summary: `${idPrefix}-summary`,
+    fallback: `${idPrefix}-fallback`,
+  };
   if (block.type === "layerDiagram") {
-    return renderLayerDiagram(block, escapeHtml, headingLevel);
+    return renderLayerDiagram(block, escapeHtml, headingLevel, ids);
   }
-  if (block.type === "flowDiagram") return renderFlowDiagram(block, escapeHtml);
-  if (block.type === "relationDiagram") return renderRelationDiagram(block, escapeHtml);
+  if (block.type === "flowDiagram") return renderFlowDiagram(block, escapeHtml, ids);
+  if (block.type === "relationDiagram") return renderRelationDiagram(block, escapeHtml, ids);
   throw new Error(`Unsupported structured diagram type: ${block.type}`);
 }
 

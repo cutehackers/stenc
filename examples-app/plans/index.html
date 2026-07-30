@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="shell">
       <aside class="sidebar">
         <a class="brand" href="/">Stenc</a>
@@ -14,9 +15,9 @@
       </aside>
       <main id="main-content"><header class="document-header"><div class="kicker">Stenc</div><h1>Plans</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header><div class="sorting-controls">
       <span class="sorting-label">Sort by:</span>
-      <button class="sort-btn active" data-sort="updated" data-order="desc">Last Updated</button>
-      <button class="sort-btn" data-sort="created" data-order="desc">Date Created</button>
-      <button class="sort-btn" data-sort="title" data-order="asc">Title</button>
+      <button class="sort-btn active" type="button" data-sort="updated" data-order="desc" aria-pressed="true">Last Updated</button>
+      <button class="sort-btn" type="button" data-sort="created" data-order="desc" aria-pressed="false">Date Created</button>
+      <button class="sort-btn" type="button" data-sort="title" data-order="asc" aria-pressed="false">Title</button>
     </div><section class="grid"><a class="panel" href="/plans/component-catalog/" data-title="Stenc Plan Component Catalog" data-updated="2026-07-30" data-created="2026-07-30"><h3>Stenc Plan Component Catalog</h3><p>Comprehensive schema-v2 fixture for every native plan field, step shape, and supported rich block.</p><div class="meta"><span class="badge status-approved">approved</span><span class="badge">Owner: stenc-maintainers</span><span class="badge date-badge">Updated: 2026-07-30</span></div></a><a class="panel" href="/plans/stenc-adoption/" data-title="Rail Stenc Adoption Plan" data-updated="2026-05-19" data-created="2026-05-19"><h3>Rail Stenc Adoption Plan</h3><p>Example single-document Stenc plan for adopting Stenc in Rail docs.</p><div class="meta"><span class="badge status-draft">draft</span><span class="badge">Owner: rail-docs</span><span class="badge date-badge">Updated: 2026-05-19</span></div></a></section><script>
       document.addEventListener('DOMContentLoaded', () => {
         const grid = document.querySelector('.grid');
@@ -26,8 +27,12 @@
         
         buttons.forEach(btn => {
           btn.addEventListener('click', () => {
-            buttons.forEach(b => b.classList.remove('active'));
+            buttons.forEach(b => {
+              b.classList.remove('active');
+              b.setAttribute('aria-pressed', 'false');
+            });
             btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
             
             const sortBy = btn.getAttribute('data-sort');
             const order = btn.getAttribute('data-order');

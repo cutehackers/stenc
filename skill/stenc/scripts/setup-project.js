@@ -415,6 +415,25 @@ function readCollection(docsDir, collection) {
     });
 }
 
+function readCollectionValidationErrors(docsDir, collection) {
+  const dir = path.join(docsDir, "content", collection.dir);
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .sort()
+    .flatMap((name) => {
+      try {
+        JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+        return [];
+      } catch (_error) {
+        return [{
+          path: `content/${collection.dir}/${name}`,
+        }];
+      }
+    });
+}
+
 function renderLayout(site, title, body, options = {}) {
   const pageTitle = title ? `${title} · ${site.title}` : site.title;
   const navigationItems = toList(options.navigation).length > 0
@@ -446,6 +465,7 @@ function renderLayout(site, title, body, options = {}) {
     <link rel="stylesheet" href="${escapeHtml(options.stylesheetHref || "/styles.css")}" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="shell">
       <aside class="sidebar">
         <a class="brand" href="${escapeHtml(options.brandHref || "/")}">${escapeHtml(options.brandLabel || site.title)}</a>
@@ -474,11 +494,12 @@ function codeBlocks(blocks) {
     .join("")}</div>`;
 }
 
-function renderTable(headers, rows) {
+function renderTable(headers, rows, caption = `${headers.join(", ")} table`) {
   if (rows.length === 0) return "";
-  return `<table class="table"><thead><tr>${headers
-    .map((header) => `<th>${escapeHtml(header)}</th>`)
-    .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+  const accessibleCaption = escapeHtml(caption);
+  return `<div class="table-scroll-region" role="region" aria-label="${accessibleCaption}" tabindex="0"><table class="table"><caption>${accessibleCaption}</caption><thead><tr>${headers
+    .map((header) => `<th scope="col">${escapeHtml(header)}</th>`)
+    .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
 
 function renderInlineSpans(spans) {
@@ -505,6 +526,7 @@ function renderRichTable(block) {
     toList(block.rows).map((row) =>
       `<tr>${toList(row).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
     ),
+    `${toList(block.columns).join(" and ")} table`,
   );
 }
 
@@ -519,14 +541,14 @@ function mediaSourceExists(block, context) {
 
 function renderMediaBlock(block, context) {
   if (!mediaSourceExists(block, context)) {
-    return `<figure class="rich-block rich-media missing-media"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+    return `<figure class="rich-block rich-media missing-media" role="alert"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code><p><strong>Context:</strong> ${escapeHtml(block.alt)}</p>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
   }
   return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src, context)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
 }
 
 function renderTaskListBlock(block) {
   return `<ul class="rich-block rich-task-list">${toList(block.items)
-    .map((item) => `<li><input class="task-check" type="checkbox" disabled aria-label="${escapeHtml(item.label)}"${item.checked ? " checked" : ""} /><span>${escapeHtml(item.label)}</span></li>`)
+    .map((item) => `<li><input class="task-check" type="checkbox" disabled aria-label="${escapeHtml(item.label)}"${item.checked ? " checked" : ""} /><span><span class="task-state">${item.checked ? "Complete:" : "Not complete:"}</span> ${escapeHtml(item.label)}</span></li>`)
     .join("")}</ul>`;
 }
 
@@ -540,7 +562,8 @@ function renderSupportingBlock(block, context = {}) {
     return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
   }
   if (block.type === "callout") {
-    return `<div class="rich-block rich-callout tone-${escapeHtml(block.tone)}" role="note" aria-label="${escapeHtml(block.title)}">${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></div>`;
+    const toneLabel = `${block.tone.charAt(0).toUpperCase()}${block.tone.slice(1)}`;
+    return `<div class="rich-block rich-callout tone-${escapeHtml(block.tone)}" role="note" aria-label="${escapeHtml(`${toneLabel} callout: ${block.title}`)}"><span class="callout-tone-label">${escapeHtml(toneLabel)}</span>${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></div>`;
   }
   if (block.type === "quote") {
     return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
@@ -554,8 +577,11 @@ function renderSupportingBlock(block, context = {}) {
     || block.type === "flowDiagram"
     || block.type === "relationDiagram"
   ) {
+    const renderState = context.renderState || { diagramIndex: 0 };
+    renderState.diagramIndex += 1;
     return renderStructuredDiagram(block, escapeHtml, {
       headingLevel: richHeadingLevel + 1,
+      idPrefix: `diagram-${renderState.diagramIndex}`,
     });
   }
   return "";
@@ -646,6 +672,7 @@ function renderDocument(doc, context = {}) {
   const scope = body.scope || {};
   const architecture = body.architecture || {};
   const template = STYLE_TEMPLATES.has(page.styleTemplate) ? page.styleTemplate : "task-first";
+  const renderState = { diagramIndex: 0 };
   const parts = [];
   const sections = [];
   const addSection = (section) => {
@@ -776,7 +803,11 @@ function renderDocument(doc, context = {}) {
   }
   if (toList(body.supportingSections).length > 0) {
     addSection(renderSection("supporting-sections", "Supporting Sections", "supporting-sections", body.supportingSections
-      .map((section) => renderSupportingSection(section, 0, { ...context, template }))
+      .map((section) => renderSupportingSection(section, 0, {
+        ...context,
+        template,
+        renderState,
+      }))
       .join("")));
   }
   addSection(renderSection(
@@ -785,7 +816,7 @@ function renderDocument(doc, context = {}) {
     "open-questions",
     toList(body.openQuestions).length > 0
       ? listItems(body.openQuestions)
-      : "<p>No open questions.</p>",
+      : '<div class="empty-state" role="status"><p>No open questions.</p></div>',
   ));
   parts.push("</article>");
   return {
@@ -808,6 +839,12 @@ function writeStaticPages(docsDir, title) {
 
   const collectionDocs = new Map(
     COLLECTIONS.map((collection) => [collection.dir, readCollection(docsDir, collection)]),
+  );
+  const collectionValidationErrors = new Map(
+    COLLECTIONS.map((collection) => [
+      collection.dir,
+      readCollectionValidationErrors(docsDir, collection),
+    ]),
   );
 
   const allDocs = [];
@@ -876,15 +913,24 @@ function writeStaticPages(docsDir, title) {
 
   for (const collection of COLLECTIONS) {
     const docs = collectionDocs.get(collection.dir) || [];
+    const validationErrors = collectionValidationErrors.get(collection.dir) || [];
     const cards = docs
       .map((doc) => `<a class="panel" href="${documentHref(collection.dir, doc.slug)}" data-title="${escapeHtml(doc.title)}" data-updated="${escapeHtml(doc.updatedAt)}" data-created="${escapeHtml(doc.createdAt || doc.updatedAt)}"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span><span class="badge">Owner: ${escapeHtml(doc.owner)}</span><span class="badge date-badge">Updated: ${escapeHtml(doc.updatedAt)}</span></div></a>`)
       .join("");
+    const validationErrorHtml = validationErrors
+      .map(
+        (error) =>
+          `<section class="validation-error" role="alert"><p><strong>Validation error:</strong> Could not render <code>${escapeHtml(error.path)}</code>.</p><p>Invalid JSON. Run the Stenc validator for exact source diagnostics.</p></section>`,
+      )
+      .join("");
+    const collectionContent = cards
+      || `<div class="empty-state" role="status"><p>No ${escapeHtml(collection.docType)} documents yet.</p></div>`;
 
     const sortingControls = `<div class="sorting-controls">
       <span class="sorting-label">Sort by:</span>
-      <button class="sort-btn active" data-sort="updated" data-order="desc">Last Updated</button>
-      <button class="sort-btn" data-sort="created" data-order="desc">Date Created</button>
-      <button class="sort-btn" data-sort="title" data-order="asc">Title</button>
+      <button class="sort-btn active" type="button" data-sort="updated" data-order="desc" aria-pressed="true">Last Updated</button>
+      <button class="sort-btn" type="button" data-sort="created" data-order="desc" aria-pressed="false">Date Created</button>
+      <button class="sort-btn" type="button" data-sort="title" data-order="asc" aria-pressed="false">Title</button>
     </div>`;
 
     const sortingScript = `<script>
@@ -896,8 +942,12 @@ function writeStaticPages(docsDir, title) {
         
         buttons.forEach(btn => {
           btn.addEventListener('click', () => {
-            buttons.forEach(b => b.classList.remove('active'));
+            buttons.forEach(b => {
+              b.classList.remove('active');
+              b.setAttribute('aria-pressed', 'false');
+            });
             btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
             
             const sortBy = btn.getAttribute('data-sort');
             const order = btn.getAttribute('data-order');
@@ -921,7 +971,7 @@ function writeStaticPages(docsDir, title) {
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${sortingControls}<section class="grid">${cards || "<p>No documents yet.</p>"}</section>${sortingScript}`,
+        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${validationErrorHtml}${sortingControls}<section class="grid">${collectionContent}</section>${sortingScript}`,
         {
           collectionDir: collection.dir,
           collectionAriaCurrent: "page",

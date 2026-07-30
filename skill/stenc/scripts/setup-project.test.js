@@ -664,6 +664,7 @@ test("unified B style tokens", () => {
       'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     "font-size": "var(--font-body)",
     "line-height": "var(--line-body)",
+    "overflow-x": "clip",
   });
   assert.equal(
     cssDeclarations(css, ".table,\ntable")["font-size"],
@@ -1046,6 +1047,223 @@ function minimalSpec(overrides = {}) {
     ...overrides,
   };
 }
+
+test("renders accessible landmarks, tables, diagrams, and non-color states", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-accessible-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  const source = minimalSpec({
+    status: "approved",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Accessible primitives",
+          content: "Every visual state has a text equivalent.",
+          items: [],
+          facts: [],
+          links: [],
+          steps: [],
+          codeBlocks: [],
+          subSections: [],
+          blocks: [
+            {
+              type: "callout",
+              tone: "warning",
+              title: "Review required",
+              body: "Color is supplementary.",
+            },
+            {
+              type: "table",
+              columns: ["State", "Meaning"],
+              rows: [["approved", "Ready for use"]],
+            },
+            {
+              type: "media",
+              src: "assets/missing-flow.svg",
+              alt: "Expected validation flow",
+              caption: "The validation flow asset.",
+            },
+            {
+              type: "taskList",
+              items: [
+                { label: "Ready", checked: true },
+                { label: "Pending", checked: false },
+              ],
+            },
+            {
+              type: "flowDiagram",
+              title: "Accessible flow",
+              summary: "Source moves to output.",
+              nodes: [
+                {
+                  id: "source",
+                  label: "Source",
+                  detail: "Structured JSON.",
+                  role: "consumer",
+                },
+                {
+                  id: "output",
+                  label: "Output",
+                  detail: "Generated HTML.",
+                  role: "surface",
+                },
+              ],
+              edges: [{ from: "source", to: "output", label: "renders" }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+  writeJson(path.join(docsRoot, "content", "specs", "minimal.spec.json"), source);
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(
+    path.join(docsRoot, "specs", "minimal", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    html,
+    /<a class="skip-link" href="#main-content">Skip to main content<\/a>/u,
+  );
+  assert.equal((html.match(/\sid="main-content"/gu) || []).length, 1);
+  assert.match(html, /<main id="main-content">/u);
+  assert.doesNotMatch(html, /<h[1-6][^>]*\stabindex=/u);
+  assert.match(
+    html,
+    /<nav class="collection-navigation" aria-label="Document collections">/u,
+  );
+  assert.match(
+    html,
+    /<nav class="document-navigation" aria-label="On this page">/u,
+  );
+  assert.match(
+    html,
+    /<a class="nav-link" href="\/specs\/" aria-current="location">Specs<\/a>/u,
+  );
+
+  const diagram = html.match(
+    /<figure class="rich-block rich-structured-diagram flow-diagram"[\s\S]*?<\/figure>/u,
+  )?.[0];
+  assert.ok(diagram, "missing structured diagram");
+  assert.match(
+    diagram,
+    /aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"/u,
+  );
+  assert.match(diagram, /<figcaption id="diagram-1-caption">/u);
+  assert.match(diagram, /<p id="diagram-1-summary" class="diagram-summary">/u);
+  assert.match(
+    diagram,
+    /<details id="diagram-1-fallback" class="diagram-fallback diagram-relation-fallback">/u,
+  );
+  assert.match(
+    diagram,
+    /<div class="table-scroll-region" role="region" aria-label="Accessible flow directed relations table" tabindex="0">/u,
+  );
+
+  const tables = [...html.matchAll(/<table\b[\s\S]*?<\/table>/gu)].map((match) => match[0]);
+  assert.ok(tables.length > 0);
+  for (const table of tables) {
+    assert.match(table, /(?:<caption>|aria-label=|aria-labelledby=)/u);
+  }
+  assert.ok(
+    (html.match(/class="table-scroll-region" role="region" aria-label="[^"]+" tabindex="0"/gu)
+      || []).length >= tables.length,
+    "every table must have a labeled contained scroll region",
+  );
+
+  assert.match(html, /<span class="callout-tone-label">Warning<\/span>/u);
+  assert.match(html, /<span class="task-state">Complete:<\/span> Ready/u);
+  assert.match(html, /<span class="task-state">Not complete:<\/span> Pending/u);
+  assert.match(
+    html,
+    /<figure class="rich-block rich-media missing-media" role="alert">[\s\S]*Missing media asset[\s\S]*content\/assets\/missing-flow\.svg[\s\S]*Expected validation flow/u,
+  );
+  assert.match(
+    html,
+    /<section id="open-questions" class="open-questions">[\s\S]*<div class="empty-state" role="status"><p>No open questions\.<\/p><\/div>/u,
+  );
+  assert.match(html, /<dt>Status<\/dt><dd><span class="badge status-approved">approved<\/span>/u);
+  assert.match(html, /<span class="diagram-role-label">consumer<\/span>/u);
+});
+
+test("renders explicit empty collection and validation-error states", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-empty-state-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "decisions"), { recursive: true });
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "specs", "broken.spec.json"),
+    '{"title": "Broken source",',
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const specIndex = fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8");
+  assert.match(
+    specIndex,
+    /<section class="validation-error" role="alert">[\s\S]*<strong>Validation error:<\/strong>[\s\S]*content\/specs\/broken\.spec\.json[\s\S]*Invalid JSON/u,
+  );
+  const decisionIndex = fs.readFileSync(
+    path.join(docsRoot, "decisions", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    decisionIndex,
+    /<div class="empty-state" role="status"><p>No decision documents yet\.<\/p><\/div>/u,
+  );
+});
+
+test("accessible responsive styles expose keyboard, contrast, and source-order hooks", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.match(css, /\.skip-link\s*\{[\s\S]*position:\s*fixed;/u);
+  assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*transform:\s*translateY\(0\);/u);
+  assert.match(css, /:focus-visible\s*\{[\s\S]*outline:\s*3px solid/u);
+  assert.match(
+    css,
+    /h1,[\s\S]*h6,[\s\S]*section\[id\]\s*\{[\s\S]*scroll-margin-top:/u,
+  );
+  assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*clip;/u);
+  assert.match(
+    css,
+    /\.table-scroll-region\s*\{[\s\S]*max-width:\s*100%;[\s\S]*overflow-x:\s*auto;/u,
+  );
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{/u);
+  assert.match(css, /@media \(prefers-contrast: more\) \{/u);
+  assert.match(css, /@media \(forced-colors: active\) \{/u);
+
+  const mobile = css.match(/@media \(max-width: 780px\) \{([\s\S]*?)\n\}/u)?.[1];
+  assert.ok(mobile, "missing 780px responsive contract");
+  for (const selector of [
+    ".shell",
+    ".summary-grid",
+    ".scope-grid",
+    ".grid",
+    ".diagram-relation-spine",
+    ".diagram-mobile-linear",
+    ".table-scroll-region",
+  ]) {
+    assert.ok(mobile.includes(selector), `mobile source-order hook missing: ${selector}`);
+  }
+  assert.doesNotMatch(mobile, /\border\s*:/u, "mobile must preserve DOM source order");
+});
 
 test("class inventory matches exact tokens and reports compact missing tokens", () => {
   assert.throws(
@@ -2255,7 +2473,7 @@ test("renders Phase 1 rich supporting blocks with escaped fixed output", () => {
   assert.match(html, /rich-callout tone-danger/);
   assert.match(
     html,
-    /<div class="rich-block rich-callout tone-danger" role="note" aria-label="Unsafe &lt;title&gt;">/u,
+    /<div class="rich-block rich-callout tone-danger" role="note" aria-label="Danger callout: Unsafe &lt;title&gt;">/u,
   );
   assert.match(html, /<h4 class="rich-block-title">Unsafe &lt;title&gt;<\/h4>/u);
   assert.match(html, /Escape &lt;script&gt;alert\(1\)&lt;\/script&gt;\./);
@@ -2520,7 +2738,7 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
   const classes = extractClassTokens(html);
 
   assert.equal((html.match(/<figure class="rich-block rich-structured-diagram/gu) || []).length, 3);
-  assert.equal((html.match(/<figcaption>/gu) || []).length, 3);
+  assert.equal((html.match(/<figcaption id="diagram-\d+-caption">/gu) || []).length, 3);
   assert.equal((html.match(/class="diagram-summary"/gu) || []).length, 3);
   assert.equal((html.match(/class="diagram-visual[^"]*" aria-hidden="true"/gu) || []).length, 3);
   assert.equal((html.match(/class="diagram-mobile-linear"/gu) || []).length, 3);
@@ -2587,19 +2805,19 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     /<thead><tr><th scope="col">From<\/th> <th scope="col">Relation<\/th> <th scope="col">To<\/th><\/tr><\/thead>/,
   );
   assert.equal((html.match(/<table class="table diagram-fallback-table">/gu) || []).length, 2);
-  assert.equal((html.match(/<details class="diagram-fallback diagram-relation-fallback">/gu) || []).length, 2);
+  assert.equal((html.match(/<details id="diagram-\d+-fallback" class="diagram-fallback diagram-relation-fallback">/gu) || []).length, 2);
   assert.doesNotMatch(html, /<h5>Nodes<\/h5>/);
   assert.equal((html.match(/<p class="diagram-fallback-label"><strong>Nodes<\/strong>\.<\/p>/gu) || []).length, 2);
 
   const layerVisual = contentBetween(
     html,
     '<div class="diagram-visual diagram-layer-stack" aria-hidden="true">',
-    '<ol class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    '<ol id="diagram-1-fallback" class="diagram-fallback diagram-layer-fallback visually-hidden">',
     "layer visual",
   );
   const layerFallback = contentBetween(
     html,
-    '<ol class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    '<ol id="diagram-1-fallback" class="diagram-fallback diagram-layer-fallback visually-hidden">',
     "</ol></figure>",
     "layer fallback",
   );
@@ -2624,7 +2842,7 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     stripTagsAndDecodeText(
       contentBetween(
         html,
-        '<figure class="rich-block rich-structured-diagram layer-diagram"><figcaption>',
+        '<figure class="rich-block rich-structured-diagram layer-diagram" aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"><figcaption id="diagram-1-caption">',
         "</figcaption>",
         "layer caption",
       ),
@@ -2638,19 +2856,19 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
 
   const flowFigure = contentBetween(
     html,
-    '<figure class="rich-block rich-structured-diagram flow-diagram">',
+    '<figure class="rich-block rich-structured-diagram flow-diagram" aria-labelledby="diagram-2-caption" aria-describedby="diagram-2-summary" aria-details="diagram-2-fallback">',
     "</figure>",
     "flow figure",
   );
   const flowVisual = contentBetween(
     flowFigure,
     '<div class="diagram-visual diagram-flow-grid" aria-hidden="true">',
-    '<details class="diagram-fallback diagram-relation-fallback">',
+    '<details id="diagram-2-fallback" class="diagram-fallback diagram-relation-fallback">',
     "flow visual",
   );
   const flowFallback = contentBetween(
     flowFigure,
-    '<details class="diagram-fallback diagram-relation-fallback">',
+    '<details id="diagram-2-fallback" class="diagram-fallback diagram-relation-fallback">',
     "</details>",
     "flow fallback",
   );
@@ -2684,19 +2902,19 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
 
   const relationFigure = contentBetween(
     html,
-    '<figure class="rich-block rich-structured-diagram relation-diagram">',
+    '<figure class="rich-block rich-structured-diagram relation-diagram" aria-labelledby="diagram-3-caption" aria-describedby="diagram-3-summary" aria-details="diagram-3-fallback">',
     "</figure>",
     "relation figure",
   );
   const relationVisual = contentBetween(
     relationFigure,
     '<div class="diagram-visual diagram-relation-spine" aria-hidden="true">',
-    '<details class="diagram-fallback diagram-relation-fallback">',
+    '<details id="diagram-3-fallback" class="diagram-fallback diagram-relation-fallback">',
     "relation visual",
   );
   const relationFallback = contentBetween(
     relationFigure,
-    '<details class="diagram-fallback diagram-relation-fallback">',
+    '<details id="diagram-3-fallback" class="diagram-fallback diagram-relation-fallback">',
     "</details>",
     "relation fallback",
   );

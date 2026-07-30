@@ -82,6 +82,25 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: var(--font-body);
   line-height: var(--line-body);
+  overflow-x: clip;
+}
+
+.skip-link {
+  border: 2px solid var(--color-info);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 750;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  position: fixed;
+  top: var(--space-3);
+  transform: translateY(calc(-100% - var(--space-6)));
+  z-index: 100;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 img,
@@ -112,6 +131,15 @@ h5,
 h6 {
   color: var(--color-text);
   line-height: 1.25;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+section[id] {
   scroll-margin-top: var(--space-6);
 }
 
@@ -212,6 +240,8 @@ mark {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
+  min-width: 0;
+  width: 100%;
 }
 
 .sidebar {
@@ -248,12 +278,14 @@ mark {
 }
 
 .nav-link:hover,
-.nav-link[aria-current="page"] {
+.nav-link[aria-current] {
   background: var(--color-info-tint);
   color: var(--color-info);
+  font-weight: 800;
 }
 
 main {
+  min-width: 0;
   padding: var(--space-7) var(--space-6) 64px;
   width: min(var(--content-width), 100%);
 }
@@ -524,10 +556,13 @@ table {
   width: 100%;
 }
 
-.table {
-  display: block;
+.table-scroll-region {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.table-scroll-region:focus-visible {
+  outline-offset: 2px;
 }
 
 .table th,
@@ -570,6 +605,7 @@ caption {
 .rich-callout,
 .mini-callout,
 .missing-media,
+.validation-error,
 .empty-state {
   border: 1px solid var(--color-line);
   border-left: 4px solid var(--color-muted);
@@ -581,6 +617,20 @@ caption {
 .rich-callout .rich-block-title {
   color: var(--color-text);
   margin-top: 0;
+}
+
+.callout-tone-label,
+.task-state {
+  color: var(--color-muted);
+  font-size: var(--font-metadata);
+  font-weight: 800;
+}
+
+.callout-tone-label {
+  display: block;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-1);
+  text-transform: uppercase;
 }
 
 .tone-info {
@@ -599,16 +649,19 @@ caption {
 }
 
 .tone-danger,
-.missing-media {
+.missing-media,
+.validation-error {
   border-left-color: var(--color-danger);
   background: var(--color-danger-tint);
 }
 
-.missing-media strong {
+.missing-media > strong,
+.validation-error strong {
   color: var(--color-danger);
 }
 
-.missing-media {
+.missing-media,
+.validation-error {
   border-style: dashed;
 }
 
@@ -1197,6 +1250,13 @@ caption {
     grid-template-columns: 1fr;
   }
 
+  .diagram-relation-spine,
+  .diagram-mobile-linear,
+  .table-scroll-region {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .fact-rail,
   .outline,
   .proof-rail {
@@ -1262,6 +1322,45 @@ caption {
     transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-line: var(--color-control-border);
+    --color-muted: var(--color-text);
+  }
+
+  .badge,
+  .panel,
+  .rich-callout,
+  .missing-media,
+  .validation-error,
+  .empty-state {
+    border-width: 2px;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+
+  .skip-link,
+  .badge,
+  .panel,
+  .rich-callout,
+  .missing-media,
+  .validation-error,
+  .empty-state,
+  .diagram-node-card,
+  .diagram-directed-connection {
+    border-color: CanvasText;
+    forced-color-adjust: auto;
+  }
+
+  .nav-link[aria-current] {
+    outline: 2px solid LinkText;
   }
 }
 `;
