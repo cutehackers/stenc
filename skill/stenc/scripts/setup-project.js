@@ -586,16 +586,27 @@ function renderSupportingLinks(links) {
   );
 }
 
-function renderSupportingStep(step, index) {
-  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
+function renderHeadingOrLabel(text, level, className) {
+  const escapedText = escapeHtml(text);
+  if (level <= 6) {
+    return `<h${level} class="${className}">${escapedText}</h${level}>`;
+  }
+  return `<p class="${className} semantic-label"><strong>${escapedText}</strong></p>`;
+}
+
+function renderSupportingStep(step, index, headingLevel) {
+  const detailLevel = headingLevel + 1;
+  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div>${renderHeadingOrLabel(step.title, headingLevel, "step-title")}${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `${renderHeadingOrLabel("Run", detailLevel, "step-detail-label")}<code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `${renderHeadingOrLabel("Expected", detailLevel, "step-detail-label")}<p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
 }
 
 function renderSupportingSection(section, depth = 0, context = {}) {
-  const headingLevel = Math.min(3 + depth, 6);
+  const headingLevel = 3 + depth;
+  const groupHeadingLevel = headingLevel + 1;
+  const stepHeadingLevel = groupHeadingLevel + 1;
   const childSections = toList(section.subSections)
     .map((subSection) => renderSupportingSection(subSection, depth + 1, context))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}">${renderHeadingOrLabel(section.heading, headingLevel, "supporting-section-title")}<p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `${renderHeadingOrLabel("Facts", groupHeadingLevel, "supporting-label")}${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `${renderHeadingOrLabel("Links", groupHeadingLevel, "supporting-label")}${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `${renderHeadingOrLabel("Steps", groupHeadingLevel, "supporting-label")}<div class="step-list">${toList(section.steps).map((step, index) => renderSupportingStep(step, index, stepHeadingLevel)).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
 const DOCUMENT_SECTION_DEFINITIONS = {

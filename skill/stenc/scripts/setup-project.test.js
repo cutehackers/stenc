@@ -225,6 +225,32 @@ function assertDocumentNavigation(html, expectedIds, label) {
   }
 }
 
+function extractSupportingOutline(html) {
+  const sectionStack = [];
+  const outline = [];
+  const tokenPattern = /<section\b[^>]*class="([^"]*)"[^>]*>|<\/section>|<h([1-6])[^>]*>([^<]*)<\/h\2>|<p class="([^"]*semantic-label[^"]*)"><strong>([^<]*)<\/strong><\/p>/gu;
+  for (const match of html.matchAll(tokenPattern)) {
+    if (match[0].startsWith("<section")) {
+      sectionStack.push(match[1]);
+      continue;
+    }
+    if (match[0] === "</section>") {
+      sectionStack.pop();
+      continue;
+    }
+    const supportingParent = [...sectionStack]
+      .reverse()
+      .find((classes) => classes.includes("supporting-section"));
+    if (!supportingParent) continue;
+    outline.push({
+      text: match[3] || match[5],
+      kind: match[2] ? `h${match[2]}` : "label",
+      parent: supportingParent.match(/depth-\d+/u)?.[0],
+    });
+  }
+  return outline;
+}
+
 function assertByteIdentical(sourcePath, mirrorPath) {
   assert.equal(
     Buffer.compare(fs.readFileSync(sourcePath), fs.readFileSync(mirrorPath)),
@@ -1611,7 +1637,58 @@ test("renders extended supporting section fields recursively", () => {
               links: [],
               steps: [],
               codeBlocks: [],
-              subSections: [],
+              subSections: [
+                {
+                  heading: "Depth Two Operations",
+                  content: "Depth-two content retains its own outline parent.",
+                  items: [],
+                  facts: [{ label: "Depth", value: "Two" }],
+                  links: [],
+                  steps: [
+                    {
+                      id: "depth-two-step",
+                      title: "Depth Two Step",
+                      status: "todo",
+                      command: "echo depth-two",
+                      expected: "depth-two",
+                    },
+                  ],
+                  codeBlocks: [],
+                  blocks: [],
+                  subSections: [
+                    {
+                      heading: "Depth Three Operations",
+                      content: "The h6 boundary uses labels below the section title.",
+                      items: [],
+                      facts: [{ label: "Depth", value: "Three" }],
+                      links: [],
+                      steps: [
+                        {
+                          id: "depth-three-step",
+                          title: "Depth Three Step",
+                          status: "todo",
+                          instruction: "Keep the nested outline semantic.",
+                        },
+                      ],
+                      codeBlocks: [],
+                      blocks: [],
+                      subSections: [
+                        {
+                          heading: "Depth Four Operations",
+                          content: "Sections deeper than h6 use a semantic label.",
+                          items: [],
+                          facts: [],
+                          links: [],
+                          steps: [],
+                          codeBlocks: [],
+                          blocks: [],
+                          subSections: [],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -1639,6 +1716,33 @@ test("renders extended supporting section fields recursively", () => {
   assert.match(html, /Rollback &lt;path&gt;/);
   assert.match(html, /Restore the &lt;previous&gt; deployment\./);
   assert.match(html, /Restore &lt;DNS&gt;/);
+  const nestedOutline = extractSupportingOutline(html).filter(({ text, parent }) =>
+    Number(parent?.slice("depth-".length)) >= 2
+    && [
+      "Depth Two Operations",
+      "Facts",
+      "Steps",
+      "Depth Two Step",
+      "Run",
+      "Expected",
+      "Depth Three Operations",
+      "Depth Three Step",
+      "Depth Four Operations",
+    ].includes(text),
+  );
+  assert.deepEqual(nestedOutline, [
+    { text: "Depth Two Operations", kind: "h5", parent: "depth-2" },
+    { text: "Facts", kind: "h6", parent: "depth-2" },
+    { text: "Steps", kind: "h6", parent: "depth-2" },
+    { text: "Depth Two Step", kind: "label", parent: "depth-2" },
+    { text: "Run", kind: "label", parent: "depth-2" },
+    { text: "Expected", kind: "label", parent: "depth-2" },
+    { text: "Depth Three Operations", kind: "h6", parent: "depth-3" },
+    { text: "Facts", kind: "label", parent: "depth-3" },
+    { text: "Steps", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Step", kind: "label", parent: "depth-3" },
+    { text: "Depth Four Operations", kind: "label", parent: "depth-4" },
+  ]);
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
   assert.doesNotMatch(html, /<strong>Team<\/strong>/);
 });
