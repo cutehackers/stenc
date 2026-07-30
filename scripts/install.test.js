@@ -177,3 +177,42 @@ test("install can prepare a target project with default project install", () => 
     true,
   );
 });
+
+test("install rejects an escaping docs-dir without mutating the project parent", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-install-escape-"));
+  const skillsRoot = path.join(containerRoot, "skills");
+  const binRoot = path.join(containerRoot, "bin");
+  const projectRoot = path.join(containerRoot, "project");
+  const sentinelPath = path.join(containerRoot, "package.json");
+  const sentinel = '{"sentinel":"install parent must survive"}\n';
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(binRoot);
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+
+  const result = spawnSync(
+    "bash",
+    [
+      INSTALL_SCRIPT,
+      "--project-root",
+      projectRoot,
+      "--docs-dir",
+      "..",
+    ],
+    {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+        CODEX_SKILLS_DIR: skillsRoot,
+        STENC_BIN_DIR: binRoot,
+      },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs directory[\s\S]*inside the project root/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.deepEqual(fs.readdirSync(projectRoot), []);
+});

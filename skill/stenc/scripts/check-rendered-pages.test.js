@@ -11,6 +11,7 @@ const CHECKER = path.join(__dirname, "check-rendered-pages.js");
 const SETUP_PROJECT = path.join(__dirname, "setup-project.js");
 const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+const { renderDocument } = require("./setup-project");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -298,13 +299,29 @@ test("renderer and rendered checker reject non-regular media source files", asyn
         [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
         { encoding: "utf8" },
       );
-      assert.equal(setup.status, 0, setup.stderr || setup.stdout);
-      const html = fs.readFileSync(
-        path.join(docsRoot, "specs", "media-check", "index.html"),
-        "utf8",
-      );
+      if (kind === "symlink") {
+        assert.notEqual(setup.status, 0);
+        assert.match(setup.stderr, /content asset[\s\S]*symlink/iu);
+      } else {
+        assert.equal(setup.status, 0, setup.stderr || setup.stdout);
+      }
+      const html = kind === "symlink"
+        ? renderDocument(source, { docsDir: docsRoot }).html
+        : fs.readFileSync(
+          path.join(docsRoot, "specs", "media-check", "index.html"),
+          "utf8",
+        );
       assert.match(html, /class="rich-block rich-media missing-media"/u);
 
+      if (kind === "symlink") {
+        const pagePath = path.join(docsRoot, "specs", "media-check", "index.html");
+        fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+        fs.writeFileSync(
+          pagePath,
+          '<link rel="stylesheet" href="/styles.css"><article class="document">Media Check</article>',
+        );
+        fs.writeFileSync(path.join(docsRoot, "styles.css"), "");
+      }
       const check = spawnSync(process.execPath, [CHECKER, docsRoot], {
         encoding: "utf8",
       });

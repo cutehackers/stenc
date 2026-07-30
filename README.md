@@ -146,11 +146,11 @@ The spec template includes a media primitive backed by the installed
 asset into `docs/stenc/content/assets/`; direct setup also copies it when the
 template references it and the target asset is missing. Existing target assets
 are not overwritten, and a freshly copied template passes rendered-page
-checks. The bundled SVG is a project-authored Stenc template asset with no
-external asset dependency and is distributed under the repository/package
-terms. Bundled sources and seeded targets must be regular files; symlinked
-asset directories, symlink targets, directory collisions, and canonical path
-escapes are rejected without replacing the target.
+checks. The bundled SVG is a project-authored, script-free Stenc template asset
+with no external dependency or source. Bundled sources and seeded targets must
+be regular files; symlinked asset directories, symlink targets, directory
+collisions, and canonical path escapes are rejected without replacing the
+target.
 
 ## Developing Stenc
 

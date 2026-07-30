@@ -1086,6 +1086,126 @@ test("bundled asset seeding requires a regular bundled source file", (t) => {
   assert.match(result.stderr, /bundled[\s\S]*architecture-overview\.svg[\s\S]*regular file/iu);
 });
 
+test("rejects a parent docs-dir before deleting or creating anything", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-docs-parent-escape-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const sentinelPath = path.join(containerRoot, "package.json");
+  const sentinel = "parent sentinel must survive\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--docs-dir",
+      "..",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs directory[\s\S]*inside the project root/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.deepEqual(fs.readdirSync(projectRoot), []);
+});
+
+test("rejects a symlinked docs ancestor before mutating its external target", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-docs-symlink-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const outsideRoot = path.join(containerRoot, "outside");
+  const sentinelPath = path.join(outsideRoot, "sentinel.txt");
+  const sentinel = "external sentinel must survive\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+  fs.symlinkSync(outsideRoot, path.join(projectRoot, "docs"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "stenc")), false);
+});
+
+test("rejects a symlinked content asset root before copying or deleting generated assets", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-content-assets-root-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = path.join(containerRoot, "outside");
+  const secretPath = path.join(outsideRoot, "secret.svg");
+  const generatedSentinelPath = path.join(docsRoot, "assets", "generated-sentinel.svg");
+  const secret = "<svg>external secret</svg>\n";
+  const generatedSentinel = "<svg>generated sentinel</svg>\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(docsRoot, "content"), { recursive: true });
+  fs.mkdirSync(path.dirname(generatedSentinelPath), { recursive: true });
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(secretPath, secret);
+  fs.writeFileSync(generatedSentinelPath, generatedSentinel);
+  fs.symlinkSync(outsideRoot, path.join(docsRoot, "content", "assets"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--render-only",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/assets[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(secretPath, "utf8"), secret);
+  assert.equal(fs.readFileSync(generatedSentinelPath, "utf8"), generatedSentinel);
+  assert.equal(fs.existsSync(path.join(docsRoot, "assets", "secret.svg")), false);
+});
+
+test("rejects symlink entries nested under content assets", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-content-assets-entry-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsidePath = path.join(containerRoot, "outside.svg");
+  const sourceLink = path.join(docsRoot, "content", "assets", "nested", "secret.svg");
+  const generatedSentinelPath = path.join(docsRoot, "assets", "generated-sentinel.svg");
+  const sentinel = "<svg>sentinel</svg>\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.dirname(sourceLink), { recursive: true });
+  fs.mkdirSync(path.dirname(generatedSentinelPath), { recursive: true });
+  fs.writeFileSync(outsidePath, "<svg>outside</svg>\n");
+  fs.writeFileSync(generatedSentinelPath, sentinel);
+  fs.symlinkSync(outsidePath, sourceLink);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--render-only",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/assets\/nested\/secret\.svg[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(generatedSentinelPath, "utf8"), sentinel);
+});
+
 test("examples setup is byte-idempotent across repeated runs", () => {
   const temporaryRepo = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-examples-sync-"));
   fs.cpSync(path.join(REPO_ROOT, "skill"), path.join(temporaryRepo, "skill"), {

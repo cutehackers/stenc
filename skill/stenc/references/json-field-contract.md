@@ -167,11 +167,11 @@ The spec template's `assets/architecture-overview.svg` example is shipped in
 `templates/assets/`. Install/bootstrap seeds that exact file into the target
 `content/assets/` directory. Direct non-render-only setup does the same when a
 copied template references it and no target asset exists. Existing target
-source assets are not overwritten. The SVG is a project-authored Stenc
-template asset with no external asset dependency and is distributed under the
-repository/package terms. Bundled sources and seeded targets must be regular
-files. Symlinked asset directories, symlink targets, directory collisions, and
-canonical path escapes are invalid and are not followed or replaced.
+source assets are not overwritten. The SVG is a project-authored, script-free
+Stenc template asset with no external dependency or source. Bundled sources
+and seeded targets must be regular files. Symlinked asset directories, symlink
+targets, directory collisions, and canonical path escapes are invalid and are
+not followed or replaced.
 
 Task lists are read-only supporting material. They do not replace
 `body.slices[].steps[]` in plan documents and do not persist user interaction.

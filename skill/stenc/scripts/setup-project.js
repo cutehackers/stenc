@@ -12,6 +12,8 @@ const {
   ensureDirectoryWithin,
   inspectDirectoryWithin,
   inspectRegularFileWithin,
+  isContainedPath,
+  prepareContainedDirectory,
 } = require("./file-boundary");
 
 const COLLECTIONS = [
@@ -98,7 +100,6 @@ function parseArgs(argv) {
   }
 
   options.projectRoot = path.resolve(options.projectRoot);
-  options.docsDir = path.resolve(options.projectRoot, options.docsDir);
   return options;
 }
 
@@ -206,23 +207,85 @@ function removeGeneratedArtifacts(docsDir) {
   }
 }
 
-function copyDirectoryContents(sourceDir, targetDir) {
-  if (!fs.existsSync(sourceDir)) return;
-  ensureDirectory(targetDir);
+function validateAssetSourceTree(docsDir, sourceDir = path.join(docsDir, "content", "assets")) {
+  const rootInspection = inspectDirectoryWithin(docsDir, sourceDir);
+  if (!rootInspection.exists) return;
+  if (!rootInspection.ok) {
+    throw new Error(
+      `content asset root ${sourceDir} must be a real directory without symlinks: ${rootInspection.reason}`,
+    );
+  }
   for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
     const sourcePath = path.join(sourceDir, entry.name);
-    const targetPath = path.join(targetDir, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`content asset ${sourcePath} must not be a symlink`);
+    }
     if (entry.isDirectory()) {
-      copyDirectoryContents(sourcePath, targetPath);
-    } else if (entry.isFile()) {
-      ensureDirectory(path.dirname(targetPath));
-      fs.copyFileSync(sourcePath, targetPath);
+      const directoryInspection = inspectDirectoryWithin(docsDir, sourcePath);
+      if (!directoryInspection.ok) {
+        throw new Error(
+          `content asset directory ${sourcePath} is unsafe: ${directoryInspection.reason}`,
+        );
+      }
+      validateAssetSourceTree(docsDir, sourcePath);
+      continue;
+    }
+    const fileInspection = inspectRegularFileWithin(docsDir, sourcePath);
+    if (!entry.isFile() || !fileInspection.ok) {
+      throw new Error(
+        `content asset ${sourcePath} must be a regular file without symlinks: ${fileInspection.reason}`,
+      );
     }
   }
 }
 
+function copyDirectoryContents(docsDir, sourceDir, targetDir) {
+  const sourceInspection = inspectDirectoryWithin(docsDir, sourceDir);
+  if (!sourceInspection.exists) return;
+  if (!sourceInspection.ok) {
+    throw new Error(`unsafe content asset source ${sourceDir}: ${sourceInspection.reason}`);
+  }
+  ensureDirectoryWithin(docsDir, targetDir);
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    if (!isContainedPath(docsDir, targetPath)) {
+      throw new Error(`generated asset target escapes docs root: ${targetPath}`);
+    }
+    if (entry.isDirectory()) {
+      const sourceDirectoryInspection = inspectDirectoryWithin(docsDir, sourcePath);
+      if (!sourceDirectoryInspection.ok) {
+        throw new Error(
+          `unsafe content asset directory ${sourcePath}: ${sourceDirectoryInspection.reason}`,
+        );
+      }
+      ensureDirectoryWithin(docsDir, targetPath);
+      copyDirectoryContents(docsDir, sourcePath, targetPath);
+      continue;
+    }
+    const sourceFileInspection = inspectRegularFileWithin(docsDir, sourcePath);
+    if (!entry.isFile() || !sourceFileInspection.ok) {
+      throw new Error(
+        `content asset ${sourcePath} must be a regular file without symlinks: ${sourceFileInspection.reason}`,
+      );
+    }
+    const targetInspection = inspectRegularFileWithin(docsDir, targetPath);
+    if (targetInspection.exists || targetInspection.reason !== "missing") {
+      throw new Error(
+        `generated asset target ${targetPath} must be a new regular file inside docs root`,
+      );
+    }
+    ensureDirectoryWithin(docsDir, path.dirname(targetPath));
+    fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+  }
+}
+
 function copyContentAssets(docsDir) {
-  copyDirectoryContents(path.join(docsDir, "content", "assets"), path.join(docsDir, "assets"));
+  copyDirectoryContents(
+    docsDir,
+    path.join(docsDir, "content", "assets"),
+    path.join(docsDir, "assets"),
+  );
 }
 
 function collectMediaSourcesFromSections(sections, sources = new Set()) {
@@ -1124,7 +1187,12 @@ function writeStaticPages(docsDir, title) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  ensureDirectory(options.docsDir);
+  options.docsDir = prepareContainedDirectory(
+    options.projectRoot,
+    options.docsDir,
+    "Stenc docs directory",
+  );
+  validateAssetSourceTree(options.docsDir);
   const siteTitle = resolveSiteTitle(options.docsDir, options);
   if (!options.renderOnly) {
     removeFrameworkArtifacts(options.docsDir);

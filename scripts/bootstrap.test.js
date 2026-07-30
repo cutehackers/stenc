@@ -176,3 +176,39 @@ test("bootstrap forwards install options without requiring the install subcomman
     true,
   );
 });
+
+test("bootstrap rejects a symlinked docs ancestor without mutating its target", (t) => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-bootstrap-symlink-"));
+  const sourceRepo = path.join(tempRoot, "source");
+  const cacheRoot = path.join(tempRoot, "cache");
+  const skillsRoot = path.join(tempRoot, "skills");
+  const binRoot = path.join(tempRoot, "bin");
+  const projectRoot = path.join(tempRoot, "target-project");
+  const outsideRoot = path.join(tempRoot, "outside");
+  const sentinelPath = path.join(outsideRoot, "sentinel.txt");
+  const sentinel = "bootstrap external sentinel must survive\n";
+  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
+  fs.mkdirSync(binRoot);
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+  fs.symlinkSync(outsideRoot, path.join(projectRoot, "docs"), "dir");
+  copyRepoFixture(sourceRepo);
+
+  const result = run("bash", [BOOTSTRAP_SCRIPT], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+      CODEX_SKILLS_DIR: skillsRoot,
+      STENC_BIN_DIR: binRoot,
+      STENC_CACHE_DIR: cacheRoot,
+      STENC_REPO: sourceRepo,
+    },
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "stenc")), false);
+});
