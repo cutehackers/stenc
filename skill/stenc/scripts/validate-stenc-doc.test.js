@@ -14,7 +14,7 @@ const {
   DIAGRAM_ROLES,
   DIAGRAM_ID_PATTERN,
 } = require("./structured-diagram-contract");
-const { renderDocument } = require("./setup-project");
+const { renderDocument, renderLayout } = require("./setup-project");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -526,6 +526,14 @@ function documentedRegistry(markdown, label) {
   return Array.from(line.matchAll(/`([^`]+)`/g), (match) => match[1]);
 }
 
+function javascriptSetRegistry(source, constantName) {
+  const declaration = source.match(
+    new RegExp(`const ${constantName} = new Set\\(\\[([\\s\\S]*?)\\]\\);`, "u"),
+  );
+  assert.ok(declaration, `missing JavaScript set registry: ${constantName}`);
+  return Array.from(declaration[1].matchAll(/"([^"]+)"/g), (match) => match[1]);
+}
+
 function supportingBlocks(document) {
   const blocks = [];
   const visit = (sections) => {
@@ -847,43 +855,100 @@ test("structured diagram documentation stays aligned", () => {
     documentedRegistry(references.style, "Rendered diagram roles"),
     registeredRoles,
   );
+  const validatorSource = fs.readFileSync(VALIDATOR, "utf8");
+  const optionalSupportingFields = javascriptSetRegistry(
+    validatorSource,
+    "SUPPORTING_SECTION_FIELDS",
+  )
+    .filter((field) => !["heading", "content", "items"].includes(field))
+    .sort();
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Optional supporting section extension fields"),
+    optionalSupportingFields,
+  );
+
+  const allowedProseTemplate = structuredClone(templates[0]);
+  allowedProseTemplate.description =
+    "Raw HTML is prohibited; per-document CSS and Mermaid runtime are also prohibited.";
+  allowedProseTemplate.body.problem =
+    'Author text such as <author-html data-test="prose">example</author-html> must be escaped.';
 
   const forbiddenVisualKeys = new Set([
     "component",
     "css",
     "html",
     "layout",
+    "markdown",
+    "mermaidRuntime",
+    "mdx",
+    "perDocumentStyle",
     "rawHtml",
     "runtime",
+    "script",
+    "scripts",
     "sourceFormat",
     "style",
+    "styles",
     "styleSheet",
+    "stylesheet",
+    "stylesheets",
     "variant",
   ]);
-  const findForbiddenKeys = (value, location = "$") => {
+  const forbiddenExecutableTypes = new Set([
+    "html",
+    "markdown",
+    "mermaid",
+    "mermaidRuntime",
+    "mdx",
+    "perDocumentStyle",
+    "rawHtml",
+    "script",
+    "style",
+    "stylesheet",
+  ]);
+  const findForbiddenConstructs = (value, location = "$") => {
     if (!value || typeof value !== "object") return [];
     if (Array.isArray(value)) {
-      return value.flatMap((entry, index) => findForbiddenKeys(entry, `${location}[${index}]`));
+      return value.flatMap(
+        (entry, index) => findForbiddenConstructs(entry, `${location}[${index}]`),
+      );
     }
     return Object.entries(value).flatMap(([key, entry]) => [
       ...(forbiddenVisualKeys.has(key) ? [`${location}.${key}`] : []),
-      ...findForbiddenKeys(entry, `${location}.${key}`),
+      ...(key === "type" && forbiddenExecutableTypes.has(entry)
+        ? [`${location}.type=${entry}`]
+        : []),
+      ...findForbiddenConstructs(entry, `${location}.${key}`),
     ]);
   };
-  for (const template of templates) {
-    assert.deepEqual(findForbiddenKeys(template), []);
-    const outputs = [JSON.stringify(template), renderDocument(template).html];
-    for (const forbidden of [
-      /<script\b/i,
-      /<style\b/i,
-      /\bmermaid(?:\.initialize|\s+runtime)\b/i,
-      /\braw html\b/i,
-      /\bper-document (?:css|styles?)\b/i,
-      /\b(?:markdown|mdx) (?:is|as) (?:the )?(?:document )?source\b/i,
-    ]) {
-      for (const output of outputs) assert.doesNotMatch(output, forbidden);
+
+  for (const template of [...templates, allowedProseTemplate]) {
+    assert.deepEqual(findForbiddenConstructs(template), []);
+    const renderedDocument = renderDocument(template);
+    const renderedPage = renderLayout(
+      { title: "Template Test" },
+      template.title,
+      renderedDocument.html,
+      { sections: renderedDocument.sections },
+    );
+    const stylesheetLinks = Array.from(
+      renderedPage.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/giu),
+      (match) => match[0],
+    );
+    assert.deepEqual(stylesheetLinks, ['<link rel="stylesheet" href="/styles.css" />']);
+    assert.doesNotMatch(renderedPage, /<style\b/iu);
+    for (const script of renderedPage.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/giu)) {
+      assert.doesNotMatch(script[1], /\bmermaid\b|\bmermaidRuntime\b/iu);
     }
+    assert.doesNotMatch(renderedPage, /<script\b[^>]*\bsrc=/iu);
   }
+  const renderedAllowedProse = renderDocument(allowedProseTemplate).html;
+  assert.match(renderedAllowedProse, /Raw HTML is prohibited/u);
+  assert.match(
+    renderedAllowedProse,
+    /&lt;author-html data-test=&quot;prose&quot;&gt;example&lt;\/author-html&gt;/u,
+  );
+  assert.doesNotMatch(renderedAllowedProse, /<author-html\b/iu);
 });
 
 test("rejects invalid structured diagram contracts with exact paths", () => {

@@ -141,6 +141,13 @@ node ~/.codex/skills/stenc/scripts/check-rendered-pages.js docs/stenc
 The normal authoring loop is validate JSON, regenerate, check rendered pages,
 then inspect the page with `./open-docs.sh`.
 
+The spec template includes a media primitive backed by the installed
+`templates/assets/architecture-overview.svg`. Install/bootstrap seeds that
+asset into `docs/stenc/content/assets/`; direct setup also copies it when the
+template references it and the target asset is missing. Existing target assets
+are not overwritten, and a freshly copied template passes rendered-page
+checks.
+
 ## Developing Stenc
 
 If you are developing Stenc itself and want a local `stenc` command, link this

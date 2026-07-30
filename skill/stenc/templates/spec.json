@@ -147,8 +147,8 @@
           {
             "type": "media",
             "src": "assets/architecture-overview.svg",
-            "alt": "Optional architecture overview",
-            "caption": "Replace this path with a tracked local asset."
+            "alt": "Structured JSON moves through validation into a fixed rendered page",
+            "caption": "Setup installs this tracked template asset into the docs content assets."
           },
           {
             "type": "taskList",

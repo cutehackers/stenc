@@ -22,6 +22,7 @@ const COLLECTIONS = [
 ];
 const STYLE_TEMPLATES = new Set(["task-first", "operator-console", "evidence-led"]);
 const DEFAULT_SITE_DESCRIPTION = "Fixed-format Stenc documentation app.";
+const BUNDLED_TEMPLATE_ASSETS_DIR = path.resolve(__dirname, "..", "templates", "assets");
 
 function usage() {
   console.log(`Usage: setup-project.js [options]
@@ -35,6 +36,8 @@ Options:
   --skip-install         Deprecated no-op kept for installer compatibility.
   --skip-open-docs-script
                         Do not write ./open-docs.sh in the target project root.
+  --seed-template-assets
+                        Seed bundled template media assets during installation.
   --render-only         Regenerate generated static pages without rewriting source data.
   -h, --help             Show this help.
 `);
@@ -47,6 +50,7 @@ function parseArgs(argv) {
     title: null,
     hasTitle: false,
     renderOnly: false,
+    seedTemplateAssets: false,
     skipOpenDocsScript: false,
   };
 
@@ -59,6 +63,10 @@ function parseArgs(argv) {
     if (arg === "--skip-install") continue;
     if (arg === "--render-only") {
       options.renderOnly = true;
+      continue;
+    }
+    if (arg === "--seed-template-assets") {
+      options.seedTemplateAssets = true;
       continue;
     }
     if (arg === "--skip-open-docs-script") {
@@ -210,6 +218,46 @@ function copyDirectoryContents(sourceDir, targetDir) {
 
 function copyContentAssets(docsDir) {
   copyDirectoryContents(path.join(docsDir, "content", "assets"), path.join(docsDir, "assets"));
+}
+
+function collectMediaSourcesFromSections(sections, sources = new Set()) {
+  for (const section of toList(sections)) {
+    for (const block of toList(section?.blocks)) {
+      if (block?.type === "media" && typeof block.src === "string") {
+        sources.add(block.src);
+      }
+    }
+    collectMediaSourcesFromSections(section?.subSections, sources);
+  }
+  return sources;
+}
+
+function referencedMediaSources(docsDir) {
+  const sources = new Set();
+  for (const collection of COLLECTIONS) {
+    const contentDir = path.join(docsDir, "content", collection.dir);
+    if (!fs.existsSync(contentDir)) continue;
+    for (const fileName of fs.readdirSync(contentDir).filter((name) => name.endsWith(".json"))) {
+      const document = readJsonIfPresent(path.join(contentDir, fileName));
+      collectMediaSourcesFromSections(document?.body?.supportingSections, sources);
+    }
+  }
+  return sources;
+}
+
+function seedBundledTemplateAssets(docsDir, { seedAll = false } = {}) {
+  if (!fs.existsSync(BUNDLED_TEMPLATE_ASSETS_DIR)) return;
+  const contentAssetsDir = path.join(docsDir, "content", "assets");
+  const referencedSources = referencedMediaSources(docsDir);
+  for (const entry of fs.readdirSync(BUNDLED_TEMPLATE_ASSETS_DIR, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (!seedAll && !referencedSources.has(`assets/${entry.name}`)) continue;
+    const targetPath = path.join(contentAssetsDir, entry.name);
+    if (!fs.existsSync(targetPath)) {
+      ensureDirectory(contentAssetsDir);
+      fs.copyFileSync(path.join(BUNDLED_TEMPLATE_ASSETS_DIR, entry.name), targetPath);
+    }
+  }
 }
 
 function writeOpenDocsScript(projectRoot, docsDir) {
@@ -1049,6 +1097,9 @@ function main() {
       writeOpenDocsScript(options.projectRoot, options.docsDir);
     }
     writeAppData(options.docsDir, siteTitle);
+    seedBundledTemplateAssets(options.docsDir, {
+      seedAll: options.seedTemplateAssets,
+    });
     writeGitignore(options.docsDir);
   }
   removeGeneratedArtifacts(options.docsDir);

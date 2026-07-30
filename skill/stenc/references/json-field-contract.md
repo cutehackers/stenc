@@ -114,10 +114,12 @@ Optional spec fields:
 - `supportingSections[].blocks`
 - `supportingSections[].subSections[]`
 
-`supportingSections` supports only five optional extension fields: `facts`,
-`links`, `steps`, `blocks`, and `subSections`. These fields preserve
-user-defined document outlines without introducing user-defined components,
-layouts, variants, kinds, or renderer hooks.
+The optional extension-field registry is exact:
+
+- Optional supporting section extension fields: `blocks`, `codeBlocks`, `facts`, `links`, `steps`, `subSections`
+
+These fields preserve user-defined document outlines without introducing
+user-defined components, layouts, variants, kinds, or renderer hooks.
 
 ### Supporting Section Blocks
 
@@ -161,6 +163,11 @@ Media sources are local only. `media.src` is relative to the docs app
 under `docs/stenc/content/assets/`. The renderer copies source assets to the
 generated `docs/stenc/assets/` directory. Generated assets are derived
 artifacts; source assets under `content/assets/` are not generated artifacts.
+The spec template's `assets/architecture-overview.svg` example is shipped in
+`templates/assets/`. Install/bootstrap seeds that exact file into the target
+`content/assets/` directory. Direct non-render-only setup does the same when a
+copied template references it and no target asset exists. Existing target
+source assets are not overwritten.
 
 Task lists are read-only supporting material. They do not replace
 `body.slices[].steps[]` in plan documents and do not persist user interaction.

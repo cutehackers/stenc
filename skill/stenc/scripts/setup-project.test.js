@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
+const CHECK_RENDERED_PATH = path.join(__dirname, "check-rendered-pages.js");
 const STYLE_SAMPLE_SCRIPT_PATH = path.join(__dirname, "render-style-samples.js");
 const COMPONENT_CATALOG_SPEC = path.join(
   REPO_ROOT,
@@ -852,6 +853,80 @@ test("checked-in style specimens are exact deterministic renderer output", () =>
     firstSnapshot,
     "style sample second render",
   );
+});
+
+test("fresh template workflow renders bundled media and passes rendered checks", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-workflow-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const contentSpecPath = path.join(
+    docsRoot,
+    "content",
+    "specs",
+    "yyyy-mm-dd-topic.spec.json",
+  );
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.dirname(contentSpecPath), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    contentSpecPath,
+  );
+
+  const setupResult = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(setupResult.status, 0, setupResult.stderr || setupResult.stdout);
+
+  const expectedAsset = path.join("assets", "architecture-overview.svg");
+  const bundledAssetPath = path.join(
+    REPO_ROOT,
+    "skill",
+    "stenc",
+    "templates",
+    "assets",
+    "architecture-overview.svg",
+  );
+  assertByteIdentical(
+    path.join(docsRoot, "content", expectedAsset),
+    bundledAssetPath,
+  );
+  assertByteIdentical(
+    path.join(docsRoot, expectedAsset),
+    bundledAssetPath,
+  );
+  assert.ok(fs.existsSync(path.join(docsRoot, "specs", "yyyy-mm-dd-topic", "index.html")));
+
+  const checkResult = spawnSync(
+    process.execPath,
+    [CHECK_RENDERED_PATH, docsRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(checkResult.status, 0, checkResult.stderr || checkResult.stdout);
+
+  const customAsset = '<svg xmlns="http://www.w3.org/2000/svg"><text>Target-owned</text></svg>\n';
+  fs.writeFileSync(path.join(docsRoot, "content", expectedAsset), customAsset);
+  const rerunResult = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(rerunResult.status, 0, rerunResult.stderr || rerunResult.stdout);
+  assert.equal(fs.readFileSync(path.join(docsRoot, "content", expectedAsset), "utf8"), customAsset);
+  assert.equal(fs.readFileSync(path.join(docsRoot, expectedAsset), "utf8"), customAsset);
 });
 
 test("examples setup is byte-idempotent across repeated runs", () => {

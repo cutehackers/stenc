@@ -44,6 +44,18 @@ test("install can prepare the target project's Stenc docs app once", () => {
     true,
   );
   assert.equal(
+    fs.existsSync(
+      path.join(
+        skillsRoot,
+        "stenc",
+        "templates",
+        "assets",
+        "architecture-overview.svg",
+      ),
+    ),
+    true,
+  );
+  assert.equal(
     fs.existsSync(path.join(binRoot, "stenc")),
     true,
   );
@@ -114,6 +126,19 @@ test("install can prepare a target project with default project install", () => 
   assert.equal(
     fs.existsSync(
       path.join(projectRoot, "docs", "stenc", "index.html"),
+    ),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        projectRoot,
+        "docs",
+        "stenc",
+        "content",
+        "assets",
+        "architecture-overview.svg",
+      ),
     ),
     true,
   );

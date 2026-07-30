@@ -100,6 +100,10 @@ The installer caches the Stenc repository under `~/.cache/stenc`, so users do
 not need to pass a local Stenc repository path. It also installs a `stenc`
 command into a writable PATH directory when possible; if that is not available,
 it writes `~/.local/bin/stenc` and prints the PATH line to add.
+Install/bootstrap also seeds the bundled
+`templates/assets/architecture-overview.svg` into the target
+`docs/stenc/content/assets/` directory without overwriting an existing target
+asset.
 
 Check the installed Stenc version:
 
@@ -158,7 +162,10 @@ index; install, setup, and open-docs must not run Git mutation commands.
   per-document components in block data.
 - Use `media` blocks only for local assets under `docs/stenc/content/assets/`;
   write `src` as `assets/...`. Generated `docs/stenc/assets/` files are derived
-  renderer output.
+  renderer output. The spec template's
+  `assets/architecture-overview.svg` is bundled under `templates/assets/`;
+  install/bootstrap seeds it into `content/assets/`. Direct setup copies it
+  when a document references it and the target source asset is missing.
 - Use `taskList` blocks only for read-only supporting checklists. Do not
   replace plan `body.slices[].steps[]`.
 - Use `diagram` blocks when the exact notation is useful as an escaped source

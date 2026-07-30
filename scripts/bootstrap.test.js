@@ -72,7 +72,32 @@ test("bootstrap installs into the current project without a local repo path", ()
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")), true);
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        skillsRoot,
+        "stenc",
+        "templates",
+        "assets",
+        "architecture-overview.svg",
+      ),
+    ),
+    true,
+  );
   assert.equal(fs.existsSync(path.join(projectRoot, "docs", "stenc", "index.html")), true);
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        projectRoot,
+        "docs",
+        "stenc",
+        "content",
+        "assets",
+        "architecture-overview.svg",
+      ),
+    ),
+    true,
+  );
   assert.equal(fs.existsSync(path.join(binRoot, "stenc")), true);
 
   const commandResult = run("stenc", ["--help"], {
