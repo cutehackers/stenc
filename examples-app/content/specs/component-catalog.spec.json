@@ -36,7 +36,7 @@
         "Every current rich block and inline span type"
       ],
       "out": [
-        "New structured diagram blocks",
+        "Production structured diagram rendering",
         "Per-document style controls",
         "Executable client-side diagram runtimes"
       ]
@@ -63,11 +63,12 @@
       {
         "id": "REQ-SPEC-2",
         "title": "Complete rich primitive coverage",
-        "detail": "The fixture must include every supported inline span, callout tone, and rich block type.",
+        "detail": "The fixture must include every supported inline span, callout tone, rich block type, and structured diagram type.",
         "acceptanceCriteria": [
           "All seven inline span types appear in one paragraph block.",
           "Neutral, info, success, warning, and danger callouts are present.",
-          "Quote, table, media, task list, and source diagram blocks are present."
+          "Quote, table, media, task list, and source diagram blocks are present.",
+          "Layer, flow, and relation diagram blocks are present."
         ]
       }
     ],
@@ -214,7 +215,7 @@
       "requiredSkill": "superpowers:writing-plans",
       "notes": [
         "Use the related plan for renderer implementation sequencing.",
-        "Do not introduce structured diagrams until the dedicated diagram slice."
+        "Keep structured diagram rendering in the dedicated renderer slice."
       ]
     },
     "supportingSections": [
@@ -417,6 +418,103 @@
             "language": "mermaid",
             "title": "Current source diagram",
             "source": "flowchart LR\n  JSON --> Validator\n  Validator --> Renderer\n  Renderer --> HTML"
+          },
+          {
+            "type": "layerDiagram",
+            "title": "Catalog validation layers",
+            "summary": "Document sources pass through validation before fixed rendering.",
+            "layers": [
+              {
+                "id": "source",
+                "label": "Source",
+                "role": "consumer",
+                "summary": "Canonical JSON carries the complete document contract.",
+                "nodes": [
+                  {
+                    "id": "catalog-json",
+                    "label": "Catalog JSON",
+                    "detail": "Contains native fields and bounded supporting blocks."
+                  }
+                ],
+                "transition": "The validator checks every field and relation."
+              },
+              {
+                "id": "validation",
+                "label": "Validation",
+                "role": "boundary",
+                "summary": "Dependency-free checks reject contract drift.",
+                "nodes": [
+                  {
+                    "id": "stenc-validator",
+                    "label": "Stenc Validator",
+                    "detail": "Accepts only validator-known structures."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "flowDiagram",
+            "title": "Catalog projection flow",
+            "summary": "Validated catalog data flows into deterministic generated output.",
+            "nodes": [
+              {
+                "id": "validate",
+                "label": "Validate",
+                "detail": "Checks the canonical source contract.",
+                "role": "boundary"
+              },
+              {
+                "id": "render",
+                "label": "Render",
+                "detail": "Projects escaped values into fixed components.",
+                "role": "surface"
+              }
+            ],
+            "edges": [
+              {
+                "from": "validate",
+                "to": "render",
+                "label": "provides approved document"
+              }
+            ]
+          },
+          {
+            "type": "relationDiagram",
+            "title": "Catalog ownership relations",
+            "summary": "The source contract and validator jointly constrain the renderer.",
+            "nodes": [
+              {
+                "id": "contract",
+                "label": "Field Contract",
+                "detail": "Defines the supported semantic vocabulary.",
+                "role": "value"
+              },
+              {
+                "id": "validator",
+                "label": "Validator",
+                "detail": "Enforces the field contract before generation.",
+                "role": "boundary"
+              },
+              {
+                "id": "renderer",
+                "label": "Renderer",
+                "detail": "Produces fixed escaped output from valid data.",
+                "role": "engine"
+              }
+            ],
+            "relations": [
+              {
+                "from": "contract",
+                "to": "validator",
+                "label": "defines rules for"
+              },
+              {
+                "from": "validator",
+                "to": "renderer",
+                "label": "supplies validated input to"
+              }
+            ]
           }
         ],
         "subSections": [

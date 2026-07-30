@@ -2,6 +2,10 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  STRUCTURED_DIAGRAM_TYPES,
+  validateStructuredDiagram,
+} = require("./structured-diagram-contract");
 
 const VALID_TYPES = new Set(["spec", "plan", "decision", "agent-context"]);
 const VALID_STYLE_TEMPLATES = new Set([
@@ -28,7 +32,16 @@ const SUPPORTING_SECTION_FIELDS = new Set([
   "codeBlocks",
   "subSections",
 ]);
-const RICH_BLOCK_TYPES = new Set(["paragraph", "callout", "quote", "table", "media", "taskList", "diagram"]);
+const RICH_BLOCK_TYPES = new Set([
+  "paragraph",
+  "callout",
+  "quote",
+  "table",
+  "media",
+  "taskList",
+  "diagram",
+  ...STRUCTURED_DIAGRAM_TYPES,
+]);
 const INLINE_SPAN_TYPES = new Set(["text", "strong", "emphasis", "code", "link", "kbd", "mark"]);
 const CALLOUT_TONES = new Set(["neutral", "info", "success", "warning", "danger"]);
 const DIAGRAM_LANGUAGES = new Set(["mermaid", "dot", "plain"]);
@@ -456,6 +469,10 @@ function validateRichBlock(block, errors, prefix) {
   }
   if (!RICH_BLOCK_TYPES.has(block.type)) {
     errors.push(`${prefix}type must be one of: ${Array.from(RICH_BLOCK_TYPES).join(", ")}`);
+    return;
+  }
+  if (STRUCTURED_DIAGRAM_TYPES.has(block.type)) {
+    validateStructuredDiagram(block, errors, prefix);
     return;
   }
 

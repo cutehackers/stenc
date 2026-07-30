@@ -52,7 +52,7 @@
       ],
       "out": [
         "Production renderer semantic class implementation",
-        "New structured diagram primitives",
+        "Production structured diagram rendering",
         "Per-document component or style APIs"
       ]
     },
@@ -459,6 +459,103 @@
             "language": "plain",
             "title": "Current execution source diagram",
             "source": "RED TEST -> FIXTURES -> VALIDATION -> INTENTIONAL SEMANTIC GAP"
+          },
+          {
+            "type": "layerDiagram",
+            "title": "Catalog validation layers",
+            "summary": "Document sources pass through validation before fixed rendering.",
+            "layers": [
+              {
+                "id": "source",
+                "label": "Source",
+                "role": "consumer",
+                "summary": "Canonical JSON carries the complete document contract.",
+                "nodes": [
+                  {
+                    "id": "catalog-json",
+                    "label": "Catalog JSON",
+                    "detail": "Contains native fields and bounded supporting blocks."
+                  }
+                ],
+                "transition": "The validator checks every field and relation."
+              },
+              {
+                "id": "validation",
+                "label": "Validation",
+                "role": "boundary",
+                "summary": "Dependency-free checks reject contract drift.",
+                "nodes": [
+                  {
+                    "id": "stenc-validator",
+                    "label": "Stenc Validator",
+                    "detail": "Accepts only validator-known structures."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "flowDiagram",
+            "title": "Catalog projection flow",
+            "summary": "Validated catalog data flows into deterministic generated output.",
+            "nodes": [
+              {
+                "id": "validate",
+                "label": "Validate",
+                "detail": "Checks the canonical source contract.",
+                "role": "boundary"
+              },
+              {
+                "id": "render",
+                "label": "Render",
+                "detail": "Projects escaped values into fixed components.",
+                "role": "surface"
+              }
+            ],
+            "edges": [
+              {
+                "from": "validate",
+                "to": "render",
+                "label": "provides approved document"
+              }
+            ]
+          },
+          {
+            "type": "relationDiagram",
+            "title": "Catalog ownership relations",
+            "summary": "The source contract and validator jointly constrain the renderer.",
+            "nodes": [
+              {
+                "id": "contract",
+                "label": "Field Contract",
+                "detail": "Defines the supported semantic vocabulary.",
+                "role": "value"
+              },
+              {
+                "id": "validator",
+                "label": "Validator",
+                "detail": "Enforces the field contract before generation.",
+                "role": "boundary"
+              },
+              {
+                "id": "renderer",
+                "label": "Renderer",
+                "detail": "Produces fixed escaped output from valid data.",
+                "role": "engine"
+              }
+            ],
+            "relations": [
+              {
+                "from": "contract",
+                "to": "validator",
+                "label": "defines rules for"
+              },
+              {
+                "from": "validator",
+                "to": "renderer",
+                "label": "supplies validated input to"
+              }
+            ]
           }
         ],
         "subSections": [
