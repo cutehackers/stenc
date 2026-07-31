@@ -4,6 +4,7 @@
   "id": "spec:yyyy-mm-dd-topic",
   "slug": "yyyy-mm-dd-topic",
   "status": "draft",
+  "language": "en",
   "title": "TBD",
   "description": "TBD",
   "owner": "TBD",
@@ -110,9 +111,19 @@
           {
             "type": "paragraph",
             "spans": [
-              { "type": "text", "text": "Run " },
-              { "type": "code", "text": "./scripts/validate.sh" },
-              { "type": "text", "text": " before publishing." }
+              { "type": "text", "text": "Keep " },
+              { "type": "strong", "text": "canonical meaning" },
+              { "type": "text", "text": " in JSON, use " },
+              { "type": "emphasis", "text": "bounded primitives" },
+              { "type": "text", "text": ", run " },
+              { "type": "code", "text": "node \"${CODEX_SKILLS_DIR:-$HOME/.codex/skills}/stenc/scripts/validate-stenc-doc.js\" docs/stenc/content/specs/yyyy-mm-dd-topic.spec.json" },
+              { "type": "text", "text": ", press " },
+              { "type": "kbd", "text": "Enter" },
+              { "type": "text", "text": " to stop the preview, " },
+              { "type": "mark", "text": "inspect the result" },
+              { "type": "text", "text": ", and return to the " },
+              { "type": "link", "text": "docs home", "target": "../../" },
+              { "type": "text", "text": "." }
             ]
           },
           {
@@ -120,6 +131,25 @@
             "tone": "info",
             "title": "JSON remains the source",
             "body": "Generated pages are reproducible views, not the document source."
+          },
+          {
+            "type": "quote",
+            "text": "Choose the smallest fixed primitive that preserves the source meaning.",
+            "source": "Stenc authoring protocol"
+          },
+          {
+            "type": "table",
+            "columns": ["Need", "Primitive"],
+            "rows": [
+              ["Exact source notation", "diagram"],
+              ["Layer ownership", "layerDiagram"]
+            ]
+          },
+          {
+            "type": "media",
+            "src": "assets/architecture-overview.svg",
+            "alt": "Structured JSON moves through validation into a fixed rendered page",
+            "caption": "Setup installs this tracked template asset into the docs content assets."
           },
           {
             "type": "taskList",
@@ -133,6 +163,91 @@
             "language": "plain",
             "title": "Source flow",
             "source": "JSON -> Validate -> Render"
+          },
+          {
+            "type": "layerDiagram",
+            "title": "Layer ownership",
+            "summary": "Dependencies cross explicit layers in source order.",
+            "layers": [
+              {
+                "id": "consumer-layer",
+                "label": "Consumer",
+                "role": "consumer",
+                "summary": "Calls the supported public surface.",
+                "nodes": [
+                  {
+                    "id": "feature-page",
+                    "label": "FeaturePage",
+                    "detail": "Owns feature composition."
+                  }
+                ],
+                "transition": "Calls the public API."
+              },
+              {
+                "id": "surface-layer",
+                "label": "Surface",
+                "role": "surface",
+                "summary": "Defines the stable public API.",
+                "nodes": [
+                  {
+                    "id": "public-api",
+                    "label": "PublicApi",
+                    "detail": "Protects the implementation boundary."
+                  }
+                ],
+                "transition": "Delegates validated work."
+              },
+              {
+                "id": "engine-layer",
+                "label": "Engine",
+                "role": "engine",
+                "summary": "Performs the bounded operation.",
+                "nodes": [
+                  {
+                    "id": "runtime-engine",
+                    "label": "RuntimeEngine",
+                    "detail": "Owns internal execution."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "relationDiagram",
+            "title": "Runtime ownership",
+            "summary": "Session, boundary, value, and neutral participants retain explicit ownership.",
+            "nodes": [
+              {
+                "id": "runtime-session",
+                "label": "RuntimeSession",
+                "detail": "Owns the active lifecycle.",
+                "role": "session"
+              },
+              {
+                "id": "external-boundary",
+                "label": "ExternalBoundary",
+                "detail": "Adapts an external resource.",
+                "role": "boundary"
+              },
+              {
+                "id": "result-value",
+                "label": "ResultValue",
+                "detail": "Carries validated state.",
+                "role": "value"
+              },
+              {
+                "id": "observer",
+                "label": "Observer",
+                "detail": "Records lifecycle evidence.",
+                "role": "neutral"
+              }
+            ],
+            "relations": [
+              { "from": "runtime-session", "to": "external-boundary", "label": "owns adapter" },
+              { "from": "external-boundary", "to": "result-value", "label": "produces" },
+              { "from": "result-value", "to": "observer", "label": "notifies" },
+              { "from": "observer", "to": "runtime-session", "label": "reports lifecycle" }
+            ]
           }
         ],
         "subSections": [],

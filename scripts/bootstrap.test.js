@@ -72,8 +72,64 @@ test("bootstrap installs into the current project without a local repo path", ()
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(fs.existsSync(path.join(skillsRoot, "stenc", "SKILL.md")), true);
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        skillsRoot,
+        "stenc",
+        "templates",
+        "assets",
+        "architecture-overview.svg",
+      ),
+    ),
+    true,
+  );
   assert.equal(fs.existsSync(path.join(projectRoot, "docs", "stenc", "index.html")), true);
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        projectRoot,
+        "docs",
+        "stenc",
+        "content",
+        "assets",
+        "architecture-overview.svg",
+      ),
+    ),
+    true,
+  );
   assert.equal(fs.existsSync(path.join(binRoot, "stenc")), true);
+
+  const planTemplate = JSON.parse(
+    fs.readFileSync(path.join(skillsRoot, "stenc", "templates", "plan.json"), "utf8"),
+  );
+  const planPath = path.join(
+    projectRoot,
+    "docs",
+    "stenc",
+    "content",
+    "plans",
+    "yyyy-mm-dd-topic.plan.json",
+  );
+  fs.mkdirSync(path.dirname(planPath), { recursive: true });
+  fs.writeFileSync(planPath, `${JSON.stringify(planTemplate, null, 2)}\n`);
+  const templateValidationCommand = planTemplate.body.slices[0].steps.find(
+    (step) => step.command,
+  ).command;
+  const templateValidationResult = run("bash", ["-c", templateValidationCommand], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CODEX_SKILLS_DIR: skillsRoot,
+    },
+  });
+  assert.equal(
+    templateValidationResult.status,
+    0,
+    templateValidationResult.stderr || templateValidationResult.stdout,
+  );
+  assert.match(templateValidationResult.stdout, /Stenc validation passed/u);
 
   const commandResult = run("stenc", ["--help"], {
     cwd: projectRoot,
@@ -119,4 +175,40 @@ test("bootstrap forwards install options without requiring the install subcomman
     fs.existsSync(path.join(projectRoot, "docs", "internal", "stenc", "index.html")),
     true,
   );
+});
+
+test("bootstrap rejects a symlinked docs ancestor without mutating its target", (t) => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-bootstrap-symlink-"));
+  const sourceRepo = path.join(tempRoot, "source");
+  const cacheRoot = path.join(tempRoot, "cache");
+  const skillsRoot = path.join(tempRoot, "skills");
+  const binRoot = path.join(tempRoot, "bin");
+  const projectRoot = path.join(tempRoot, "target-project");
+  const outsideRoot = path.join(tempRoot, "outside");
+  const sentinelPath = path.join(outsideRoot, "sentinel.txt");
+  const sentinel = "bootstrap external sentinel must survive\n";
+  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
+  fs.mkdirSync(binRoot);
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+  fs.symlinkSync(outsideRoot, path.join(projectRoot, "docs"), "dir");
+  copyRepoFixture(sourceRepo);
+
+  const result = run("bash", [BOOTSTRAP_SCRIPT], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      PATH: `${binRoot}${path.delimiter}${process.env.PATH}`,
+      CODEX_SKILLS_DIR: skillsRoot,
+      STENC_BIN_DIR: binRoot,
+      STENC_CACHE_DIR: cacheRoot,
+      STENC_REPO: sourceRepo,
+    },
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "stenc")), false);
 });

@@ -6,13 +6,1313 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { renderLayout } = require("./setup-project");
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "setup-project.js");
+const CHECK_RENDERED_PATH = path.join(__dirname, "check-rendered-pages.js");
+const STYLE_SAMPLE_SCRIPT_PATH = path.join(__dirname, "render-style-samples.js");
+const COMPONENT_CATALOG_SPEC = path.join(
+  REPO_ROOT,
+  "examples-app",
+  "content",
+  "specs",
+  "component-catalog.spec.json",
+);
+const COMPONENT_CATALOG_PLAN = path.join(
+  REPO_ROOT,
+  "examples-app",
+  "content",
+  "plans",
+  "component-catalog.plan.json",
+);
+const COMPONENT_CATALOG_SPEC_MIRROR = path.join(
+  REPO_ROOT,
+  "examples",
+  "component-catalog.spec.json",
+);
+const COMPONENT_CATALOG_PLAN_MIRROR = path.join(
+  REPO_ROOT,
+  "examples",
+  "component-catalog.plan.json",
+);
+
+const RICH_BLOCK_CLASS_TOKENS = [
+  "rich-blocks",
+  "rich-block",
+  "rich-paragraph",
+  "rich-callout",
+  "rich-quote",
+  "table",
+  "rich-media",
+  "rich-task-list",
+  "task-check",
+  "rich-diagram",
+  "code-stack",
+  "nested-sections",
+  "supporting-section",
+  "step-list",
+  "step",
+  "command",
+];
+
+const SPEC_COMPONENT_CLASS_TOKENS = [
+  "document",
+  "task-first",
+  "document-header",
+  "description",
+  "document-metadata",
+  "document-summary",
+  "human-summary",
+  "agent-summary",
+  "source-of-truth",
+  "related-plans",
+  "related-decisions",
+  "goal",
+  "architecture",
+  "architecture-flow",
+  "scope",
+  "scope-in",
+  "scope-out",
+  "problem",
+  "requirements",
+  "requirement",
+  "approaches",
+  "approach",
+  "components",
+  "component",
+  "data-flow",
+  "error-handling",
+  "contracts",
+  "contract",
+  "surfaces",
+  "surface",
+  "testing-strategy",
+  "validation",
+  "agent-instructions",
+  "review-checklist",
+  "self-review-checks",
+  "implementation-handoff",
+  "supporting-sections",
+  "open-questions",
+  ...RICH_BLOCK_CLASS_TOKENS,
+  "tone-neutral",
+  "tone-info",
+  "tone-success",
+  "tone-warning",
+  "tone-danger",
+  "language-shell",
+  "language-json",
+  "language-text",
+];
+
+const PLAN_COMPONENT_CLASS_TOKENS = [
+  "document",
+  "operator-console",
+  "document-header",
+  "description",
+  "document-metadata",
+  "document-summary",
+  "human-summary",
+  "agent-summary",
+  "source-of-truth",
+  "related-spec",
+  "goal",
+  "architecture",
+  "tech-stack",
+  "worker-instructions",
+  "scope-check",
+  "current-state",
+  "target-state",
+  "scope",
+  "scope-in",
+  "scope-out",
+  "file-structure",
+  "file-structure-entry",
+  "plan-slices",
+  "plan-slice",
+  "slice-surfaces",
+  "slice-files",
+  "plan-file",
+  "slice-steps",
+  "plan-step",
+  "step-instruction",
+  "step-code-blocks",
+  "step-command",
+  "step-expected",
+  "done-when",
+  "execution-order",
+  "risks",
+  "risk",
+  "validation",
+  "agent-instructions",
+  "self-review-checks",
+  "execution-handoff",
+  "supporting-sections",
+  "open-questions",
+  ...RICH_BLOCK_CLASS_TOKENS,
+  "tone-info",
+  "tone-success",
+  "language-shell",
+  "language-javascript",
+  "language-json",
+  "language-text",
+];
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function extractClassTokens(html) {
+  const tokens = new Set();
+  for (const match of html.matchAll(/class="([^"]*)"/gu)) {
+    for (const token of match[1].split(/\s+/u)) {
+      if (token) tokens.add(token);
+    }
+  }
+  return tokens;
+}
+
+function assertClassTokenInventory(inventories) {
+  const missingGroups = inventories
+    .map(({ label, html, expected }) => {
+      const actual = extractClassTokens(html);
+      return {
+        label,
+        missing: expected.filter((token) => !actual.has(token)),
+      };
+    })
+    .filter(({ missing }) => missing.length > 0);
+
+  if (missingGroups.length > 0) {
+    const detail = missingGroups
+      .map(({ label, missing }) => `${label}=[${missing.join(", ")}]`)
+      .join("; ");
+    assert.fail(`Missing semantic class tokens: ${detail}`);
+  }
+}
+
+function assertMarkupOrder(html, markers, label) {
+  let previousIndex = -1;
+  for (const marker of markers) {
+    const currentIndex = html.indexOf(marker);
+    assert.notEqual(currentIndex, -1, `${label}: missing ${marker}`);
+    assert.ok(currentIndex > previousIndex, `${label}: ${marker} is out of order`);
+    previousIndex = currentIndex;
+  }
+}
+
+function assertHeadingOrder(html, label) {
+  const levels = [...html.matchAll(/<h([1-6])(?:\s[^>]*)?>/gu)].map((match) => Number(match[1]));
+  assert.ok(levels.length > 0, `${label}: expected headings`);
+  assert.equal(levels[0], 1, `${label}: detail page must begin with h1`);
+  for (let index = 1; index < levels.length; index += 1) {
+    assert.ok(
+      levels[index] <= levels[index - 1] + 1,
+      `${label}: heading level skips from h${levels[index - 1]} to h${levels[index]}`,
+    );
+  }
+}
+
+function assertDocumentNavigation(html, expectedIds, label) {
+  const navigationMatch = html.match(
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch, `${label}: missing document navigation`);
+  const targets = [...navigationMatch[1].matchAll(/href="#([^"]+)"/gu)]
+    .map((match) => match[1]);
+  assert.deepEqual(targets, expectedIds, `${label}: native section inventory changed`);
+  const renderedNativeSectionIds = [
+    ...html.matchAll(/<section id="([^"]+)" class="[^"]*">/gu),
+  ]
+    .map((match) => match[1])
+    .filter((id) => id !== "human-summary-title" && id !== "agent-summary-title");
+  assert.deepEqual(
+    renderedNativeSectionIds,
+    expectedIds,
+    `${label}: navigation and rendered native sections must share one inventory`,
+  );
+  const ids = [...html.matchAll(/\sid="([^"]+)"/gu)].map((match) => match[1]);
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `${label}: every rendered id must be unique`,
+  );
+  const onPageTargets = [...html.matchAll(/href="#([^"]+)"/gu)]
+    .map((match) => match[1]);
+  for (const target of onPageTargets) {
+    assert.equal(
+      ids.filter((id) => id === target).length,
+      1,
+      `${label}: #${target} must resolve to exactly one id`,
+    );
+  }
+}
+
+function extractPlanStepWrappers(html) {
+  return [...html.matchAll(
+    /<section class="plan-step step">(?:(?!<section\b)[\s\S])*?<\/section>/gu,
+  )].map((match) => match[0]);
+}
+
+function assertPlanStepContract(html, expectedSteps, label) {
+  const wrappers = extractPlanStepWrappers(html);
+  assert.equal(wrappers.length, expectedSteps.length, `${label}: plan-step wrapper count`);
+  for (const [stepId, expectedClasses] of expectedSteps) {
+    const matches = wrappers.filter((wrapper) =>
+      wrapper.includes(`<span class="badge">${stepId}</span>`));
+    assert.equal(matches.length, 1, `${label}: ${stepId} must have exactly one wrapper`);
+    const wrapper = matches[0];
+    assert.match(wrapper, /^<section class="plan-step step">/u);
+    assert.match(wrapper, /<\/section>$/u);
+    for (const className of [
+      "step-instruction",
+      "step-code-blocks",
+      "step-command",
+      "step-expected",
+    ]) {
+      const expectedCount = expectedClasses.includes(className) ? 1 : 0;
+      assert.equal(
+        (wrapper.match(new RegExp(`class="${className}"`, "gu")) || []).length,
+        expectedCount,
+        `${label}: ${stepId} ${className} wrapper count`,
+      );
+    }
+  }
+}
+
+function extractSupportingOutline(html) {
+  const sectionStack = [];
+  const outline = [];
+  const tokenPattern = /<section\b[^>]*class="([^"]*)"[^>]*>|<\/section>|<h([1-6])[^>]*>([^<]*)<\/h\2>|<p class="([^"]*semantic-label[^"]*)"><strong>([^<]*)<\/strong><\/p>/gu;
+  for (const match of html.matchAll(tokenPattern)) {
+    if (match[0].startsWith("<section")) {
+      sectionStack.push(match[1]);
+      continue;
+    }
+    if (match[0] === "</section>") {
+      sectionStack.pop();
+      continue;
+    }
+    const supportingParent = [...sectionStack]
+      .reverse()
+      .find((classes) => classes.includes("supporting-section"));
+    if (!supportingParent) continue;
+    outline.push({
+      text: match[3] || match[5],
+      kind: match[2] ? `h${match[2]}` : "label",
+      parent: supportingParent.match(/depth-\d+/u)?.[0],
+    });
+  }
+  return outline;
+}
+
+function assertByteIdentical(sourcePath, mirrorPath) {
+  assert.equal(
+    Buffer.compare(fs.readFileSync(sourcePath), fs.readFileSync(mirrorPath)),
+    0,
+    `Fixture mirror differs: ${path.relative(REPO_ROOT, mirrorPath)}`,
+  );
+}
+
+function snapshotSelectedFiles(rootPath, relativePaths) {
+  const snapshot = {};
+  for (const relativePath of relativePaths) {
+    const filePath = path.join(rootPath, relativePath);
+    assert.equal(fs.existsSync(filePath), true, `Missing snapshot file: ${relativePath}`);
+    snapshot[relativePath] = fs.readFileSync(filePath).toString("base64");
+  }
+  return snapshot;
+}
+
+function assertSnapshotParity(actual, expected, label) {
+  const paths = [...new Set([...Object.keys(actual), ...Object.keys(expected)])].sort();
+  const drift = paths.filter((filePath) => actual[filePath] !== expected[filePath]);
+  assert.deepEqual(drift, [], `${label}: ${drift.join(", ")}`);
+}
+
+function extractSampleNavigation(html, label) {
+  const navigationMatch = html.match(
+    /<nav class="collection-navigation" aria-label="Style examples">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch, `${label}: missing Style examples navigation`);
+  return [...navigationMatch[1].matchAll(
+    /<a class="nav-link" href="([^"]+)"(?: aria-current="page")?>([^<]+)<\/a>/gu,
+  )].map((match) => ({
+    href: match[1],
+    label: match[2],
+    current: match[0].includes('aria-current="page"'),
+  }));
+}
+
+function cssDeclarations(css, selector) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const match = css.match(new RegExp(`(?:^|\\n)${escapedSelector}\\s*\\{([^}]*)\\}`, "u"));
+  assert.ok(match, `Missing CSS selector: ${selector}`);
+
+  return Object.fromEntries(
+    match[1]
+      .split(";")
+      .map((declaration) => declaration.trim())
+      .filter(Boolean)
+      .map((declaration) => {
+        const separator = declaration.indexOf(":");
+        assert.notEqual(separator, -1, `Invalid CSS declaration in ${selector}: ${declaration}`);
+        return [
+          declaration.slice(0, separator).trim(),
+          declaration.slice(separator + 1).trim(),
+        ];
+      }),
+  );
+}
+
+function relativeLuminance(hexColor) {
+  assert.match(hexColor, /^#[0-9a-f]{6}$/iu);
+  const channels = hexColor
+    .slice(1)
+    .match(/.{2}/gu)
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) =>
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4,
+    );
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground, background) {
+  const foregroundLuminance = relativeLuminance(foreground);
+  const backgroundLuminance = relativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+test("semantic small-text color pairs meet WCAG AA contrast", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const semanticPairs = [
+    ["info", "--color-info", "--color-info-tint"],
+    ["success", "--color-success", "--color-success-tint"],
+    ["warning", "--color-warning", "--color-warning-tint"],
+    ["danger", "--color-danger", "--color-danger-tint"],
+    ["relation", "--color-relation", "--color-relation-tint"],
+    ["code", "--color-code-text", "--color-code-surface"],
+    ["filled control", "--color-on-accent", "--color-info"],
+    ["highlight", "--color-text", "--color-highlight"],
+  ];
+
+  for (const [name, foregroundToken, backgroundToken] of semanticPairs) {
+    const foreground = root[foregroundToken];
+    const background = root[backgroundToken];
+    assert.equal(typeof foreground, "string", `Missing ${foregroundToken}`);
+    assert.equal(typeof background, "string", `Missing ${backgroundToken}`);
+    const ratio = contrastRatio(foreground, background);
+    assert.ok(
+      ratio >= 4.5,
+      `${name} small-text contrast is ${ratio.toFixed(3)}:1 for ${foreground} on ${background}`,
+    );
+  }
+});
+
+test("interactive control boundaries meet non-text contrast", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const controlPairs = [
+    ["control on page", "--color-control-border", "--color-page"],
+    ["control on surface", "--color-control-border", "--color-surface"],
+    ["control on soft surface", "--color-control-border", "--color-surface-soft"],
+    ["filled info control on surface", "--color-info", "--color-surface"],
+  ];
+
+  for (const [name, boundaryToken, backgroundToken] of controlPairs) {
+    const boundary = root[boundaryToken];
+    const background = root[backgroundToken];
+    assert.equal(typeof boundary, "string", `Missing ${boundaryToken}`);
+    assert.equal(typeof background, "string", `Missing ${backgroundToken}`);
+    const ratio = contrastRatio(boundary, background);
+    assert.ok(
+      ratio >= 3,
+      `${name} contrast is ${ratio.toFixed(3)}:1 for ${boundary} on ${background}`,
+    );
+  }
+});
+
+test("interactive cards have scoped hover and a non-color anchor affordance", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.deepEqual(cssDeclarations(css, "a.panel,\nbutton.panel"), {
+    "border-color": "var(--color-control-border)",
+  });
+  assert.deepEqual(cssDeclarations(css, "a.panel h3"), {
+    "text-decoration": "underline",
+    "text-decoration-thickness": "1px",
+    "text-underline-offset": "4px",
+  });
+  assert.deepEqual(cssDeclarations(css, "a.panel:hover,\nbutton.panel:hover"), {
+    "border-color": "var(--color-info)",
+    "box-shadow": "var(--shadow-raised)",
+  });
+  assert.doesNotMatch(
+    css,
+    /(?:^|\n)\.panel:hover\s*\{/u,
+    "static panels must not expose an interactive hover cue",
+  );
+  assert.equal(
+    cssDeclarations(css, ".sort-btn,\n.button").border,
+    "1px solid var(--color-control-border)",
+  );
+});
+
+test("summary cards keep one readable content column inside the two-card grid", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.match(
+    css,
+    /\.summary-grid,[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/u,
+  );
+  assert.doesNotMatch(css, /(?:^|\n)\.document-summary,\n/gu);
+  assert.doesNotMatch(css, /(?:^|\n)\.document-summary > \*/gu);
+});
+
+test("canonical styles do not expose unused legacy aliases", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const root = cssDeclarations(buildUnifiedStyles(), ":root");
+  const legacyAliases = [
+    "--bg",
+    "--paper",
+    "--paper-soft",
+    "--panel",
+    "--ink",
+    "--muted",
+    "--line",
+    "--line-strong",
+    "--soft",
+    "--accent",
+    "--accent-2",
+    "--amber",
+    "--danger",
+    "--radius",
+    "--shadow-sm",
+    "--shadow-md",
+  ];
+
+  assert.deepEqual(
+    legacyAliases.filter((token) => Object.hasOwn(root, token)),
+    [],
+  );
+});
+
+test("selector palettes use semantic tokens", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+  const root = cssDeclarations(css, ":root");
+
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-code-border",
+        "--color-code-surface",
+        "--color-code-text",
+        "--color-highlight",
+        "--color-on-accent",
+        "--color-surface-overlay",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-code-border": "#2f3a4a",
+      "--color-code-surface": "#18212f",
+      "--color-code-text": "#f8fafc",
+      "--color-highlight": "#fff0a8",
+      "--color-on-accent": "#ffffff",
+      "--color-surface-overlay": "rgba(255, 255, 255, 0.94)",
+    },
+  );
+  assert.deepEqual(cssDeclarations(css, "pre,\n.command"), {
+    border: "1px solid var(--color-code-border)",
+    "border-radius": "var(--radius-control)",
+    background: "var(--color-code-surface)",
+    color: "var(--color-code-text)",
+    display: "block",
+    margin: "var(--space-2) 0",
+    "max-width": "100%",
+    "overflow-x": "auto",
+    padding: "var(--space-3) var(--space-4)",
+    width: "100%",
+  });
+  assert.equal(cssDeclarations(css, "mark").background, "var(--color-highlight)");
+  assert.equal(
+    cssDeclarations(css, ".sort-btn:hover,\n.sort-btn.active,\n.button").color,
+    "var(--color-on-accent)",
+  );
+  assert.equal(
+    cssDeclarations(css, ".site-header").background,
+    "var(--color-surface-overlay)",
+  );
+
+  const selectors = css.slice(css.indexOf("}\n") + 2);
+  assert.doesNotMatch(selectors, /#[0-9a-f]{3,8}/iu);
+  assert.doesNotMatch(selectors, /rgba?\(/iu);
+});
+
+test("unified B style tokens", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-unified-styles-"));
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const css = fs.readFileSync(
+    path.join(projectRoot, "docs", "stenc", "styles.css"),
+    "utf8",
+  );
+  const root = cssDeclarations(css, ":root");
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-page",
+        "--color-surface",
+        "--color-text",
+        "--color-muted",
+        "--color-subtle",
+        "--color-line",
+        "--color-control-border",
+        "--color-info",
+        "--color-success",
+        "--color-warning",
+        "--color-danger",
+        "--color-relation",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-page": "#f2f4f6",
+      "--color-surface": "#ffffff",
+      "--color-text": "#191f28",
+      "--color-muted": "#4e5968",
+      "--color-subtle": "#6b7684",
+      "--color-line": "#d8dee6",
+      "--color-control-border": "#7b8794",
+      "--color-info": "#1769c2",
+      "--color-success": "#087f5b",
+      "--color-warning": "#9a5b00",
+      "--color-danger": "#c5293d",
+      "--color-relation": "#6c58e6",
+    },
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--color-diagram-consumer",
+        "--color-diagram-surface",
+        "--color-diagram-session",
+        "--color-diagram-engine",
+        "--color-diagram-boundary",
+        "--color-diagram-value",
+        "--color-diagram-neutral",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--color-diagram-consumer": "var(--color-info)",
+      "--color-diagram-surface": "#2878d0",
+      "--color-diagram-session": "var(--color-relation)",
+      "--color-diagram-engine": "var(--color-warning)",
+      "--color-diagram-boundary": "var(--color-danger)",
+      "--color-diagram-value": "var(--color-success)",
+      "--color-diagram-neutral": "var(--color-muted)",
+    },
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      [
+        "--font-body",
+        "--line-body",
+        "--font-lead",
+        "--font-h1",
+        "--font-h2",
+        "--font-h3",
+        "--font-table",
+        "--font-nav",
+        "--font-metadata",
+        "--font-code",
+        "--space-1",
+        "--space-2",
+        "--space-3",
+        "--space-4",
+        "--space-5",
+        "--space-6",
+        "--radius-component",
+        "--shadow-component",
+      ].map((name) => [name, root[name]]),
+    ),
+    {
+      "--font-body": "17px",
+      "--line-body": "1.6",
+      "--font-lead": "18px",
+      "--font-h1": "clamp(34px, 5vw, 48px)",
+      "--font-h2": "24px",
+      "--font-h3": "17px",
+      "--font-table": "15px",
+      "--font-nav": "15px",
+      "--font-metadata": "13px",
+      "--font-code": "14px",
+      "--space-1": "4px",
+      "--space-2": "8px",
+      "--space-3": "12px",
+      "--space-4": "16px",
+      "--space-5": "24px",
+      "--space-6": "32px",
+      "--radius-component": "14px",
+      "--shadow-component": "0 2px 8px rgba(0, 0, 0, 0.05)",
+    },
+  );
+
+  assert.deepEqual(cssDeclarations(css, "body"), {
+    margin: "0",
+    background: "var(--color-page)",
+    color: "var(--color-text)",
+    "font-family":
+      'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    "font-size": "var(--font-body)",
+    "line-height": "var(--line-body)",
+  });
+  assert.equal(
+    cssDeclarations(css, ".table,\ntable")["font-size"],
+    "var(--font-table)",
+  );
+  assert.equal(cssDeclarations(css, ".nav-link")["font-size"], "var(--font-nav)");
+  assert.equal(
+    cssDeclarations(
+      css,
+      ".badge,\n.pill,\n.version-pill,\n.timeline-badge,\n.method,\n.diagram-role-label",
+    )["font-size"],
+    "var(--font-metadata)",
+  );
+  assert.deepEqual(cssDeclarations(css, ":focus-visible"), {
+    outline: "3px solid var(--color-info)",
+    "outline-offset": "3px",
+  });
+  assert.deepEqual(
+    cssDeclarations(css, "@media (prefers-reduced-motion: reduce) {\n  *,\n  *::before,\n  *::after"),
+    {
+      "scroll-behavior": "auto !important",
+      "transition-duration": "0.001ms !important",
+      "animation-duration": "0.001ms !important",
+      "animation-iteration-count": "1 !important",
+    },
+  );
+  assert.match(css, /@media \(max-width: 780px\) \{/u);
+});
+
+test("canonical unified styles stay byte-identical across generated and sample CSS", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const calloutTitle = cssDeclarations(
+    buildUnifiedStyles(),
+    ".rich-callout .rich-block-title",
+  );
+  assert.equal(calloutTitle["margin-top"], "0");
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-style-parity-"));
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const canonical = Buffer.from(buildUnifiedStyles());
+  const generated = fs.readFileSync(
+    path.join(projectRoot, "docs", "stenc", "styles.css"),
+  );
+  const sampleRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-style-parity-"));
+  const samplePath = path.join(sampleRoot, "styles.css");
+  fs.writeFileSync(samplePath, buildUnifiedStyles());
+  const sample = fs.readFileSync(samplePath);
+
+  assert.equal(Buffer.compare(generated, canonical), 0, "generated CSS differs");
+  assert.equal(Buffer.compare(sample, canonical), 0, "sample CSS differs");
+
+  const setupSource = fs.readFileSync(SCRIPT_PATH, "utf8");
+  assert.equal(
+    (setupSource.match(/buildUnifiedStyles\(\)/gu) || []).length,
+    1,
+    "setup-project must write the canonical stylesheet exactly once",
+  );
+  assert.doesNotMatch(
+    setupSource,
+    /`?:root\s*\{/u,
+    "setup-project must not retain a second inline stylesheet",
+  );
+});
+
+test("sample pages use truthful titles and a deterministic style navigation contract", () => {
+  const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
+  const expectedNavigation = [
+    { href: "./task-first.html", label: "Task-first" },
+    { href: "./operator-console.html", label: "Operator console" },
+    { href: "./evidence-led.html", label: "Evidence-led" },
+  ];
+  const pages = [
+    ["index.html", "Stenc Style Examples", null],
+    ["task-first.html", "Task-first · Stenc Style Examples", "./task-first.html"],
+    ["operator-console.html", "Operator console · Stenc Style Examples", "./operator-console.html"],
+    ["evidence-led.html", "Evidence-led · Stenc Style Examples", "./evidence-led.html"],
+  ];
+
+  for (const [fileName, expectedTitle, currentHref] of pages) {
+    const filePath = path.join(sampleRoot, fileName);
+    const html = fs.readFileSync(filePath, "utf8");
+    assert.match(
+      html,
+      new RegExp(`<title>${expectedTitle.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}</title>`, "u"),
+      `${fileName}: document title`,
+    );
+    const navigation = extractSampleNavigation(html, fileName);
+    assert.deepEqual(
+      navigation.map(({ href, label }) => ({ href, label })),
+      expectedNavigation,
+      `${fileName}: style link contract`,
+    );
+    assert.deepEqual(
+      navigation.filter(({ current }) => current).map(({ href }) => href),
+      currentHref ? [currentHref] : [],
+      `${fileName}: current style contract`,
+    );
+    for (const { href } of navigation) {
+      assert.equal(
+        fs.existsSync(path.resolve(sampleRoot, href)),
+        true,
+        `${fileName}: missing local sample target ${href}`,
+      );
+    }
+    for (const match of html.matchAll(/(?:href|src)="((?:\.{1,2}\/)[^"#?]+)(?:\?[^"]*)?"/gu)) {
+      const absoluteTarget = path.resolve(sampleRoot, match[1]);
+      const repositoryRelativeTarget = path.relative(REPO_ROOT, absoluteTarget);
+      assert.equal(
+        fs.existsSync(absoluteTarget),
+        true,
+        `${fileName}: missing local path ${match[1]}`,
+      );
+      assert.equal(
+        repositoryRelativeTarget.startsWith(".."),
+        false,
+        `${fileName}: local path escapes the repository: ${match[1]}`,
+      );
+    }
+    if (currentHref) {
+      assert.doesNotMatch(html, /<aside class="rich-block rich-callout/u);
+      assert.ok(
+        (html.match(/class="rich-block rich-callout[^"]*" role="note" aria-label="[^"]+"/gu)
+          || []).length > 0,
+        `${fileName}: callouts must be named notes`,
+      );
+      assert.equal((html.match(/<input class="task-check" type="checkbox"/gu) || []).length, 2);
+      assert.equal(
+        (html.match(/<input class="task-check" type="checkbox"[^>]* checked/gu) || []).length,
+        1,
+      );
+    }
+  }
+});
+
+test("checked-in style specimens are exact deterministic renderer output", () => {
+  const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-style-samples-"));
+  const sampleRoot = path.join(REPO_ROOT, "samples", "stenc-doc-styles");
+  const fileNames = [
+    "task-first.html",
+    "operator-console.html",
+    "evidence-led.html",
+  ];
+
+  let result = spawnSync(
+    process.execPath,
+    [STYLE_SAMPLE_SCRIPT_PATH, "--output-dir", outputRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const firstSnapshot = snapshotSelectedFiles(outputRoot, fileNames);
+  for (const fileName of fileNames) {
+    assertByteIdentical(
+      path.join(outputRoot, fileName),
+      path.join(sampleRoot, fileName),
+    );
+  }
+
+  result = spawnSync(
+    process.execPath,
+    [STYLE_SAMPLE_SCRIPT_PATH, "--output-dir", outputRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assertSnapshotParity(
+    snapshotSelectedFiles(outputRoot, fileNames),
+    firstSnapshot,
+    "style sample second render",
+  );
+});
+
+test("fresh template workflow renders bundled media and passes rendered checks", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-workflow-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const contentSpecPath = path.join(
+    docsRoot,
+    "content",
+    "specs",
+    "yyyy-mm-dd-topic.spec.json",
+  );
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.dirname(contentSpecPath), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    contentSpecPath,
+  );
+
+  const setupResult = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(setupResult.status, 0, setupResult.stderr || setupResult.stdout);
+
+  const expectedAsset = path.join("assets", "architecture-overview.svg");
+  const bundledAssetPath = path.join(
+    REPO_ROOT,
+    "skill",
+    "stenc",
+    "templates",
+    "assets",
+    "architecture-overview.svg",
+  );
+  assertByteIdentical(
+    path.join(docsRoot, "content", expectedAsset),
+    bundledAssetPath,
+  );
+  assertByteIdentical(
+    path.join(docsRoot, expectedAsset),
+    bundledAssetPath,
+  );
+  assert.ok(fs.existsSync(path.join(docsRoot, "specs", "yyyy-mm-dd-topic", "index.html")));
+
+  const checkResult = spawnSync(
+    process.execPath,
+    [CHECK_RENDERED_PATH, docsRoot],
+    { encoding: "utf8" },
+  );
+  assert.equal(checkResult.status, 0, checkResult.stderr || checkResult.stdout);
+
+  const renderedPagePath = path.join(
+    docsRoot,
+    "specs",
+    "yyyy-mm-dd-topic",
+    "index.html",
+  );
+  const renderedPage = fs.readFileSync(renderedPagePath, "utf8");
+  for (const match of renderedPage.matchAll(/(?:href|src)="([^"]+)"/gu)) {
+    const target = match[1];
+    if (/^(?:https?:|mailto:)/u.test(target)) continue;
+    if (target.startsWith("#")) {
+      assert.match(renderedPage, new RegExp(`id="${target.slice(1)}"`, "u"));
+      continue;
+    }
+    const cleanTarget = target.split(/[?#]/u, 1)[0];
+    let resolvedTarget = cleanTarget.startsWith("/")
+      ? path.join(docsRoot, cleanTarget)
+      : path.resolve(path.dirname(renderedPagePath), cleanTarget);
+    if (cleanTarget.endsWith("/")) resolvedTarget = path.join(resolvedTarget, "index.html");
+    assert.ok(
+      fs.existsSync(resolvedTarget),
+      `missing local template output target: ${target}`,
+    );
+  }
+
+  const customAsset = '<svg xmlns="http://www.w3.org/2000/svg"><text>Target-owned</text></svg>\n';
+  fs.writeFileSync(path.join(docsRoot, "content", expectedAsset), customAsset);
+  const rerunResult = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(rerunResult.status, 0, rerunResult.stderr || rerunResult.stdout);
+  assert.equal(fs.readFileSync(path.join(docsRoot, "content", expectedAsset), "utf8"), customAsset);
+  assert.equal(fs.readFileSync(path.join(docsRoot, expectedAsset), "utf8"), customAsset);
+});
+
+test("bundled asset seeding rejects an asset-root symlink escape", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-root-symlink-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-outside-"));
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+  fs.symlinkSync(outsideRoot, path.join(docsRoot, "content", "assets"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /symlink[\s\S]*content\/assets|content\/assets[\s\S]*symlink/iu);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "architecture-overview.svg")), false);
+});
+
+test("bundled asset seeding rejects a symlink target without modifying it", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-symlink-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-outside-"));
+  const outsideFile = path.join(outsideRoot, "outside.svg");
+  const sentinel = "outside must stay unchanged\n";
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+  fs.writeFileSync(outsideFile, sentinel);
+  fs.symlinkSync(
+    outsideFile,
+    path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /architecture-overview\.svg[\s\S]*regular file|symlink/iu);
+  assert.equal(fs.readFileSync(outsideFile, "utf8"), sentinel);
+});
+
+test("bundled asset seeding rejects a target directory collision", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-target-directory-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(
+    path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+    { recursive: true },
+  );
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"),
+    path.join(docsRoot, "content", "specs", "yyyy-mm-dd-topic.spec.json"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /architecture-overview\.svg[\s\S]*regular file/iu);
+  assert.equal(
+    fs.lstatSync(
+      path.join(docsRoot, "content", "assets", "architecture-overview.svg"),
+    ).isDirectory(),
+    true,
+  );
+});
+
+test("bundled asset seeding requires a regular bundled source file", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-template-source-directory-"));
+  const installedSkillRoot = path.join(fixtureRoot, "stenc");
+  const projectRoot = path.join(fixtureRoot, "project");
+  const bundledAssetPath = path.join(
+    installedSkillRoot,
+    "templates",
+    "assets",
+    "architecture-overview.svg",
+  );
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+
+  fs.cpSync(path.join(REPO_ROOT, "skill", "stenc"), installedSkillRoot, {
+    recursive: true,
+  });
+  fs.rmSync(bundledAssetPath);
+  fs.mkdirSync(bundledAssetPath);
+  fs.mkdirSync(path.join(projectRoot, "docs", "stenc", "content", "specs"), {
+    recursive: true,
+  });
+  fs.copyFileSync(
+    path.join(installedSkillRoot, "templates", "spec.json"),
+    path.join(
+      projectRoot,
+      "docs",
+      "stenc",
+      "content",
+      "specs",
+      "yyyy-mm-dd-topic.spec.json",
+    ),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(installedSkillRoot, "scripts", "setup-project.js"),
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /bundled[\s\S]*architecture-overview\.svg[\s\S]*regular file/iu);
+});
+
+test("rejects a parent docs-dir before deleting or creating anything", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-docs-parent-escape-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const sentinelPath = path.join(containerRoot, "package.json");
+  const sentinel = "parent sentinel must survive\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--docs-dir",
+      "..",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs directory[\s\S]*inside the project root/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.deepEqual(fs.readdirSync(projectRoot), []);
+});
+
+test("rejects a symlinked docs ancestor before mutating its external target", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-docs-symlink-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const outsideRoot = path.join(containerRoot, "outside");
+  const sentinelPath = path.join(outsideRoot, "sentinel.txt");
+  const sentinel = "external sentinel must survive\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(sentinelPath, sentinel);
+  fs.symlinkSync(outsideRoot, path.join(projectRoot, "docs"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /docs[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(sentinelPath, "utf8"), sentinel);
+  assert.equal(fs.existsSync(path.join(outsideRoot, "stenc")), false);
+});
+
+test("rejects a symlinked content asset root before copying or deleting generated assets", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-content-assets-root-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = path.join(containerRoot, "outside");
+  const secretPath = path.join(outsideRoot, "secret.svg");
+  const generatedSentinelPath = path.join(docsRoot, "assets", "generated-sentinel.svg");
+  const secret = "<svg>external secret</svg>\n";
+  const generatedSentinel = "<svg>generated sentinel</svg>\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(docsRoot, "content"), { recursive: true });
+  fs.mkdirSync(path.dirname(generatedSentinelPath), { recursive: true });
+  fs.mkdirSync(outsideRoot);
+  fs.writeFileSync(secretPath, secret);
+  fs.writeFileSync(generatedSentinelPath, generatedSentinel);
+  fs.symlinkSync(outsideRoot, path.join(docsRoot, "content", "assets"), "dir");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--render-only",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/assets[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(secretPath, "utf8"), secret);
+  assert.equal(fs.readFileSync(generatedSentinelPath, "utf8"), generatedSentinel);
+  assert.equal(fs.existsSync(path.join(docsRoot, "assets", "secret.svg")), false);
+});
+
+test("rejects symlink entries nested under content assets", (t) => {
+  const containerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-content-assets-entry-"));
+  const projectRoot = path.join(containerRoot, "project");
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsidePath = path.join(containerRoot, "outside.svg");
+  const sourceLink = path.join(docsRoot, "content", "assets", "nested", "secret.svg");
+  const generatedSentinelPath = path.join(docsRoot, "assets", "generated-sentinel.svg");
+  const sentinel = "<svg>sentinel</svg>\n";
+  t.after(() => fs.rmSync(containerRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.dirname(sourceLink), { recursive: true });
+  fs.mkdirSync(path.dirname(generatedSentinelPath), { recursive: true });
+  fs.writeFileSync(outsidePath, "<svg>outside</svg>\n");
+  fs.writeFileSync(generatedSentinelPath, sentinel);
+  fs.symlinkSync(outsidePath, sourceLink);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--render-only",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/assets\/nested\/secret\.svg[\s\S]*symlink/iu);
+  assert.equal(fs.readFileSync(generatedSentinelPath, "utf8"), sentinel);
+});
+
+test("examples setup is byte-idempotent across repeated runs", () => {
+  const temporaryRepo = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-examples-sync-"));
+  fs.cpSync(path.join(REPO_ROOT, "skill"), path.join(temporaryRepo, "skill"), {
+    recursive: true,
+  });
+  fs.cpSync(path.join(REPO_ROOT, "examples"), path.join(temporaryRepo, "examples"), {
+    recursive: true,
+  });
+  fs.cpSync(
+    path.join(REPO_ROOT, "samples"),
+    path.join(temporaryRepo, "samples"),
+    { recursive: true },
+  );
+  fs.mkdirSync(path.join(temporaryRepo, "scripts"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "scripts", "setup-examples-app.sh"),
+    path.join(temporaryRepo, "scripts", "setup-examples-app.sh"),
+  );
+
+  const setupScript = path.join(temporaryRepo, "scripts", "setup-examples-app.sh");
+  fs.appendFileSync(
+    path.join(temporaryRepo, "samples", "stenc-doc-styles", "task-first.html"),
+    "\n<!-- deliberate sample drift -->\n",
+  );
+  let result = spawnSync("bash", [setupScript], {
+    cwd: temporaryRepo,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const generatedExamplePaths = [
+    "index.html",
+    "styles.css",
+    path.join("assets", "stenc-flow.svg"),
+    path.join("specs", "artifact-identity", "index.html"),
+    path.join("specs", "component-catalog", "index.html"),
+    path.join("plans", "stenc-adoption", "index.html"),
+    path.join("plans", "component-catalog", "index.html"),
+  ];
+  const samplePaths = [
+    "styles.css",
+    "task-first.html",
+    "operator-console.html",
+    "evidence-led.html",
+  ];
+  const firstGeneratedSnapshot = snapshotSelectedFiles(
+    path.join(temporaryRepo, "examples-app"),
+    generatedExamplePaths,
+  );
+  const firstSampleSnapshot = snapshotSelectedFiles(
+    path.join(temporaryRepo, "samples", "stenc-doc-styles"),
+    samplePaths,
+  );
+  assert.doesNotMatch(
+    Buffer.from(firstSampleSnapshot["task-first.html"], "base64").toString("utf8"),
+    /deliberate sample drift/u,
+  );
+  const firstSnapshot = {
+    examplesApp: firstGeneratedSnapshot,
+    samples: firstSampleSnapshot,
+  };
+
+  result = spawnSync("bash", [setupScript], {
+    cwd: temporaryRepo,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const secondSnapshot = {
+    examplesApp: snapshotSelectedFiles(
+      path.join(temporaryRepo, "examples-app"),
+      generatedExamplePaths,
+    ),
+    samples: snapshotSelectedFiles(
+      path.join(temporaryRepo, "samples", "stenc-doc-styles"),
+      samplePaths,
+    ),
+  };
+
+  assert.deepEqual(secondSnapshot, firstSnapshot);
+});
+
+function assertAppearsInOrder(text, values, label) {
+  let previousIndex = -1;
+  for (const value of values) {
+    const index = text.indexOf(value, previousIndex + 1);
+    assert.notEqual(index, -1, `${label}: missing ${value}`);
+    assert.ok(index > previousIndex, `${label}: ${value} is out of source order`);
+    previousIndex = index;
+  }
+}
+
+function contentBetween(text, startMarker, endMarker, label) {
+  const startIndex = text.indexOf(startMarker);
+  assert.notEqual(startIndex, -1, `${label}: missing start marker`);
+  const contentStart = startIndex + startMarker.length;
+  const endIndex = text.indexOf(endMarker, contentStart);
+  assert.notEqual(endIndex, -1, `${label}: missing end marker`);
+  return text.slice(contentStart, endIndex);
+}
+
+function stripTagsAndDecodeText(html) {
+  return html
+    .replace(/<[^>]*>/gu, "")
+    .replace(/&lt;/gu, "<")
+    .replace(/&gt;/gu, ">")
+    .replace(/&quot;/gu, '"')
+    .replace(/&amp;/gu, "&")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function minimalSpec(overrides = {}) {
@@ -65,6 +1365,558 @@ function minimalSpec(overrides = {}) {
     ...overrides,
   };
 }
+
+test("renders accessible landmarks, tables, diagrams, and non-color states", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-accessible-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  const source = minimalSpec({
+    status: "approved",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Accessible primitives",
+          content: "Every visual state has a text equivalent.",
+          items: [],
+          facts: [],
+          links: [],
+          steps: [],
+          codeBlocks: [],
+          subSections: [],
+          blocks: [
+            {
+              type: "callout",
+              tone: "warning",
+              title: "Review required",
+              body: "Color is supplementary.",
+            },
+            {
+              type: "table",
+              columns: ["State", "Meaning"],
+              rows: [["approved", "Ready for use"]],
+            },
+            {
+              type: "media",
+              src: "assets/missing-flow.svg",
+              alt: "Expected validation flow",
+              caption: "The validation flow asset.",
+            },
+            {
+              type: "taskList",
+              items: [
+                { label: "Ready", checked: true },
+                { label: "Pending", checked: false },
+              ],
+            },
+            {
+              type: "flowDiagram",
+              title: "Accessible flow",
+              summary: "Source moves to output.",
+              nodes: [
+                {
+                  id: "source",
+                  label: "Source",
+                  detail: "Structured JSON.",
+                  role: "consumer",
+                },
+                {
+                  id: "output",
+                  label: "Output",
+                  detail: "Generated HTML.",
+                  role: "surface",
+                },
+              ],
+              edges: [{ from: "source", to: "output", label: "renders" }],
+            },
+          ],
+        },
+      ],
+    },
+  });
+  writeJson(path.join(docsRoot, "content", "specs", "minimal.spec.json"), source);
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(
+    path.join(docsRoot, "specs", "minimal", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    html,
+    /<a class="skip-link" href="#main-content">Skip to main content<\/a>/u,
+  );
+  assert.equal((html.match(/\sid="main-content"/gu) || []).length, 1);
+  assert.match(html, /<main id="main-content" tabindex="-1">/u);
+  assert.match(html, /const skipLink = document\.querySelector\('\.skip-link'\);/u);
+  assert.match(html, /requestAnimationFrame\(\(\) => mainContent\.focus\(\)\);/u);
+  assert.doesNotMatch(html, /<h[1-6][^>]*\stabindex=/u);
+  assert.match(
+    html,
+    /<nav class="collection-navigation" aria-label="Document collections">/u,
+  );
+  assert.match(
+    html,
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">/u,
+  );
+  assert.match(
+    html,
+    /<a class="nav-link" href="\/specs\/" aria-current="location">Specs<\/a>/u,
+  );
+
+  const diagram = html.match(
+    /<figure class="rich-block rich-structured-diagram flow-diagram"[\s\S]*?<\/figure>/u,
+  )?.[0];
+  assert.ok(diagram, "missing structured diagram");
+  assert.match(
+    diagram,
+    /aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"/u,
+  );
+  assert.match(diagram, /<figcaption id="diagram-1-caption">/u);
+  assert.match(diagram, /<p id="diagram-1-summary" class="diagram-summary" hidden>/u);
+  assert.match(
+    diagram,
+    /<details id="diagram-1-fallback" class="diagram-fallback diagram-relation-fallback">/u,
+  );
+  assert.match(
+    diagram,
+    /<div class="table-scroll-region" data-table-label="Accessible flow directed relations table">/u,
+  );
+
+  const tables = [...html.matchAll(/<table\b[\s\S]*?<\/table>/gu)].map((match) => match[0]);
+  assert.ok(tables.length > 0);
+  for (const table of tables) {
+    assert.match(table, /(?:<caption>|aria-label=|aria-labelledby=)/u);
+  }
+  assert.equal(
+    (html.match(/class="table-scroll-region" data-table-label="[^"]+"/gu) || []).length,
+    tables.length,
+    "every table must retain a deterministic enhancement label",
+  );
+  assert.doesNotMatch(
+    html,
+    /class="table-scroll-region"[^>]*(?:role="region"|tabindex="0")/u,
+    "non-overflow tables must not be static landmarks or tab stops",
+  );
+  assert.match(html, /region\.scrollWidth > region\.clientWidth/u);
+  assert.match(html, /region\.setAttribute\('role', 'region'\)/u);
+  assert.match(html, /region\.removeAttribute\('role'\)/u);
+  assert.match(html, /window\.addEventListener\('resize', scheduleTableRegionUpdate\)/u);
+
+  assert.match(html, /<span class="callout-tone-label">Warning<\/span>/u);
+  assert.match(html, /<span class="task-state">Complete:<\/span> Ready/u);
+  assert.match(html, /<span class="task-state">Not complete:<\/span> Pending/u);
+  assert.match(
+    html,
+    /<figure class="rich-block rich-media missing-media" role="alert">[\s\S]*Missing media asset[\s\S]*content\/assets\/missing-flow\.svg[\s\S]*Expected validation flow/u,
+  );
+  assert.match(
+    html,
+    /<section id="open-questions" class="open-questions">[\s\S]*<div class="empty-state" role="status"><p>No open questions\.<\/p><\/div>/u,
+  );
+  assert.match(html, /<dt>Status<\/dt><dd><span class="badge status-approved">approved<\/span>/u);
+  assert.match(html, /<span class="diagram-role-label">consumer<\/span>/u);
+});
+
+test("renders truthful pure empty, invalid-only, and mixed collection states", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-empty-state-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "decisions"), { recursive: true });
+  fs.writeFileSync(
+    path.join(docsRoot, "content", "specs", "broken.json"),
+    '{"title": "Broken source",',
+  );
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const specIndex = fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8");
+  assert.match(
+    specIndex,
+    /<section class="validation-error" role="alert">[\s\S]*<strong>Validation error:<\/strong>[\s\S]*content\/specs\/broken\.json[\s\S]*Invalid JSON/u,
+  );
+  assert.match(specIndex, /No valid documents could be rendered\./u);
+  assert.doesNotMatch(specIndex, /No spec documents yet\./u);
+  assert.doesNotMatch(specIndex, /class="sorting-controls"/u);
+  const decisionIndex = fs.readFileSync(
+    path.join(docsRoot, "decisions", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    decisionIndex,
+    /<div class="empty-state" role="status"><p>No decision documents yet\.<\/p><\/div>/u,
+  );
+  assert.doesNotMatch(decisionIndex, /class="sorting-controls"/u);
+
+  writeJson(
+    path.join(docsRoot, "content", "specs", "minimal.spec.json"),
+    minimalSpec(),
+  );
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const mixedSpecIndex = fs.readFileSync(
+    path.join(docsRoot, "specs", "index.html"),
+    "utf8",
+  );
+  assert.match(mixedSpecIndex, /class="validation-error" role="alert"/u);
+  assert.match(mixedSpecIndex, /href="\/specs\/minimal\/"/u);
+  assert.match(mixedSpecIndex, /class="sorting-controls"/u);
+  assert.doesNotMatch(mixedSpecIndex, /No valid documents could be rendered\./u);
+});
+
+test("accessible responsive styles expose keyboard, contrast, and source-order hooks", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.match(css, /\.skip-link\s*\{[\s\S]*position:\s*fixed;/u);
+  assert.match(css, /\.skip-link:focus-visible\s*\{[\s\S]*transform:\s*translateY\(0\);/u);
+  assert.match(css, /:focus-visible\s*\{[\s\S]*outline:\s*3px solid/u);
+  assert.match(
+    css,
+    /h1,[\s\S]*h6,[\s\S]*section\[id\]\s*\{[\s\S]*scroll-margin-top:/u,
+  );
+  assert.equal(
+    cssDeclarations(css, "body")["overflow-x"],
+    undefined,
+    "page overflow must be prevented structurally instead of clipped",
+  );
+  assert.deepEqual(
+    cssDeclarations(
+      css,
+      ".document,\n.document > *,\n.document section,\n.document article,\n.document div,\n.document figure,\n.document ul,\n.document ol,\n.document li",
+    ),
+    { "min-width": "0" },
+  );
+  assert.match(
+    css,
+    /\.table-scroll-region\s*\{[\s\S]*max-width:\s*100%;[\s\S]*overflow-x:\s*auto;/u,
+  );
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{/u);
+  assert.match(css, /@media \(prefers-contrast: more\) \{/u);
+  assert.match(css, /@media \(forced-colors: active\) \{/u);
+
+  const mobile = css.match(/@media \(max-width: 780px\) \{([\s\S]*?)\n\}/u)?.[1];
+  assert.ok(mobile, "missing 780px responsive contract");
+  for (const selector of [
+    ".shell",
+    ".summary-grid",
+    ".scope-grid",
+    ".grid",
+    ".diagram-relation-spine",
+    ".diagram-mobile-linear",
+    ".table-scroll-region",
+  ]) {
+    assert.ok(mobile.includes(selector), `mobile source-order hook missing: ${selector}`);
+  }
+  assert.doesNotMatch(mobile, /\border\s*:/u, "mobile must preserve DOM source order");
+});
+
+test("class inventory matches exact tokens and reports compact missing tokens", () => {
+  assert.throws(
+    () => assertClassTokenInventory([
+      {
+        label: "spec",
+        html: '<section class="scope-in-extra rich-block"></section>',
+        expected: ["scope-in", "scope-out", "rich-block"],
+      },
+      {
+        label: "plan",
+        html: '<section class="plan-slice"></section>',
+        expected: ["plan-slice", "plan-step"],
+      },
+    ]),
+    (error) => {
+      assert.equal(
+        error.message,
+        "Missing semantic class tokens: spec=[scope-in, scope-out]; plan=[plan-step]",
+      );
+      assert.doesNotMatch(error.message, /<section/);
+      return true;
+    },
+  );
+});
+
+test("keeps component catalog fixture mirrors byte-identical", () => {
+  assertByteIdentical(COMPONENT_CATALOG_SPEC, COMPONENT_CATALOG_SPEC_MIRROR);
+  assertByteIdentical(COMPONENT_CATALOG_PLAN, COMPONENT_CATALOG_PLAN_MIRROR);
+});
+
+test("renders comprehensive spec and plan component catalogs", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-component-catalog-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(docsRoot, "content", "specs"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "plans"), { recursive: true });
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    COMPONENT_CATALOG_SPEC,
+    path.join(docsRoot, "content", "specs", "component-catalog.spec.json"),
+  );
+  fs.copyFileSync(
+    COMPONENT_CATALOG_PLAN,
+    path.join(docsRoot, "content", "plans", "component-catalog.plan.json"),
+  );
+  const evidenceSpec = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  evidenceSpec.slug = "evidence-component-catalog";
+  evidenceSpec.title = "Evidence-led Component Contract";
+  evidenceSpec.page.styleTemplate = "evidence-led";
+  writeJson(
+    path.join(docsRoot, "content", "specs", "evidence-component-catalog.spec.json"),
+    evidenceSpec,
+  );
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples-app", "content", "assets", "stenc-flow.svg"),
+    path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const specHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "component-catalog", "index.html"),
+    "utf8",
+  );
+  const planHtml = fs.readFileSync(
+    path.join(docsRoot, "plans", "component-catalog", "index.html"),
+    "utf8",
+  );
+  const evidenceHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "evidence-component-catalog", "index.html"),
+    "utf8",
+  );
+  const specCollectionHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "index.html"),
+    "utf8",
+  );
+
+  assertClassTokenInventory([
+    {
+      label: "spec",
+      html: specHtml,
+      expected: SPEC_COMPONENT_CLASS_TOKENS,
+    },
+    {
+      label: "plan",
+      html: planHtml,
+      expected: PLAN_COMPONENT_CLASS_TOKENS,
+    },
+  ]);
+
+  for (const [label, html, activeCollection] of [
+    ["spec", specHtml, "specs"],
+    ["plan", planHtml, "plans"],
+  ]) {
+    assert.match(
+      html,
+      /<main id="main-content" tabindex="-1">/u,
+      `${label}: missing focusable main landmark`,
+    );
+    assert.match(html, /<aside class="sidebar"/u, `${label}: missing complementary landmark`);
+    assert.match(
+      html,
+      /<nav class="collection-navigation" aria-label="Document collections">/u,
+      `${label}: missing collection navigation`,
+    );
+    assert.match(
+      html,
+      new RegExp(`<a class="nav-link" href="/${activeCollection}/" aria-current="location">`, "u"),
+      `${label}: parent collection location must be announced`,
+    );
+    assert.doesNotMatch(
+      html,
+      new RegExp(`<a class="nav-link" href="/${activeCollection}/" aria-current="page">`, "u"),
+      `${label}: detail page must not identify its collection index as the current page`,
+    );
+    assert.match(html, /<dl class="document-metadata">/u);
+    for (const metadataLabel of ["Status", "Owner", "Updated", "Schema", "Template"]) {
+      assert.match(html, new RegExp(`<dt>${metadataLabel}</dt>`, "u"));
+    }
+    assert.match(
+      html,
+      /<section class="document-summary human-summary" aria-labelledby="human-summary-title">/u,
+    );
+    assert.match(
+      html,
+      /<section class="document-summary agent-summary" aria-labelledby="agent-summary-title">/u,
+    );
+    assertHeadingOrder(html, label);
+  }
+
+  assert.match(
+    specCollectionHtml,
+    /<a class="nav-link" href="\/specs\/" aria-current="page">Specs<\/a>/u,
+  );
+  assert.doesNotMatch(specCollectionHtml, /aria-current="location"/u);
+
+  assertMarkupOrder(
+    specHtml,
+    [
+      '<p class="kicker">Spec</p>',
+      "<h1>",
+      '<p class="description">',
+      '<dl class="document-metadata">',
+      '<section class="document-summary human-summary"',
+      '<section class="document-summary agent-summary"',
+    ],
+    "spec first viewport",
+  );
+  assertMarkupOrder(
+    planHtml,
+    [
+      '<p class="kicker">Plan</p>',
+      "<h1>",
+      '<p class="description">',
+      '<dl class="document-metadata">',
+      '<section class="document-summary human-summary"',
+      '<section class="document-summary agent-summary"',
+    ],
+    "plan first viewport",
+  );
+
+  assertDocumentNavigation(
+    specHtml,
+    [
+      "source-of-truth",
+      "related-plans",
+      "related-decisions",
+      "goal",
+      "problem",
+      "scope",
+      "architecture",
+      "requirements",
+      "approaches",
+      "components",
+      "data-flow",
+      "error-handling",
+      "contracts",
+      "surfaces",
+      "testing-strategy",
+      "validation",
+      "agent-instructions",
+      "review-checklist",
+      "self-review-checks",
+      "implementation-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "spec",
+  );
+  assertDocumentNavigation(
+    planHtml,
+    [
+      "source-of-truth",
+      "related-spec",
+      "goal",
+      "worker-instructions",
+      "scope-check",
+      "architecture",
+      "tech-stack",
+      "current-state",
+      "target-state",
+      "scope",
+      "file-structure",
+      "plan-slices",
+      "execution-order",
+      "risks",
+      "validation",
+      "agent-instructions",
+      "self-review-checks",
+      "execution-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "plan",
+  );
+  assert.doesNotMatch(specHtml, /href="#reviewer-calibration"/u);
+  assert.doesNotMatch(planHtml, /href="#evidence-reporting"/u);
+
+  assertMarkupOrder(
+    planHtml,
+    [
+      'id="worker-instructions"',
+      'id="scope-check"',
+      'id="architecture"',
+      'id="tech-stack"',
+      'id="current-state"',
+      'id="target-state"',
+      'id="file-structure"',
+      'id="plan-slices"',
+      'class="slice-files"',
+      'class="slice-steps"',
+      'class="done-when"',
+      'id="execution-order"',
+      'id="risks"',
+      'id="validation"',
+      'id="self-review-checks"',
+      'id="execution-handoff"',
+    ],
+    "plan execution hierarchy",
+  );
+  assertPlanStepContract(
+    planHtml,
+    [
+      ["slice-1-step-1", ["step-instruction"]],
+      ["slice-1-step-2", ["step-code-blocks"]],
+      ["slice-1-step-3", ["step-command", "step-expected"]],
+      ["slice-2-step-1", ["step-instruction"]],
+      ["slice-2-step-2", ["step-code-blocks"]],
+      ["slice-2-step-3", ["step-command", "step-expected"]],
+      ["slice-2-step-4", ["step-command", "step-expected"]],
+    ],
+    "component catalog plan",
+  );
+  assert.match(planHtml, /Commit the fixture inventory/u);
+
+  assert.match(
+    specHtml,
+    /id="requirements" class="requirements template-emphasis emphasis-task"/u,
+  );
+  assert.match(
+    specHtml,
+    /id="validation" class="validation template-emphasis emphasis-task"/u,
+  );
+  assert.match(planHtml, /status-approved template-emphasis emphasis-status/u);
+  assert.match(
+    planHtml,
+    /id="plan-slices" class="plan-slices template-emphasis emphasis-operator"/u,
+  );
+  assert.match(
+    evidenceHtml,
+    /class="facts template-emphasis emphasis-evidence"/u,
+  );
+  assert.match(
+    evidenceHtml,
+    /id="validation" class="validation template-emphasis emphasis-evidence"/u,
+  );
+  assert.doesNotMatch(specHtml, /emphasis-(?:operator|status|evidence)/u);
+  assert.doesNotMatch(planHtml, /emphasis-(?:task|evidence)/u);
+  assert.doesNotMatch(evidenceHtml, /emphasis-(?:task|operator|status)/u);
+  assert.doesNotMatch(planHtml, /console-hero|dark-header/u);
+  assert.doesNotMatch(evidenceHtml, /evidence-panel|evidence-border/u);
+});
 
 test("prepares a fixed Stenc web app backed by JSON documents", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-"));
@@ -234,38 +2086,14 @@ test("removes stale generated document routes when source JSON is deleted", () =
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
-  writeJson(specPath, {
-    schemaVersion: 2,
-    docType: "spec",
-    id: "spec:old",
-    slug: "old",
-    status: "draft",
-    title: "Old Spec",
-    description: "Spec that will be removed.",
-    owner: "stenc",
-    createdAt: "2026-05-28",
-    updatedAt: "2026-05-28",
-    links: { sourceOfTruth: ["docs/stenc/content/specs/old.spec.json"] },
-    page: {
-      humanSummary: "Old rendered page.",
-      agentSummary: "Old rendered page.",
-      styleTemplate: "task-first",
-    },
-    body: {
-      goal: "Render old page.",
-      problem: "Old page exists.",
-      scope: { in: ["Render"], out: [] },
-      requirements: [],
-      approaches: [],
-      components: [],
-      dataFlow: [],
-      errorHandling: [],
-      testingStrategy: [],
-      validation: [],
-      agentInstructions: ["Render."],
-      openQuestions: [],
-    },
-  });
+  const oldSpec = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, "skill", "stenc", "templates", "spec.json"), "utf8"),
+  );
+  oldSpec.id = "spec:old";
+  oldSpec.slug = "old";
+  oldSpec.title = "Old Spec";
+  oldSpec.description = "Spec that will be removed.";
+  writeJson(specPath, oldSpec);
 
   result = spawnSync(
     process.execPath,
@@ -552,7 +2380,7 @@ test("renders extended supporting section fields recursively", () => {
         {
           name: "Renderer",
           responsibility: "Render supporting section extensions.",
-          interfaces: ["renderDocument(doc, collection)"],
+          interfaces: ["renderDocument(doc, context)"],
           dependencies: ["Node.js"],
         },
       ],
@@ -602,7 +2430,197 @@ test("renders extended supporting section fields recursively", () => {
               links: [],
               steps: [],
               codeBlocks: [],
-              subSections: [],
+              subSections: [
+                {
+                  heading: "Depth Two Operations",
+                  content: "Depth-two content retains its own outline parent.",
+                  items: [],
+                  facts: [{ label: "Depth", value: "Two" }],
+                  links: [],
+                  steps: [
+                    {
+                      id: "depth-two-step",
+                      title: "Depth Two Step",
+                      status: "todo",
+                      command: "echo depth-two",
+                      expected: "depth-two",
+                    },
+                  ],
+                  codeBlocks: [],
+                  blocks: [
+                    {
+                      type: "callout",
+                      tone: "info",
+                      title: "Depth Two <Callout>",
+                      body: "The rich title follows the enclosing section.",
+                    },
+                    {
+                      type: "diagram",
+                      language: "plain",
+                      title: "Depth Two <Source Diagram>",
+                      source: "source -> output",
+                    },
+                    {
+                      type: "layerDiagram",
+                      title: "Depth Two <Layer Diagram>",
+                      summary: "A layer diagram nested under depth two.",
+                      layers: [
+                        {
+                          id: "depth-two-layer",
+                          label: "Depth Two <Layer>",
+                          role: "boundary",
+                          summary: "The visual label stays below the rich block.",
+                          nodes: [
+                            {
+                              id: "depth-two-node",
+                              label: "Depth Two Node",
+                              detail: "Fallback detail remains available.",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      type: "flowDiagram",
+                      title: "Depth Two <Flow Diagram>",
+                      summary: "A flow diagram nested under depth two.",
+                      nodes: [
+                        {
+                          id: "flow-source",
+                          label: "Flow Source",
+                          detail: "Starts the flow.",
+                          role: "value",
+                        },
+                        {
+                          id: "flow-target",
+                          label: "Flow Target",
+                          detail: "Ends the flow.",
+                          role: "surface",
+                        },
+                      ],
+                      edges: [
+                        {
+                          from: "flow-source",
+                          to: "flow-target",
+                          label: "provides",
+                        },
+                      ],
+                    },
+                    {
+                      type: "relationDiagram",
+                      title: "Depth Two <Relation Diagram>",
+                      summary: "A relation diagram nested under depth two.",
+                      nodes: [
+                        {
+                          id: "relation-source",
+                          label: "Relation Source",
+                          detail: "Owns the relation.",
+                          role: "value",
+                        },
+                        {
+                          id: "relation-target",
+                          label: "Relation Target",
+                          detail: "Consumes the relation.",
+                          role: "consumer",
+                        },
+                      ],
+                      relations: [
+                        {
+                          from: "relation-source",
+                          to: "relation-target",
+                          label: "owns",
+                        },
+                      ],
+                    },
+                  ],
+                  subSections: [
+                    {
+                      heading: "Depth Three Operations",
+                      content: "The h6 boundary uses labels below the section title.",
+                      items: [],
+                      facts: [{ label: "Depth", value: "Three" }],
+                      links: [],
+                      steps: [
+                        {
+                          id: "depth-three-step",
+                          title: "Depth Three Step",
+                          status: "todo",
+                          instruction: "Keep the nested outline semantic.",
+                        },
+                      ],
+                      codeBlocks: [],
+                      blocks: [
+                        {
+                          type: "callout",
+                          tone: "warning",
+                          title: "Depth Three Callout",
+                          body: "The callout title crosses the h6 boundary.",
+                        },
+                        {
+                          type: "layerDiagram",
+                          title: "Depth Three Layer Diagram",
+                          summary: "A layer diagram nested under depth three.",
+                          layers: [
+                            {
+                              id: "depth-three-layer",
+                              label: "Depth Three Layer",
+                              role: "engine",
+                              summary: "The layer label uses a semantic label.",
+                              nodes: [
+                                {
+                                  id: "depth-three-node",
+                                  label: "Depth Three Node",
+                                  detail: "Fallback detail remains available.",
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                      subSections: [
+                        {
+                          heading: "Depth Four Operations",
+                          content: "Sections deeper than h6 use a semantic label.",
+                          items: [],
+                          facts: [],
+                          links: [],
+                          steps: [],
+                          codeBlocks: [],
+                          blocks: [
+                            {
+                              type: "callout",
+                              tone: "danger",
+                              title: "Depth Four Callout",
+                              body: "Overflow remains a non-heading label.",
+                            },
+                            {
+                              type: "layerDiagram",
+                              title: "Depth Four Layer Diagram",
+                              summary: "A layer diagram nested beyond h6.",
+                              layers: [
+                                {
+                                  id: "depth-four-layer",
+                                  label: "Depth Four Layer",
+                                  role: "boundary",
+                                  summary: "The label remains semantic without h7.",
+                                  nodes: [
+                                    {
+                                      id: "depth-four-node",
+                                      label: "Depth Four Node",
+                                      detail: "Fallback detail remains available.",
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                          ],
+                          subSections: [],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -630,6 +2648,60 @@ test("renders extended supporting section fields recursively", () => {
   assert.match(html, /Rollback &lt;path&gt;/);
   assert.match(html, /Restore the &lt;previous&gt; deployment\./);
   assert.match(html, /Restore &lt;DNS&gt;/);
+  const nestedOutline = extractSupportingOutline(html).filter(({ text, parent }) =>
+    Number(parent?.slice("depth-".length)) >= 2
+    && [
+      "Depth Two Operations",
+      "Facts",
+      "Steps",
+      "Depth Two Step",
+      "Run",
+      "Expected",
+      "Depth Two &lt;Callout&gt;",
+      "Depth Two &lt;Layer&gt;",
+      "Depth Three Operations",
+      "Depth Three Step",
+      "Depth Three Callout",
+      "Depth Three Layer",
+      "Depth Four Operations",
+      "Depth Four Callout",
+      "Depth Four Layer",
+    ].includes(text),
+  );
+  assert.deepEqual(nestedOutline, [
+    { text: "Depth Two Operations", kind: "h5", parent: "depth-2" },
+    { text: "Facts", kind: "h6", parent: "depth-2" },
+    { text: "Steps", kind: "h6", parent: "depth-2" },
+    { text: "Depth Two Step", kind: "label", parent: "depth-2" },
+    { text: "Run", kind: "label", parent: "depth-2" },
+    { text: "Expected", kind: "label", parent: "depth-2" },
+    { text: "Depth Two &lt;Callout&gt;", kind: "h6", parent: "depth-2" },
+    { text: "Depth Two &lt;Layer&gt;", kind: "label", parent: "depth-2" },
+    { text: "Depth Three Operations", kind: "h6", parent: "depth-3" },
+    { text: "Facts", kind: "label", parent: "depth-3" },
+    { text: "Steps", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Step", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Callout", kind: "label", parent: "depth-3" },
+    { text: "Depth Three Layer", kind: "label", parent: "depth-3" },
+    { text: "Depth Four Operations", kind: "label", parent: "depth-4" },
+    { text: "Depth Four Callout", kind: "label", parent: "depth-4" },
+    { text: "Depth Four Layer", kind: "label", parent: "depth-4" },
+  ]);
+  for (const title of [
+    "Depth Two &lt;Source Diagram&gt;",
+    "Depth Two &lt;Layer Diagram&gt;",
+    "Depth Two &lt;Flow Diagram&gt;",
+    "Depth Two &lt;Relation Diagram&gt;",
+  ]) {
+    assert.match(html, new RegExp(`<strong>${title}</strong>`, "u"));
+  }
+  assert.doesNotMatch(html, /Depth Two <(?:Callout|Source Diagram|Layer Diagram)>/u);
+  assert.equal((html.match(/class="rich-block rich-callout/gu) || []).length, 3);
+  assert.equal((html.match(/class="rich-block rich-diagram/gu) || []).length, 1);
+  assert.equal(
+    (html.match(/class="rich-block rich-structured-diagram/gu) || []).length,
+    5,
+  );
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
   assert.doesNotMatch(html, /<strong>Team<\/strong>/);
 });
@@ -743,8 +2815,13 @@ test("renders Phase 1 rich supporting blocks with escaped fixed output", () => {
   assert.match(html, /href="docs\/spec\.md"/);
   assert.match(html, /spec &lt;link&gt;/);
   assert.match(html, /rich-callout tone-danger/);
-  assert.match(html, /Unsafe &lt;title&gt;/);
+  assert.match(
+    html,
+    /<div class="rich-block rich-callout tone-danger" role="note" aria-label="Danger callout: Unsafe &lt;title&gt;">/u,
+  );
+  assert.match(html, /<h4 class="rich-block-title">Unsafe &lt;title&gt;<\/h4>/u);
   assert.match(html, /Escape &lt;script&gt;alert\(1\)&lt;\/script&gt;\./);
+  assert.doesNotMatch(html, /<aside class="rich-block rich-callout/u);
   assert.match(html, /rich-quote/);
   assert.match(html, /Quote &lt;body&gt;/);
   assert.match(html, /Source &lt;file&gt;/);
@@ -810,17 +2887,413 @@ test("renders Phase 2 media and task lists with copied local assets", () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
   const html = fs.readFileSync(path.join(docsRoot, "specs", "rich-phase2", "index.html"), "utf8");
+  assertDocumentNavigation(
+    html,
+    [
+      "source-of-truth",
+      "goal",
+      "problem",
+      "scope",
+      "architecture",
+      "agent-instructions",
+      "implementation-handoff",
+      "supporting-sections",
+      "open-questions",
+    ],
+    "minimal spec",
+  );
+  for (const emptySectionId of [
+    "requirements",
+    "approaches",
+    "components",
+    "data-flow",
+    "error-handling",
+    "contracts",
+    "surfaces",
+    "testing-strategy",
+    "validation",
+    "review-checklist",
+    "self-review-checks",
+  ]) {
+    assert.doesNotMatch(html, new RegExp(`id="${emptySectionId}"`, "u"));
+  }
   assert.match(html, /rich-media/);
   assert.match(html, /src="\.\.\/\.\.\/assets\/stenc-flow\.svg"/);
   assert.match(html, /alt="Flow &lt;diagram&gt;"/);
   assert.match(html, /Copy &lt;local&gt; asset\./);
   assert.match(html, /rich-task-list/);
-  assert.match(html, /task-check/);
+  assert.match(
+    html,
+    /<input class="task-check" type="checkbox" disabled aria-label="Validate &lt;source&gt;" checked \/>/u,
+  );
+  assert.match(
+    html,
+    /<input class="task-check" type="checkbox" disabled aria-label="Render page" \/>/u,
+  );
   assert.match(html, /Validate &lt;source&gt;/);
   assert.match(html, /Render page/);
   assert.equal(fs.existsSync(path.join(docsRoot, "assets", "stenc-flow.svg")), true);
   assert.doesNotMatch(html, /<local>/);
-  assert.doesNotMatch(html, /<input/);
+  assert.equal((html.match(/type="checkbox"/gu) || []).length, 2);
+  assert.equal((html.match(/type="checkbox"[^>]* checked/gu) || []).length, 1);
+});
+
+test("renders structured diagrams with escaped deterministic visuals and fallbacks", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-project-structured-diagrams-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  let result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  writeJson(path.join(docsRoot, "content", "specs", "structured-diagrams.spec.json"), minimalSpec({
+    id: "spec:structured-diagrams",
+    slug: "structured-diagrams",
+    title: "Structured Diagrams",
+    body: {
+      ...minimalSpec().body,
+      supportingSections: [
+        {
+          heading: "Structured diagrams",
+          content: "Render each validator-known diagram type.",
+          items: [],
+          blocks: [
+            {
+              type: "layerDiagram",
+              title: "Boundary <script>layer()</script>",
+              summary: "Dependencies move through <strong>owned layers</strong>.",
+              layers: [
+                {
+                  id: "feature",
+                  label: "Feature <UI>",
+                  role: "consumer",
+                  summary: "Consumes the <public> surface.",
+                  nodes: [
+                    {
+                      id: "home-page",
+                      label: "Home<Page>",
+                      detail: "Declares <img src=x onerror=alert(1)>.",
+                    },
+                    {
+                      id: "detail-page",
+                      label: "Detail<Page>",
+                      detail: "Reads the public contract.",
+                    },
+                  ],
+                  transition: "Places <WorldSurface> next.",
+                },
+                {
+                  id: "surface",
+                  label: "Surface",
+                  role: "surface",
+                  summary: "Owns the public API.",
+                  nodes: [
+                    {
+                      id: "world-surface",
+                      label: "World<Surface>",
+                      detail: "Creates the session.",
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              type: "flowDiagram",
+              title: "Validation <flow>",
+              summary: "The flow preserves a permitted <cycle>.",
+              nodes: [
+                {
+                  id: "ingest",
+                  label: "Ingest <JSON>",
+                  detail: "Reads author input.",
+                  role: "consumer",
+                },
+                {
+                  id: "validate",
+                  label: "Validate",
+                  detail: "Checks the bounded contract.",
+                  role: "boundary",
+                },
+                {
+                  id: "render",
+                  label: "Render",
+                  detail: "Writes escaped HTML.",
+                  role: "engine",
+                },
+              ],
+              edges: [
+                { from: "ingest", to: "validate", label: "submits <source>" },
+                { from: "validate", to: "render", label: "passes" },
+                { from: "render", to: "ingest", label: "reports cycle" },
+              ],
+            },
+            {
+              type: "relationDiagram",
+              title: "Runtime <ownership>",
+              summary: "Ownership and borrowing stay explicit.",
+              nodes: [
+                {
+                  id: "stage",
+                  label: "World<Stage>",
+                  detail: "Immutable feature input.",
+                  role: "value",
+                },
+                {
+                  id: "layout",
+                  label: "WorldLayout",
+                  detail: "Session-owned runtime handle.",
+                  role: "session",
+                },
+                {
+                  id: "scene",
+                  label: "M3SpatialScene",
+                  detail: "Engine-owned resource.",
+                  role: "boundary",
+                },
+              ],
+              relations: [
+                { from: "stage", to: "layout", label: "creates <handle>" },
+                { from: "layout", to: "scene", label: "borrows" },
+                { from: "scene", to: "stage", label: "returns cycle" },
+              ],
+            },
+          ],
+          codeBlocks: [],
+        },
+      ],
+    },
+  }));
+
+  result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, "--project-root", projectRoot, "--skip-install", "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const html = fs.readFileSync(
+    path.join(docsRoot, "specs", "structured-diagrams", "index.html"),
+    "utf8",
+  );
+  const classes = extractClassTokens(html);
+
+  assert.equal((html.match(/<figure class="rich-block rich-structured-diagram/gu) || []).length, 3);
+  assert.equal((html.match(/<figcaption id="diagram-\d+-caption">/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-summary"/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-visual[^"]*" aria-hidden="true"/gu) || []).length, 3);
+  assert.equal((html.match(/class="diagram-mobile-linear"/gu) || []).length, 3);
+
+  for (const className of [
+    "layer-diagram",
+    "flow-diagram",
+    "relation-diagram",
+    "diagram-layer",
+    "diagram-role-rail",
+    "diagram-node-card",
+    "diagram-layer-transition",
+    "diagram-flow-grid",
+    "diagram-relation-spine",
+    "diagram-directed-connection",
+    "diagram-fallback",
+    "diagram-layer-fallback",
+    "diagram-relation-fallback",
+    "diagram-fallback-table",
+    "visually-hidden",
+    "diagram-role-consumer",
+    "diagram-role-surface",
+    "diagram-role-boundary",
+    "diagram-role-engine",
+    "diagram-role-value",
+    "diagram-role-session",
+  ]) {
+    assert.ok(classes.has(className), `missing structured diagram class: ${className}`);
+  }
+
+  for (const nodeId of [
+    "home-page",
+    "detail-page",
+    "world-surface",
+    "ingest",
+    "validate",
+    "render",
+    "stage",
+    "layout",
+    "scene",
+  ]) {
+    assert.match(html, new RegExp(`data-node-id="${nodeId}"`, "u"));
+  }
+  assert.match(html, /data-layer-id="feature"/);
+  assert.match(html, /data-layer-id="surface"/);
+  assert.match(html, /data-from="render" data-to="ingest"/);
+  assert.match(html, /data-from="scene" data-to="stage"/);
+
+  assert.match(html, /submits &lt;source&gt;/);
+  assert.match(html, /creates &lt;handle&gt;/);
+  assert.match(html, /Boundary &lt;script&gt;layer\(\)&lt;\/script&gt;/);
+  assert.match(html, /Dependencies move through &lt;strong&gt;owned layers&lt;\/strong&gt;\./);
+  assert.match(html, /Feature &lt;UI&gt;/);
+  assert.match(html, /Home&lt;Page&gt;/);
+  assert.match(html, /Declares &lt;img src=x onerror=alert\(1\)&gt;\./);
+  assert.match(html, /Places &lt;WorldSurface&gt; next\./);
+  assert.match(html, /World&lt;Stage&gt;/);
+  assert.doesNotMatch(html, /<script>layer\(\)<\/script>/);
+  assert.doesNotMatch(html, /<strong>owned layers<\/strong>/);
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+
+  assert.match(
+    html,
+    /<thead><tr><th scope="col">From<\/th> <th scope="col">Relation<\/th> <th scope="col">To<\/th><\/tr><\/thead>/,
+  );
+  assert.equal((html.match(/<table class="table diagram-fallback-table">/gu) || []).length, 2);
+  assert.equal((html.match(/<details id="diagram-\d+-fallback" class="diagram-fallback diagram-relation-fallback">/gu) || []).length, 2);
+  assert.doesNotMatch(html, /<h5>Nodes<\/h5>/);
+  assert.equal((html.match(/<p class="diagram-fallback-label"><strong>Nodes<\/strong>\.<\/p>/gu) || []).length, 2);
+
+  const layerVisual = contentBetween(
+    html,
+    '<div class="diagram-visual diagram-layer-stack" aria-hidden="true">',
+    '<ol id="diagram-1-fallback" class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    "layer visual",
+  );
+  const layerFallback = contentBetween(
+    html,
+    '<ol id="diagram-1-fallback" class="diagram-fallback diagram-layer-fallback visually-hidden">',
+    "</ol></figure>",
+    "layer fallback",
+  );
+  assertAppearsInOrder(
+    layerVisual,
+    ['data-layer-id="feature"', 'data-node-id="home-page"', 'data-node-id="detail-page"', 'data-layer-id="surface"', 'data-node-id="world-surface"'],
+    "layer visual",
+  );
+  assertAppearsInOrder(
+    layerFallback,
+    [
+      '<li data-layer-id="feature"><strong>Feature &lt;UI&gt;</strong> <code>(feature)</code>',
+      '<li data-node-id="home-page"><strong>Home&lt;Page&gt;</strong> <code>(home-page)</code>',
+      '<li data-node-id="detail-page"><strong>Detail&lt;Page&gt;</strong> <code>(detail-page)</code>',
+      '<p class="diagram-fallback-transition"><strong>Transition:</strong> Places &lt;WorldSurface&gt; next.</p>',
+      '<li data-layer-id="surface"><strong>Surface</strong> <code>(surface)</code>',
+      '<li data-node-id="world-surface"><strong>World&lt;Surface&gt;</strong> <code>(world-surface)</code>',
+    ],
+    "layer fallback",
+  );
+  assert.equal(
+    stripTagsAndDecodeText(
+      contentBetween(
+        html,
+        '<figure class="rich-block rich-structured-diagram layer-diagram" aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"><figcaption id="diagram-1-caption">',
+        "</figcaption>",
+        "layer caption",
+      ),
+    ),
+    "Layer diagram Boundary <script>layer()</script>",
+  );
+  assert.match(
+    stripTagsAndDecodeText(layerFallback),
+    /Feature <UI> \(feature\) — Role: consumer\. Consumes the <public> surface\. Home<Page> \(home-page\): Declares <img src=x onerror=alert\(1\)>\. Detail<Page> \(detail-page\): Reads the public contract\. Transition: Places <WorldSurface> next\. Surface \(surface\) — Role: surface\./,
+  );
+
+  const flowFigure = contentBetween(
+    html,
+    '<figure class="rich-block rich-structured-diagram flow-diagram" aria-labelledby="diagram-2-caption" aria-describedby="diagram-2-summary" aria-details="diagram-2-fallback">',
+    "</figure>",
+    "flow figure",
+  );
+  const flowVisual = contentBetween(
+    flowFigure,
+    '<div class="diagram-visual diagram-flow-grid" aria-hidden="true">',
+    '<details id="diagram-2-fallback" class="diagram-fallback diagram-relation-fallback">',
+    "flow visual",
+  );
+  const flowFallback = contentBetween(
+    flowFigure,
+    '<details id="diagram-2-fallback" class="diagram-fallback diagram-relation-fallback">',
+    "</details>",
+    "flow fallback",
+  );
+  assert.match(
+    flowFallback,
+    /^<summary>View Validation &lt;flow&gt; text and relation table\.<\/summary>/,
+  );
+  assertAppearsInOrder(
+    flowVisual,
+    ['data-node-id="ingest"', 'data-node-id="validate"', 'data-node-id="render"', 'data-from="ingest" data-to="validate"', 'data-from="validate" data-to="render"', 'data-from="render" data-to="ingest"'],
+    "flow visual",
+  );
+  assertAppearsInOrder(
+    flowFallback,
+    ["Ingest &lt;JSON&gt;", "Validate", "Render", "submits &lt;source&gt;", "passes", "reports cycle"],
+    "flow fallback",
+  );
+  const flowTbody = contentBetween(flowFallback, "<tbody>", "</tbody>", "flow fallback rows");
+  assert.equal(
+    flowTbody,
+    [
+      '<tr data-from="ingest" data-to="validate"><td><strong>Ingest &lt;JSON&gt;</strong> <code>(ingest)</code></td> <td>submits &lt;source&gt;</td> <td><strong>Validate</strong> <code>(validate)</code></td></tr>',
+      '<tr data-from="validate" data-to="render"><td><strong>Validate</strong> <code>(validate)</code></td> <td>passes</td> <td><strong>Render</strong> <code>(render)</code></td></tr>',
+      '<tr data-from="render" data-to="ingest"><td><strong>Render</strong> <code>(render)</code></td> <td>reports cycle</td> <td><strong>Ingest &lt;JSON&gt;</strong> <code>(ingest)</code></td></tr>',
+    ].join("\n"),
+  );
+  assert.match(
+    stripTagsAndDecodeText(flowFallback),
+    /View Validation <flow> text and relation table\. Nodes\. Ingest <JSON> \(ingest\) — Role: consumer\. Reads author input\./,
+  );
+
+  const relationFigure = contentBetween(
+    html,
+    '<figure class="rich-block rich-structured-diagram relation-diagram" aria-labelledby="diagram-3-caption" aria-describedby="diagram-3-summary" aria-details="diagram-3-fallback">',
+    "</figure>",
+    "relation figure",
+  );
+  const relationVisual = contentBetween(
+    relationFigure,
+    '<div class="diagram-visual diagram-relation-spine" aria-hidden="true">',
+    '<details id="diagram-3-fallback" class="diagram-fallback diagram-relation-fallback">',
+    "relation visual",
+  );
+  const relationFallback = contentBetween(
+    relationFigure,
+    '<details id="diagram-3-fallback" class="diagram-fallback diagram-relation-fallback">',
+    "</details>",
+    "relation fallback",
+  );
+  assert.match(
+    relationFallback,
+    /^<summary>View Runtime &lt;ownership&gt; text and relation table\.<\/summary>/,
+  );
+  assertAppearsInOrder(
+    relationVisual,
+    ['data-node-id="stage"', 'data-node-id="layout"', 'data-node-id="scene"', 'data-from="stage" data-to="layout"', 'data-from="layout" data-to="scene"', 'data-from="scene" data-to="stage"'],
+    "relation visual",
+  );
+  assertAppearsInOrder(
+    relationFallback,
+    ["World&lt;Stage&gt;", "WorldLayout", "M3SpatialScene", "creates &lt;handle&gt;", "borrows", "returns cycle"],
+    "relation fallback",
+  );
+  const relationTbody = contentBetween(
+    relationFallback,
+    "<tbody>",
+    "</tbody>",
+    "relation fallback rows",
+  );
+  assert.equal(
+    relationTbody,
+    [
+      '<tr data-from="stage" data-to="layout"><td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td> <td>creates &lt;handle&gt;</td> <td><strong>WorldLayout</strong> <code>(layout)</code></td></tr>',
+      '<tr data-from="layout" data-to="scene"><td><strong>WorldLayout</strong> <code>(layout)</code></td> <td>borrows</td> <td><strong>M3SpatialScene</strong> <code>(scene)</code></td></tr>',
+      '<tr data-from="scene" data-to="stage"><td><strong>M3SpatialScene</strong> <code>(scene)</code></td> <td>returns cycle</td> <td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td></tr>',
+    ].join("\n"),
+  );
+  assert.match(
+    stripTagsAndDecodeText(relationFallback),
+    /View Runtime <ownership> text and relation table\. Nodes\. World<Stage> \(stage\) — Role: value\. Immutable feature input\./,
+  );
 });
 
 test("renders Phase 3 diagram source panels without runtime execution", () => {
@@ -914,7 +3387,10 @@ test("refuses to render rich links with unsafe targets", () => {
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unsafe rich link target/);
+  assert.match(
+    result.stderr,
+    /body\.supportingSections\[0\]\.blocks\[0\]\.spans\[0\]\.target must be a safe link target/u,
+  );
 });
 
 test("refuses document slugs that would write outside the generated route directory", () => {
@@ -940,7 +3416,7 @@ test("refuses document slugs that would write outside the generated route direct
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unsafe document slug/);
+  assert.match(result.stderr, /slug must contain only lowercase letters, numbers, and hyphens/u);
   assert.equal(fs.existsSync(path.join(projectRoot, "escaped-route", "index.html")), false);
 });
 
@@ -1021,4 +3497,142 @@ test("renders schemaVersion 1 plan string steps for compatibility", () => {
   const html = fs.readFileSync(path.join(docsRoot, "plans", "v1", "index.html"), "utf8");
   assert.match(html, /step-1/);
   assert.match(html, /Implement the contract/);
+});
+
+test("strict validation preserves prior generated output before rejecting an invalid flow endpoint", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-preflight-preserve-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const sourcePath = path.join(
+    docsRoot,
+    "content",
+    "specs",
+    "component-catalog.spec.json",
+  );
+  const assetPath = path.join(docsRoot, "content", "assets", "stenc-flow.svg");
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+  fs.copyFileSync(COMPONENT_CATALOG_SPEC, sourcePath);
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples", "content", "assets", "stenc-flow.svg"),
+    assetPath,
+  );
+
+  const args = [
+    SCRIPT_PATH,
+    "--project-root",
+    projectRoot,
+    "--skip-install",
+    "--skip-open-docs-script",
+  ];
+  const initial = spawnSync(process.execPath, args, { encoding: "utf8" });
+  assert.equal(initial.status, 0, initial.stderr || initial.stdout);
+
+  const preservedPaths = [
+    "index.html",
+    "styles.css",
+    "assets/stenc-flow.svg",
+    "specs/component-catalog/index.html",
+  ];
+  const before = snapshotSelectedFiles(docsRoot, preservedPaths);
+  const source = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+  source.body.supportingSections[0].blocks[12].edges[0].to = "missing-node";
+  writeJson(sourcePath, source);
+
+  const rejected = spawnSync(process.execPath, args, { encoding: "utf8" });
+
+  assert.notEqual(rejected.status, 0);
+  assert.match(
+    rejected.stderr,
+    /body\.supportingSections\[0\]\.blocks\[12\]\.edges\[0\]\.to/u,
+  );
+  const after = snapshotSelectedFiles(docsRoot, preservedPaths);
+  assertSnapshotParity(after, before, "strict validation must precede generated output removal");
+});
+
+test("document routes use validated language tags and legacy documents default to English", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-render-language-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const koreanSource = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  const legacySource = JSON.parse(fs.readFileSync(COMPONENT_CATALOG_SPEC, "utf8"));
+  koreanSource.slug = "korean-catalog";
+  koreanSource.id = "spec:korean-catalog";
+  koreanSource.language = "ko";
+  legacySource.slug = "legacy-catalog";
+  legacySource.id = "spec:legacy-catalog";
+  delete legacySource.language;
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+
+  writeJson(
+    path.join(docsRoot, "content", "specs", "korean-catalog.spec.json"),
+    koreanSource,
+  );
+  writeJson(
+    path.join(docsRoot, "content", "specs", "legacy-catalog.spec.json"),
+    legacySource,
+  );
+  fs.mkdirSync(path.join(docsRoot, "content", "assets"), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, "examples", "content", "assets", "stenc-flow.svg"),
+    path.join(docsRoot, "content", "assets", "stenc-flow.svg"),
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      SCRIPT_PATH,
+      "--project-root",
+      projectRoot,
+      "--skip-install",
+      "--skip-open-docs-script",
+    ],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "korean-catalog", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="ko">/u,
+  );
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "legacy-catalog", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
+  assert.match(
+    fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8"),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
+});
+
+test("mobile document navigation is bounded, focusable, and keeps every link", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+  const mobileStart = css.indexOf("@media (max-width: 780px)");
+  const mobileEnd = css.indexOf("@media (prefers-reduced-motion: reduce)");
+  assert.notEqual(mobileStart, -1);
+  assert.ok(mobileEnd > mobileStart);
+  const mobileCss = css.slice(mobileStart, mobileEnd);
+  const navigation = cssDeclarations(mobileCss, "  .document-navigation");
+  assert.equal(navigation["max-height"], "15rem");
+  assert.equal(navigation["overflow-y"], "scroll");
+  assert.equal(navigation["overscroll-behavior"], "contain");
+  assert.equal(navigation["scrollbar-gutter"], "stable");
+  assert.equal(navigation["border-bottom"], "3px solid var(--color-info-line)");
+
+  const sections = Array.from({ length: 24 }, (_, index) => ({
+    id: `section-${index + 1}`,
+    label: `Section ${index + 1}`,
+  }));
+  const html = renderLayout(
+    { title: "Docs" },
+    "Mobile navigation",
+    "<article><h1>Mobile navigation</h1></article>",
+    { collectionDir: "specs", sections },
+  );
+  const navigationMatch = html.match(
+    /<nav class="document-navigation" aria-label="On this page" tabindex="0">([\s\S]*?)<\/nav>/u,
+  );
+  assert.ok(navigationMatch);
+  assert.equal((navigationMatch[1].match(/href="#section-\d+"/gu) || []).length, 24);
 });

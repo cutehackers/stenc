@@ -2,6 +2,11 @@
 
 const fs = require("fs");
 const path = require("path");
+const {
+  STRUCTURED_DIAGRAM_TYPES,
+  validateStructuredDiagram,
+} = require("./structured-diagram-contract");
+const { SUPPORTING_SECTION_FIELDS } = require("./document-contract");
 
 const VALID_TYPES = new Set(["spec", "plan", "decision", "agent-context"]);
 const VALID_STYLE_TEMPLATES = new Set([
@@ -14,21 +19,20 @@ const VALID_STATUSES = new Set([
   "proposed",
   "approved",
   "canonical",
+  "done",
   "superseded",
 ]);
 const VALID_SCHEMA_VERSIONS = new Set([1, 2]);
-const SUPPORTING_SECTION_FIELDS = new Set([
-  "heading",
-  "content",
-  "items",
-  "facts",
-  "links",
-  "steps",
-  "blocks",
-  "codeBlocks",
-  "subSections",
+const RICH_BLOCK_TYPES = new Set([
+  "paragraph",
+  "callout",
+  "quote",
+  "table",
+  "media",
+  "taskList",
+  "diagram",
+  ...STRUCTURED_DIAGRAM_TYPES,
 ]);
-const RICH_BLOCK_TYPES = new Set(["paragraph", "callout", "quote", "table", "media", "taskList", "diagram"]);
 const INLINE_SPAN_TYPES = new Set(["text", "strong", "emphasis", "code", "link", "kbd", "mark"]);
 const CALLOUT_TONES = new Set(["neutral", "info", "success", "warning", "danger"]);
 const DIAGRAM_LANGUAGES = new Set(["mermaid", "dot", "plain"]);
@@ -69,7 +73,7 @@ const REQUIRED_TOP_LEVEL_FIELDS = [
   "page",
   "body",
 ];
-const TOP_LEVEL_FIELDS = new Set(REQUIRED_TOP_LEVEL_FIELDS);
+const TOP_LEVEL_FIELDS = new Set([...REQUIRED_TOP_LEVEL_FIELDS, "language"]);
 const PAGE_FIELDS = new Set(["humanSummary", "agentSummary", "styleTemplate"]);
 const LINK_FIELDS = {
   spec: new Set(["sourceOfTruth", "relatedPlans", "relatedDecisions"]),
@@ -458,6 +462,10 @@ function validateRichBlock(block, errors, prefix) {
     errors.push(`${prefix}type must be one of: ${Array.from(RICH_BLOCK_TYPES).join(", ")}`);
     return;
   }
+  if (STRUCTURED_DIAGRAM_TYPES.has(block.type)) {
+    validateStructuredDiagram(block, errors, prefix);
+    return;
+  }
 
   validateAllowedFields(block, RICH_BLOCK_FIELDS[block.type], errors, prefix);
   if (block.type === "paragraph") {
@@ -571,6 +579,15 @@ function validateTopLevel(doc, errors) {
   }
   if ("slug" in doc && !isSafeSlug(doc.slug)) {
     errors.push("slug must contain only lowercase letters, numbers, and hyphens");
+  }
+  if (
+    "language" in doc
+    && (
+      !isNonEmptyString(doc.language)
+      || !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u.test(doc.language)
+    )
+  ) {
+    errors.push("language must be a valid BCP-47-like tag");
   }
 
   if (isNonEmptyString(doc.id) && isNonEmptyString(doc.docType)) {
@@ -1069,27 +1086,51 @@ function validateFile(filePath) {
   return errors;
 }
 
-const targets = process.argv.slice(2);
-if (targets.length === 0) {
-  console.error("Usage: validate-stenc-doc.js <json-file-or-directory> [...]");
-  process.exit(2);
-}
-
-let failureCount = 0;
-for (const target of targets) {
-  for (const filePath of listFiles(path.resolve(target))) {
-    const errors = validateFile(filePath);
-    if (errors.length > 0) {
-      failureCount += 1;
-      console.error(`\n${filePath}`);
-      for (const error of errors) console.error(`  - ${error}`);
+function validationFailures(targets) {
+  const failures = [];
+  for (const target of targets) {
+    for (const filePath of listFiles(path.resolve(target))) {
+      const errors = validateFile(filePath);
+      if (errors.length > 0) failures.push({ filePath, errors });
     }
   }
+  return failures;
 }
 
-if (failureCount > 0) {
-  console.error(`\nStenc validation failed for ${failureCount} file(s).`);
-  process.exit(1);
+function formatValidationFailures(failures) {
+  const details = failures
+    .map(
+      ({ filePath, errors }) =>
+        `\n${filePath}\n${errors.map((error) => `  - ${error}`).join("\n")}`,
+    )
+    .join("");
+  return `${details}\n\nStenc validation failed for ${failures.length} file(s).`;
 }
 
-console.log("Stenc validation passed.");
+function runCli(targets) {
+  if (targets.length === 0) {
+    console.error("Usage: validate-stenc-doc.js <json-file-or-directory> [...]");
+    return 2;
+  }
+
+  const failures = validationFailures(targets);
+  if (failures.length > 0) {
+    console.error(formatValidationFailures(failures));
+    return 1;
+  }
+
+  console.log("Stenc validation passed.");
+  return 0;
+}
+
+if (require.main === module) {
+  process.exitCode = runCli(process.argv.slice(2));
+}
+
+module.exports = {
+  formatValidationFailures,
+  listFiles,
+  runCli,
+  validateFile,
+  validationFailures,
+};

@@ -20,7 +20,8 @@ JSON. There is no Markdown source and no MDX component layer.
      - `evidence-led`
    - For this repository, always pick one of these three for `spec` and `plan`.
 4. Fill top-level metadata: `schemaVersion`, `docType`, `id`, `slug`,
-   `status`, `title`, `description`, `owner`, `createdAt`, and `updatedAt`.
+   `status`, optional `language`, `title`, `description`, `owner`, `createdAt`,
+   and `updatedAt`.
    Use `schemaVersion: 2` for new documents. `schemaVersion: 1` is accepted
    only for existing nested JSON documents that predate the Superpowers fields.
    Keep `slug` to lowercase letters, numbers, and hyphens because it becomes
@@ -62,7 +63,9 @@ Do not put collection data, sidebars, or a list of all docs into a document
 artifact. The renderer derives those from `content/<collection>/*.json`.
 
 Unless the user explicitly requests another language, write Stenc document
-content in the same language as the user's prompt.
+content in the same language as the user's prompt and set `language` to a safe
+BCP-47-like tag such as `en` or `ko`. Legacy documents may omit `language`;
+their generated detail pages explicitly default to `en`.
 
 Type-specific templates add contract, sequencing, rationale, or working-rule
 fields inside `body`.

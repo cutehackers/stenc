@@ -150,6 +150,7 @@ install_cli_wrapper "$(choose_bin_dir)"
 if [[ -n "${PROJECT_ROOT}" ]]; then
   SETUP_ARGS=(
     "--project-root" "${PROJECT_ROOT}"
+    "--seed-template-assets"
   )
   if [[ -n "${DOCS_DIR}" ]]; then
     SETUP_ARGS+=("--docs-dir" "${DOCS_DIR}")

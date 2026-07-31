@@ -8,6 +8,14 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+const {
+  STRUCTURED_DIAGRAM_TYPES,
+  DIAGRAM_ROLES,
+  DIAGRAM_ID_PATTERN,
+} = require("./structured-diagram-contract");
+const { SUPPORTING_SECTION_FIELDS } = require("./document-contract");
+const { renderDocument, renderLayout } = require("./setup-project");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -405,6 +413,132 @@ function addPhase3Blocks(spec) {
   return spec;
 }
 
+function validLayerDiagram() {
+  return {
+    type: "layerDiagram",
+    title: "Feature to engine boundary",
+    summary: "Dependencies flow from feature to engine.\nSource order is preserved.",
+    layers: [
+      {
+        id: "feature",
+        label: "Feature",
+        role: "consumer",
+        summary: "Consumes the public surface.\tNo engine import is allowed.",
+        nodes: [
+          {
+            id: "home-page",
+            label: "HomePage",
+            detail: "Declares WorldStage and WorldLayout.\nOwns feature composition.",
+          },
+        ],
+        transition: "Places WorldSurface in the widget tree.\nThen crosses the API boundary.",
+      },
+      {
+        id: "surface",
+        label: "Surface",
+        role: "surface",
+        summary: "Owns the public Flutter API.",
+        nodes: [
+          {
+            id: "world-surface",
+            label: "WorldSurface",
+            detail: "Creates and owns the session.",
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function validFlowDiagram() {
+  return {
+    type: "flowDiagram",
+    title: "Artifact projection flow",
+    summary: "A validated handle flows from persistence to projection.",
+    nodes: [
+      {
+        id: "persist",
+        label: "Persist",
+        detail: "Creates the handle.\nEmits validated state.",
+        role: "value",
+      },
+      {
+        id: "project",
+        label: "Project",
+        detail: "Reads persisted artifacts.",
+        role: "surface",
+      },
+    ],
+    edges: [
+      { from: "persist", to: "project", label: "provides handle" },
+      { from: "persist", to: "project", label: "emits revision" },
+      { from: "project", to: "persist", label: "requests refresh" },
+    ],
+  };
+}
+
+function validRelationDiagram() {
+  return {
+    type: "relationDiagram",
+    title: "Runtime ownership",
+    summary: "WorldStage creates WorldLayout, which adapts to M3SpatialScene.",
+    nodes: [
+      {
+        id: "stage",
+        label: "WorldStage",
+        detail: "Immutable feature input.",
+        role: "value",
+      },
+      {
+        id: "layout",
+        label: "WorldLayout",
+        detail: "Session-owned runtime handle.",
+        role: "session",
+      },
+      {
+        id: "scene",
+        label: "M3SpatialScene",
+        detail: "Engine-owned resource.",
+        role: "boundary",
+      },
+    ],
+    relations: [
+      { from: "stage", to: "layout", label: "creates" },
+      { from: "layout", to: "scene", label: "adapts to <engine>" },
+      { from: "scene", to: "stage", label: "reports lifecycle" },
+    ],
+  };
+}
+
+function structuredDiagramSpec(block) {
+  const spec = validSingleSpec();
+  spec.body.supportingSections[0].blocks = [block];
+  return spec;
+}
+
+function runValidator(target) {
+  return spawnSync(process.execPath, [VALIDATOR, target], { encoding: "utf8" });
+}
+
+function documentedRegistry(markdown, label) {
+  const prefix = `- ${label}:`;
+  const line = markdown.split("\n").find((candidate) => candidate.startsWith(prefix));
+  assert.ok(line, `missing documentation registry: ${label}`);
+  return Array.from(line.matchAll(/`([^`]+)`/g), (match) => match[1]);
+}
+
+function supportingBlocks(document) {
+  const blocks = [];
+  const visit = (sections) => {
+    for (const section of sections || []) {
+      blocks.push(...(section.blocks || []));
+      visit(section.subSections);
+    }
+  };
+  visit(document.body.supportingSections);
+  return blocks;
+}
+
 function validSuperpowersPlan() {
   const plan = validSinglePlan();
   plan.id = "plan:2026-05-19-superpowers-coverage";
@@ -633,6 +767,529 @@ test("accepts Phase 3 diagram source supporting blocks", () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Stenc validation passed/);
+});
+
+test("accepts bounded structured diagrams", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-structured-diagram-valid-"));
+  const spec = validSingleSpec();
+  spec.body.supportingSections[0].blocks = [
+    validLayerDiagram(),
+    validFlowDiagram(),
+    validRelationDiagram(),
+  ];
+  writeJson(path.join(dir, "structured.spec.json"), spec);
+
+  const result = runValidator(dir);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Stenc validation passed/);
+});
+
+test("structured diagram documentation stays aligned", () => {
+  const registeredTypes = Array.from(STRUCTURED_DIAGRAM_TYPES).sort();
+  const registeredRoles = Array.from(DIAGRAM_ROLES).sort();
+  const templates = ["spec.json", "plan.json"].map((name) => JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, "skill", "stenc", "templates", name), "utf8"),
+  ));
+  const references = {
+    contract: fs.readFileSync(
+      path.join(REPO_ROOT, "skill", "stenc", "references", "json-field-contract.md"),
+      "utf8",
+    ),
+    style: fs.readFileSync(
+      path.join(REPO_ROOT, "skill", "stenc", "references", "fixed-page-style.md"),
+      "utf8",
+    ),
+  };
+  const structuredBlocks = templates.flatMap(supportingBlocks).filter(
+    (block) => STRUCTURED_DIAGRAM_TYPES.has(block.type),
+  );
+  assert.ok(
+    templates.flatMap(supportingBlocks).some((block) => block.type === "diagram"),
+    "templates must preserve the escaped source diagram example",
+  );
+  const templateTypes = Array.from(new Set(structuredBlocks.map((block) => block.type))).sort();
+  const templateRoles = Array.from(new Set(structuredBlocks.flatMap((block) => {
+    if (block.type === "layerDiagram") return block.layers.map((layer) => layer.role);
+    return block.nodes.map((node) => node.role);
+  }))).sort();
+  const templateIds = structuredBlocks.flatMap((block) => {
+    if (block.type === "layerDiagram") {
+      return block.layers.flatMap((layer) => [
+        layer.id,
+        ...layer.nodes.map((node) => node.id),
+      ]);
+    }
+    return block.nodes.map((node) => node.id);
+  });
+
+  assert.deepEqual(templateTypes, registeredTypes);
+  assert.deepEqual(templateRoles, registeredRoles);
+  assert.ok(templateIds.length > 0);
+  for (const id of templateIds) assert.match(id, DIAGRAM_ID_PATTERN);
+
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered structured diagram types"),
+    registeredTypes,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered diagram roles"),
+    registeredRoles,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Registered diagram ID pattern"),
+    [DIAGRAM_ID_PATTERN.source],
+  );
+  assert.deepEqual(
+    documentedRegistry(references.style, "Rendered structured diagram types"),
+    registeredTypes,
+  );
+  assert.deepEqual(
+    documentedRegistry(references.style, "Rendered diagram roles"),
+    registeredRoles,
+  );
+  const optionalSupportingFields = Array.from(SUPPORTING_SECTION_FIELDS)
+    .filter((field) => !["heading", "content", "items"].includes(field))
+    .sort();
+  assert.deepEqual(
+    documentedRegistry(references.contract, "Optional supporting section extension fields"),
+    optionalSupportingFields,
+  );
+
+  const allowedProseTemplate = structuredClone(templates[0]);
+  allowedProseTemplate.description =
+    "Raw HTML is prohibited; per-document CSS and Mermaid runtime are also prohibited.";
+  allowedProseTemplate.body.problem =
+    'Author text such as <author-html data-test="prose">example</author-html> must be escaped.';
+
+  const forbiddenVisualKeys = new Set([
+    "component",
+    "css",
+    "html",
+    "layout",
+    "markdown",
+    "mermaidRuntime",
+    "mdx",
+    "perDocumentStyle",
+    "rawHtml",
+    "runtime",
+    "script",
+    "scripts",
+    "sourceFormat",
+    "style",
+    "styles",
+    "styleSheet",
+    "stylesheet",
+    "stylesheets",
+    "variant",
+  ]);
+  const forbiddenExecutableTypes = new Set([
+    "html",
+    "markdown",
+    "mermaid",
+    "mermaidRuntime",
+    "mdx",
+    "perDocumentStyle",
+    "rawHtml",
+    "script",
+    "style",
+    "stylesheet",
+  ]);
+  const findForbiddenConstructs = (value, location = "$") => {
+    if (!value || typeof value !== "object") return [];
+    if (Array.isArray(value)) {
+      return value.flatMap(
+        (entry, index) => findForbiddenConstructs(entry, `${location}[${index}]`),
+      );
+    }
+    return Object.entries(value).flatMap(([key, entry]) => [
+      ...(forbiddenVisualKeys.has(key) ? [`${location}.${key}`] : []),
+      ...(key === "type" && forbiddenExecutableTypes.has(entry)
+        ? [`${location}.type=${entry}`]
+        : []),
+      ...findForbiddenConstructs(entry, `${location}.${key}`),
+    ]);
+  };
+
+  for (const template of [...templates, allowedProseTemplate]) {
+    assert.deepEqual(findForbiddenConstructs(template), []);
+    const renderedDocument = renderDocument(template);
+    const renderedPage = renderLayout(
+      { title: "Template Test" },
+      template.title,
+      renderedDocument.html,
+      { sections: renderedDocument.sections },
+    );
+    const stylesheetLinks = Array.from(
+      renderedPage.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/giu),
+      (match) => match[0],
+    );
+    assert.deepEqual(stylesheetLinks, ['<link rel="stylesheet" href="/styles.css" />']);
+    assert.doesNotMatch(renderedPage, /<style\b/iu);
+    for (const script of renderedPage.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/giu)) {
+      assert.doesNotMatch(script[1], /\bmermaid\b|\bmermaidRuntime\b/iu);
+    }
+    assert.doesNotMatch(renderedPage, /<script\b[^>]*\bsrc=/iu);
+  }
+  const renderedAllowedProse = renderDocument(allowedProseTemplate).html;
+  assert.match(renderedAllowedProse, /Raw HTML is prohibited/u);
+  assert.match(
+    renderedAllowedProse,
+    /&lt;author-html data-test=&quot;prose&quot;&gt;example&lt;\/author-html&gt;/u,
+  );
+  assert.doesNotMatch(renderedAllowedProse, /<author-html\b/iu);
+});
+
+test("rejects invalid structured diagram contracts with exact paths", () => {
+  const blockPath = "body.supportingSections[0].blocks[0].";
+  const cases = [
+    {
+      name: "unknown block field",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layout = "stack";
+      },
+      path: `${blockPath}layout`,
+    },
+    {
+      name: "unknown layer field",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].component = "LayerCard";
+      },
+      path: `${blockPath}layers[0].component`,
+    },
+    {
+      name: "unknown layer node field",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].nodes[0].role = "consumer";
+      },
+      path: `${blockPath}layers[0].nodes[0].role`,
+    },
+    {
+      name: "unknown flow node field",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[0].summary = "Not supported";
+      },
+      path: `${blockPath}nodes[0].summary`,
+    },
+    {
+      name: "unknown edge field",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.edges[0].directed = true;
+      },
+      path: `${blockPath}edges[0].directed`,
+    },
+    {
+      name: "unknown relation field",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].tone = "info";
+      },
+      path: `${blockPath}relations[0].tone`,
+    },
+    {
+      name: "bad layer id",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].id = "Feature_1";
+      },
+      path: `${blockPath}layers[0].id`,
+    },
+    {
+      name: "bad node id",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[0].id = "1-persist";
+      },
+      path: `${blockPath}nodes[0].id`,
+    },
+    {
+      name: "duplicate layer id",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[1].id = block.layers[0].id;
+      },
+      path: `${blockPath}layers[1].id`,
+    },
+    {
+      name: "duplicate layer node id across layers",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[1].nodes[0].id = block.layers[0].nodes[0].id;
+      },
+      path: `${blockPath}layers[1].nodes[0].id`,
+    },
+    {
+      name: "duplicate flow node id",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[1].id = block.nodes[0].id;
+      },
+      path: `${blockPath}nodes[1].id`,
+    },
+    {
+      name: "unknown layer role",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].role = "controller";
+      },
+      path: `${blockPath}layers[0].role`,
+    },
+    {
+      name: "unknown node role",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[0].role = "controller";
+      },
+      path: `${blockPath}nodes[0].role`,
+    },
+    {
+      name: "empty title",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.title = " ";
+      },
+      path: `${blockPath}title`,
+    },
+    {
+      name: "empty summary",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.summary = "";
+      },
+      path: `${blockPath}summary`,
+    },
+    {
+      name: "empty label",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].label = "\t";
+      },
+      path: `${blockPath}layers[0].label`,
+    },
+    {
+      name: "empty detail",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[0].detail = "\n";
+      },
+      path: `${blockPath}nodes[0].detail`,
+    },
+    {
+      name: "empty transition",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].transition = " ";
+      },
+      path: `${blockPath}layers[0].transition`,
+    },
+    {
+      name: "empty id",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes[0].id = "";
+      },
+      path: `${blockPath}nodes[0].id`,
+    },
+    {
+      name: "empty layers",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers = [];
+      },
+      path: `${blockPath}layers`,
+    },
+    {
+      name: "empty layer nodes",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[0].nodes = [];
+      },
+      path: `${blockPath}layers[0].nodes`,
+    },
+    {
+      name: "too few flow nodes",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes = [block.nodes[0]];
+        block.edges = [];
+      },
+      path: `${blockPath}nodes`,
+    },
+    {
+      name: "empty edges",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.edges = [];
+      },
+      path: `${blockPath}edges`,
+    },
+    {
+      name: "too few relation nodes",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.nodes = [block.nodes[0]];
+        block.relations = [];
+      },
+      path: `${blockPath}nodes`,
+    },
+    {
+      name: "empty relations",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations = [];
+      },
+      path: `${blockPath}relations`,
+    },
+    {
+      name: "transition on final layer",
+      block: validLayerDiagram(),
+      mutate: (block) => {
+        block.layers[1].transition = "This is not allowed.";
+      },
+      path: `${blockPath}layers[1].transition`,
+    },
+    {
+      name: "missing endpoint",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.edges[0].to = "missing";
+      },
+      path: `${blockPath}edges[0].to`,
+    },
+    {
+      name: "self edge",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.edges[0].to = block.edges[0].from;
+      },
+      path: `${blockPath}edges[0].to`,
+    },
+    {
+      name: "exact duplicate edge",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.edges.push({ ...block.edges[0] });
+      },
+      path: `${blockPath}edges[3]`,
+    },
+    {
+      name: "unconnected flow node",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.nodes.push({
+          id: "unused",
+          label: "Unused",
+          detail: "This node has no edge.",
+          role: "neutral",
+        });
+      },
+      path: `${blockPath}nodes[2].id`,
+    },
+    {
+      name: "missing relation endpoint",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].from = "missing";
+      },
+      path: `${blockPath}relations[0].from`,
+    },
+    {
+      name: "self relation",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].to = block.relations[0].from;
+      },
+      path: `${blockPath}relations[0].to`,
+    },
+    {
+      name: "exact duplicate relation",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations.push({ ...block.relations[0] });
+      },
+      path: `${blockPath}relations[3]`,
+    },
+    {
+      name: "unconnected relation node",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.nodes.push({
+          id: "unused",
+          label: "Unused",
+          detail: "This node has no relation.",
+          role: "neutral",
+        });
+      },
+      path: `${blockPath}nodes[3].id`,
+    },
+    {
+      name: "NUL control character",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.summary = "Artifact\u0000projection flow";
+      },
+      path: `${blockPath}summary`,
+    },
+    {
+      name: "BEL control character",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].label = "creates\u0007";
+      },
+      path: `${blockPath}relations[0].label`,
+    },
+    {
+      name: "multiline title",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.title = "Artifact\nflow";
+      },
+      path: `${blockPath}title`,
+    },
+    {
+      name: "Unicode line separator in title",
+      block: validFlowDiagram(),
+      mutate: (block) => {
+        block.title = "Artifact\u2028flow";
+      },
+      path: `${blockPath}title`,
+    },
+    {
+      name: "Unicode paragraph separator in relation label",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.relations[0].label = "creates\u2029runtime";
+      },
+      path: `${blockPath}relations[0].label`,
+    },
+    {
+      name: "tabbed label",
+      block: validRelationDiagram(),
+      mutate: (block) => {
+        block.nodes[0].label = "World\tStage";
+      },
+      path: `${blockPath}nodes[0].label`,
+    },
+  ];
+
+  for (const testCase of cases) {
+    testCase.mutate(testCase.block);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-structured-diagram-invalid-"));
+    writeJson(path.join(dir, "structured.spec.json"), structuredDiagramSpec(testCase.block));
+
+    const result = runValidator(dir);
+
+    assert.notEqual(result.status, 0, `${testCase.name} unexpectedly passed`);
+    assert.ok(
+      result.stderr.includes(testCase.path),
+      `${testCase.name} did not report ${testCase.path}\n${result.stderr}`,
+    );
+  }
 });
 
 test("accepts Superpowers implementation plan content without flattening steps", () => {
@@ -1090,4 +1747,58 @@ test("rejects documents whose collection path does not match docType", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /content\/specs requires docType spec/);
   assert.match(result.stderr, /spec files must end with \.spec\.json/);
+});
+
+test("accepts an optional safe document language and defaults legacy rendering to English", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-language-"));
+  const koreanSpec = validSingleSpec();
+  koreanSpec.language = "ko";
+  writeJson(path.join(dir, "korean.spec.json"), koreanSpec);
+  writeJson(path.join(dir, "legacy.spec.json"), validSingleSpec());
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(
+    renderLayout(
+      { title: "Docs" },
+      koreanSpec.title,
+      renderDocument(koreanSpec).html,
+      { language: koreanSpec.language },
+    ),
+    /^<!doctype html>\n<html lang="ko">/u,
+  );
+  assert.match(
+    renderLayout(
+      { title: "Docs" },
+      "Legacy",
+      renderDocument(validSingleSpec()).html,
+    ),
+    /^<!doctype html>\n<html lang="en">/u,
+  );
+});
+
+test("rejects malformed or injectable document language at the exact top-level path", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-language-invalid-"));
+  const spec = validSingleSpec();
+  spec.language = 'ko"><script>alert(1)</script>';
+  writeJson(path.join(dir, "runner.spec.json"), spec);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /language must be a valid BCP-47-like tag/);
+  assert.doesNotMatch(result.stdout, /<script>/u);
+});
+
+test("accepts done as a completed plan lifecycle status", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-validator-plan-done-"));
+  const plan = validSinglePlan();
+  plan.status = "done";
+  writeJson(path.join(dir, "runner.plan.json"), plan);
+
+  const result = spawnSync(process.execPath, [VALIDATOR, dir], { encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(renderDocument(plan).html, /badge status-done[^"]*">done<\/span>/u);
 });

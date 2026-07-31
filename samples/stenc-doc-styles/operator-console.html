@@ -3,164 +3,129 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Operator Console Sample</title>
-    <link rel="stylesheet" href="./styles.css?v=method-badge-1" />
+    <title>Operator console · Stenc Style Examples</title>
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="./index.html">Stenc</a>
-      <nav aria-label="Sample pages">
-        <a href="./task-first.html">Task-first Guide</a>
-        <a aria-current="page" href="./operator-console.html">Operator Console</a>
-        <a href="./evidence-led.html">Evidence-led Contract</a>
-      </nav>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="./index.html">Stenc</a>
+        <nav class="collection-navigation" aria-label="Style examples"><a class="nav-link" href="./task-first.html">Task-first</a><a class="nav-link" href="./operator-console.html" aria-current="page">Operator console</a><a class="nav-link" href="./evidence-led.html">Evidence-led</a></nav>
+        <nav class="document-navigation" aria-label="On this page" tabindex="0">
+          <p class="eyebrow">On this page</p>
+          <a class="nav-link" href="#source-of-truth">Source Of Truth</a><a class="nav-link" href="#related-spec">Related Spec</a><a class="nav-link" href="#goal">Goal</a><a class="nav-link" href="#worker-instructions">Worker Instructions</a><a class="nav-link" href="#scope-check">Scope Check</a><a class="nav-link" href="#architecture">Architecture</a><a class="nav-link" href="#tech-stack">Tech Stack</a><a class="nav-link" href="#current-state">Current State</a><a class="nav-link" href="#target-state">Target State</a><a class="nav-link" href="#scope">Scope</a><a class="nav-link" href="#file-structure">File Structure</a><a class="nav-link" href="#plan-slices">Implementation Slices</a><a class="nav-link" href="#execution-order">Execution Order</a><a class="nav-link" href="#risks">Risks</a><a class="nav-link" href="#validation">Validation</a><a class="nav-link" href="#agent-instructions">Agent Instructions</a><a class="nav-link" href="#self-review-checks">Self Review Checks</a><a class="nav-link" href="#execution-handoff">Execution Handoff</a><a class="nav-link" href="#supporting-sections">Supporting Sections</a><a class="nav-link" href="#open-questions">Open Questions</a>
+        </nav>
+      </aside>
+      <main id="main-content" tabindex="-1"><article class="document operator-console">
+    <header class="document-header">
+      <p class="kicker">Plan</p>
+      <h1>Stenc Plan Component Catalog</h1>
+      <p class="description">Comprehensive schema-v2 fixture for every native plan field, step shape, and supported rich block.</p>
+      <dl class="document-metadata">
+        <div><dt>Status</dt><dd><span class="badge status-approved template-emphasis emphasis-status">approved</span></dd></div>
+        <div><dt>Owner</dt><dd>stenc-maintainers</dd></div>
+        <div><dt>Updated</dt><dd>2026-07-30</dd></div>
+        <div><dt>Schema</dt><dd>2</dd></div>
+        <div><dt>Template</dt><dd>operator-console</dd></div>
+      </dl>
     </header>
+    <div class="summary-grid">
+      <section class="document-summary human-summary" aria-labelledby="human-summary-title"><h2 id="human-summary-title">Human Summary</h2><p>One execution plan demonstrates the complete plan vocabulary, including all step shapes and both supported handoff paths.</p></section>
+      <section class="document-summary agent-summary" aria-labelledby="agent-summary-title"><h2 id="agent-summary-title">Agent Summary</h2><p>Use this catalog to verify plan field coverage, execution sequencing, structured steps, rich supporting blocks, and handoff semantics.</p></section>
+    </div>
+<section id="source-of-truth" class="source-of-truth"><h2>Source Of Truth</h2><ul class="list"><li><code>examples-app/content/specs/component-catalog.spec.json</code></li><li><code>skill/stenc/references/json-field-contract.md</code></li></ul></section>
+<section id="related-spec" class="related-spec"><h2>Related Spec</h2><p><code>spec:component-catalog</code></p></section>
+<section id="goal" class="goal"><h2>Goal</h2><p>Lock the current schema-v2 plan component inventory with concrete execution content.</p></section>
+<section id="worker-instructions" class="worker-instructions"><h2>Worker Instructions</h2><p>Execute each structured step in order, preserve fixture byte parity, and record the intentional renderer inventory failure separately from fixture validation.</p><p><strong>Tracking syntax:</strong> <code>- [ ]</code></p><h3>Required Sub-Skills</h3><ul class="list"><li><code>superpowers:subagent-driven-development</code></li><li><code>superpowers:executing-plans</code></li></ul></section>
+<section id="scope-check" class="scope-check"><h2>Scope Check</h2><div class="grid"><section class="panel"><h3>Assessment</h3><p>The work is one coherent fixture-and-test slice because the spec and plan catalogs jointly define the renderer inventory.</p></section><section class="panel"><h3>Decomposition</h3><p>Keep fixture authoring and evidence collection as separate reviewable slices while committing them as one catalog contract.</p></section></div></section>
+<section id="architecture" class="architecture"><h2>Architecture</h2><p>Two independently reviewable slices add comprehensive fixtures first and then verify mirrored content, validation evidence, and semantic renderer inventory.</p></section>
+<section id="tech-stack" class="tech-stack"><h2>Tech Stack</h2><ul class="list"><li><code>Node.js node:test</code></li><li><code>Structured JSON fixtures</code></li><li><code>Dependency-free Stenc validator</code></li><li><code>Static HTML renderer</code></li></ul></section>
+<section id="current-state" class="current-state"><h2>Current State</h2><p>Existing examples demonstrate many fields in isolation, but no single spec-plan pair locks the complete component inventory.</p></section>
+<section id="target-state" class="target-state"><h2>Target State</h2><p>Byte-identical example fixtures validate against schema v2 and drive a semantic renderer inventory test with an intentional production-class gap.</p></section>
+<section id="scope" class="scope"><h2>Scope</h2><div class="scope-grid"><section class="scope-in"><h3>In</h3><ul class="list"><li>Comprehensive spec and plan fixtures</li><li>Stable semantic class assertions</li><li>Schema validation and mirror parity evidence</li></ul></section><section class="scope-out"><h3>Out</h3><ul class="list"><li>Production renderer semantic class implementation</li><li>Production structured diagram rendering</li><li>Per-document component or style APIs</li></ul></section></div></section>
+<section id="file-structure" class="file-structure"><h2>File Structure</h2><div class="table-scroll-region" data-table-label="Action, Path, Responsibility table"><table class="table"><caption>Action, Path, Responsibility table</caption><thead><tr><th scope="col">Action</th><th scope="col">Path</th><th scope="col">Responsibility</th></tr></thead><tbody><tr class="file-structure-entry"><td>Add</td><td><code>examples-app/content/specs/component-catalog.spec.json</code></td><td>Canonical examples-app spec catalog source.</td></tr><tr class="file-structure-entry"><td>Add</td><td><code>examples-app/content/plans/component-catalog.plan.json</code></td><td>Canonical examples-app plan catalog source.</td></tr><tr class="file-structure-entry"><td>Add</td><td><code>examples/component-catalog.spec.json</code></td><td>Byte-identical standalone spec fixture.</td></tr><tr class="file-structure-entry"><td>Add</td><td><code>examples/component-catalog.plan.json</code></td><td>Byte-identical standalone plan fixture.</td></tr><tr class="file-structure-entry"><td>Modify</td><td><code>skill/stenc/scripts/setup-project.test.js</code></td><td>Semantic renderer component inventory test.</td></tr></tbody></table></div></section>
+<section id="plan-slices" class="plan-slices template-emphasis emphasis-operator"><h2>Implementation Slices</h2><section class="plan-slice"><div class="meta"><span class="badge">slice-1</span><span class="badge">todo</span></div><h3>Create comprehensive catalog fixtures</h3><div class="slice-surfaces"><h4>Surfaces</h4><ul class="list"><li><code>examples-app/content/specs/component-catalog.spec.json</code></li><li><code>examples-app/content/plans/component-catalog.plan.json</code></li><li><code>examples/component-catalog.spec.json</code></li><li><code>examples/component-catalog.plan.json</code></li></ul></div><div class="slice-files"><h4>Files</h4><div class="table-scroll-region" data-table-label="Action, Path, Role table"><table class="table"><caption>Action, Path, Role table</caption><thead><tr><th scope="col">Action</th><th scope="col">Path</th><th scope="col">Role</th></tr></thead><tbody><tr class="plan-file"><td>Add</td><td><code>examples-app/content/specs/component-catalog.spec.json:all</code></td><td>Complete schema-v2 spec catalog.</td></tr><tr class="plan-file"><td>Add</td><td><code>examples-app/content/plans/component-catalog.plan.json:all</code></td><td>Complete schema-v2 plan catalog.</td></tr><tr class="plan-file"><td>Add</td><td><code>examples/component-catalog.spec.json:all</code></td><td>Standalone mirror of the spec catalog.</td></tr><tr class="plan-file"><td>Add</td><td><code>examples/component-catalog.plan.json:all</code></td><td>Standalone mirror of the plan catalog.</td></tr></tbody></table></div></div><div class="slice-steps"><h4>Steps</h4><div class="step-list"><section class="plan-step step"><div class="meta"><span class="badge">slice-1-step-1</span><span class="badge">todo</span></div><h5>Inventory the live schema</h5><div class="step-instruction"><p>Compare required and optional spec and plan fields with the validator constants before authoring fixtures.</p></div></section><section class="plan-step step"><div class="meta"><span class="badge">slice-1-step-2</span><span class="badge">todo</span></div><h5>Author the schema-v2 fixture shape</h5><div class="step-code-blocks"><div class="code-stack"><pre><code class="language-json">{
+  &quot;schemaVersion&quot;: 2,
+  &quot;docType&quot;: &quot;plan&quot;,
+  &quot;body&quot;: {
+    &quot;slices&quot;: []
+  }
+}</code></pre></div></div></section><section class="plan-step step"><div class="meta"><span class="badge">slice-1-step-3</span><span class="badge">todo</span></div><h5>Validate both fixture collections</h5><div class="step-command"><h6>Run</h6><code class="command">node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content</code></div><div class="step-expected"><h6>Expected</h6><p>Stenc validation passed.</p></div></section></div></div><div class="done-when"><h4>Done When</h4><ul class="list"><li>Both catalog documents populate every current native field.</li><li>The spec includes every current rich primitive and all five callout tones.</li><li>The plan includes every current step shape and both execution handoff options.</li></ul></div></section><section class="plan-slice"><div class="meta"><span class="badge">slice-2</span><span class="badge">todo</span></div><h3>Lock semantic inventory evidence</h3><div class="slice-surfaces"><h4>Surfaces</h4><ul class="list"><li><code>skill/stenc/scripts/setup-project.test.js</code></li><li><code>Generated component catalog pages</code></li></ul></div><div class="slice-files"><h4>Files</h4><div class="table-scroll-region" data-table-label="Action, Path, Role table"><table class="table"><caption>Action, Path, Role table</caption><thead><tr><th scope="col">Action</th><th scope="col">Path</th><th scope="col">Role</th></tr></thead><tbody><tr class="plan-file"><td>Modify</td><td><code>skill/stenc/scripts/setup-project.test.js:component catalog test</code></td><td>Copy fixtures, render pages, and assert stable semantic class tokens.</td></tr></tbody></table></div></div><div class="slice-steps"><h4>Steps</h4><div class="step-list"><section class="plan-step step"><div class="meta"><span class="badge">slice-2-step-1</span><span class="badge">todo</span></div><h5>Add the focused inventory test</h5><div class="step-instruction"><p>Copy both examples-app catalog fixtures into a temporary docs root, run setup-project, and read the rendered spec and plan pages.</p></div></section><section class="plan-step step"><div class="meta"><span class="badge">slice-2-step-2</span><span class="badge">todo</span></div><h5>Assert semantic class tokens</h5><div class="step-code-blocks"><div class="code-stack"><pre><code class="language-javascript">assertClassTokens(specHtml, [&quot;document-summary&quot;, &quot;requirements&quot;, &quot;supporting-section&quot;]);
+assertClassTokens(planHtml, [&quot;worker-instructions&quot;, &quot;plan-slice&quot;, &quot;execution-handoff&quot;]);</code></pre></div></div></section><section class="plan-step step"><div class="meta"><span class="badge">slice-2-step-3</span><span class="badge">todo</span></div><h5>Record the intentional renderer gap</h5><div class="step-command"><h6>Run</h6><code class="command">node --test --test-name-pattern='renders comprehensive spec and plan component catalogs' skill/stenc/scripts/setup-project.test.js</code></div><div class="step-expected"><h6>Expected</h6><p>The focused test reaches rendered HTML and fails only because stable semantic renderer classes are not implemented yet.</p></div></section><section class="plan-step step"><div class="meta"><span class="badge">slice-2-step-4</span><span class="badge">todo</span></div><h5>Commit the fixture inventory</h5><div class="step-command"><h6>Run</h6><code class="command">git commit -m &quot;test(stenc): add comprehensive component fixtures&quot;</code></div><div class="step-expected"><h6>Expected</h6><p>One commit records only the four fixture files and the focused renderer inventory test.</p></div></section></div></div><div class="done-when"><h4>Done When</h4><ul class="list"><li>Fixture validation and byte parity checks pass.</li><li>The focused test no longer fails because of missing or malformed fixtures.</li><li>The remaining focused failure identifies only missing production semantic classes.</li></ul></div></section></section>
+<section id="execution-order" class="execution-order"><h2>Execution Order</h2><ul class="list"><li>slice-1</li><li>slice-2</li></ul></section>
+<section id="risks" class="risks"><h2>Risks</h2><article class="risk"><h3>Risk</h3><p>The catalog drifts when a validator field or rich primitive changes.</p><h4>Mitigation</h4><p>Review the catalog whenever validator constants or field-contract references change.</p></article><article class="risk"><h3>Risk</h3><p>The intentional RED test is mistaken for malformed fixture evidence.</p><h4>Mitigation</h4><p>Run schema validation and mirror parity separately, and report the exact semantic class assertion failure.</p></article><article class="risk"><h3>Risk</h3><p>Fixture content introduces a renderer-only source convention.</p><h4>Mitigation</h4><p>Use only current validator-known JSON fields and fixed rich primitives.</p></article></section>
+<section id="validation" class="validation"><h2>Validation</h2><div class="table-scroll-region" data-table-label="Command, Purpose table"><table class="table"><caption>Command, Purpose table</caption><thead><tr><th scope="col">Command</th><th scope="col">Purpose</th></tr></thead><tbody><tr><td><code class="command">cmp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json</code></td><td>Verify byte-identical spec mirrors.</td></tr><tr><td><code class="command">cmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json</code></td><td>Verify byte-identical plan mirrors.</td></tr><tr><td><code class="command">node skill/stenc/scripts/validate-stenc-doc.js examples examples-app/content</code></td><td>Verify all example documents satisfy the live schema.</td></tr><tr><td><code class="command">node --test skill/stenc/scripts/validate-stenc-doc.test.js</code></td><td>Verify validator regression coverage remains green.</td></tr></tbody></table></div></section>
+<section id="agent-instructions" class="agent-instructions"><h2>Agent Instructions</h2><ul class="list"><li>Follow executionOrder and keep each step status current during real execution.</li><li>Do not weaken the semantic class assertions to match generic renderer classes.</li><li>Do not modify production renderer code in this fixture slice.</li><li>Keep both fixture pairs byte-identical.</li></ul></section>
+<section id="self-review-checks" class="self-review-checks"><h2>Self Review Checks</h2><div class="table-scroll-region" data-table-label="Name, Purpose table"><table class="table"><caption>Name, Purpose table</caption><thead><tr><th scope="col">Name</th><th scope="col">Purpose</th></tr></thead><tbody><tr><td>Native field coverage</td><td>Confirm every schema-v2 plan field and optional lines field is populated.</td></tr><tr><td>Step-shape coverage</td><td>Confirm instruction-only, codeBlocks-only, command-plus-expected, and commit steps are present.</td></tr><tr><td>Handoff coverage</td><td>Confirm Subagent-Driven and Inline Execution options are both present with the required skills.</td></tr><tr><td>Scope integrity</td><td>Confirm no production renderer or structured diagram implementation is included.</td></tr></tbody></table></div></section>
+<section id="execution-handoff" class="execution-handoff"><h2>Execution Handoff</h2><p><strong>Default path:</strong> <code>examples-app/content/plans/component-catalog.plan.json</code></p><div class="table-scroll-region" data-table-label="Option, Description, Required Skill table"><table class="table"><caption>Option, Description, Required Skill table</caption><thead><tr><th scope="col">Option</th><th scope="col">Description</th><th scope="col">Required Skill</th></tr></thead><tbody><tr><td>Subagent-Driven</td><td>Dispatch a fresh subagent for each execution slice and review the fixture evidence between slices.</td><td><code>superpowers:subagent-driven-development</code></td></tr><tr><td>Inline Execution</td><td>Execute both slices in one session with validation checkpoints before the commit.</td><td><code>superpowers:executing-plans</code></td></tr></tbody></table></div></section>
+<section id="supporting-sections" class="supporting-sections"><h2>Supporting Sections</h2><section class="panel supporting-section depth-0"><h3 class="supporting-section-title">Plan Primitive Inventory</h3><p>Supporting material demonstrates the bounded rich block vocabulary while executable work remains in body.slices.</p><ul class="list"><li>Plan steps remain structured execution objects.</li><li>Task lists remain read-only supporting context.</li><li>The source diagram remains an escaped source panel.</li></ul><h4 class="supporting-label">Facts</h4><div class="facts"><div class="table-scroll-region" data-table-label="Label, Value table"><table class="table"><caption>Label, Value table</caption><thead><tr><th scope="col">Label</th><th scope="col">Value</th></tr></thead><tbody><tr><td>Slice Count</td><td>2</td></tr><tr><td>Execution Mode Count</td><td>2</td></tr></tbody></table></div></div><h4 class="supporting-label">Links</h4><div class="table-scroll-region" data-table-label="Label, Target, Purpose table"><table class="table"><caption>Label, Target, Purpose table</caption><thead><tr><th scope="col">Label</th><th scope="col">Target</th><th scope="col">Purpose</th></tr></thead><tbody><tr><td>Related spec fixture</td><td><code>examples-app/content/specs/component-catalog.spec.json</code></td><td>Owns the durable component coverage contract.</td></tr><tr><td>Renderer inventory test</td><td><code>skill/stenc/scripts/setup-project.test.js</code></td><td>Consumes both fixture documents.</td></tr></tbody></table></div><h4 class="supporting-label">Steps</h4><div class="step-list"><section class="step"><div class="meta"><span class="badge">support-step-1</span><span class="badge">todo</span></div><h5 class="step-title">Review execution boundaries</h5><p>Confirm executable work stays in slices and supporting checklists remain read-only.</p></section><section class="step"><div class="meta"><span class="badge">support-step-2</span><span class="badge">todo</span></div><h5 class="step-title">Check mirror parity</h5><h6 class="step-detail-label">Run</h6><code class="command">cmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json</code><h6 class="step-detail-label">Expected</h6><p>The command exits successfully with no output.</p></section><section class="step"><div class="meta"><span class="badge">support-step-3</span><span class="badge">todo</span></div><h5 class="step-title">Inspect the focused command</h5><div class="code-stack"><pre><code class="language-shell">node --test --test-name-pattern='renders comprehensive spec and plan component catalogs' skill/stenc/scripts/setup-project.test.js</code></pre></div></section></div><div class="code-stack"><pre><code class="language-shell">cmp examples-app/content/specs/component-catalog.spec.json examples/component-catalog.spec.json
+cmp examples-app/content/plans/component-catalog.plan.json examples/component-catalog.plan.json</code></pre></div><div class="rich-blocks"><p class="rich-block rich-paragraph">Execute <strong>each slice</strong> with <em>explicit evidence</em>, run <code>./scripts/validate.sh</code>, use <kbd>Cmd+Enter</kbd>, mark <mark>intentional RED</mark>, and consult the <a href="examples-app/content/specs/component-catalog.spec.json">related spec</a>.</p><div class="rich-block rich-callout tone-info" role="note" aria-label="Info callout: Execution boundary"><span class="callout-tone-label">Info</span><h4 class="rich-block-title">Execution boundary</h4><p>This catalog records fixture work only; renderer implementation belongs to a later slice.</p></div><figure class="rich-block rich-quote"><blockquote>Validation evidence and intentional renderer gaps must be reported as separate outcomes.</blockquote><figcaption>Stenc plan catalog</figcaption></figure><div class="table-scroll-region" data-table-label="Step Shape and Catalog Example table"><table class="table"><caption>Step Shape and Catalog Example table</caption><thead><tr><th scope="col">Step Shape</th><th scope="col">Catalog Example</th></tr></thead><tbody><tr><td>Instruction only</td><td>Inventory the live schema</td></tr><tr><td>Code blocks</td><td>Author the schema-v2 fixture shape</td></tr><tr><td>Command and expected</td><td>Validate both fixture collections</td></tr><tr><td>Commit</td><td>Commit the fixture inventory</td></tr></tbody></table></div><figure class="rich-block rich-media"><img src="../../examples/content/assets/stenc-flow.svg" alt="Fixture validation and rendering execution flow" loading="lazy" /><figcaption>Local media demonstrates the same fixed asset contract on plan pages.</figcaption></figure><ul class="rich-block rich-task-list"><li><input class="task-check" type="checkbox" disabled aria-label="Keep executable steps in plan slices" checked /><span><span class="task-state">Complete:</span> Keep executable steps in plan slices</span></li><li><input class="task-check" type="checkbox" disabled aria-label="Implement production renderer classes in this slice" /><span><span class="task-state">Not complete:</span> Implement production renderer classes in this slice</span></li></ul><figure class="rich-block rich-diagram"><figcaption><span class="badge">plain</span><strong>Current execution source diagram</strong></figcaption><pre><code>RED TEST -&gt; FIXTURES -&gt; VALIDATION -&gt; INTENTIONAL SEMANTIC GAP</code></pre></figure><figure class="rich-block rich-structured-diagram layer-diagram" aria-labelledby="diagram-1-caption" aria-describedby="diagram-1-summary" aria-details="diagram-1-fallback"><figcaption id="diagram-1-caption"><span class="badge">Layer diagram</span> <strong>Catalog validation layers</strong></figcaption>
+<p id="diagram-1-summary" class="diagram-summary" hidden>Document sources pass through validation before fixed rendering.</p><div class="diagram-visual diagram-layer-stack" aria-hidden="true"><div class="diagram-mobile-linear"><section class="diagram-layer diagram-role-consumer" data-layer-id="source"><div class="diagram-role-rail"><span class="diagram-role-label">consumer</span></div><div class="diagram-layer-content"><h5 class="diagram-layer-title">Source</h5><p>Canonical JSON carries the complete document contract.</p><div class="diagram-layer-nodes"><article class="diagram-node-card" data-node-id="catalog-json"><strong class="diagram-node-label">Catalog JSON</strong><p class="diagram-node-detail">Contains native fields and bounded supporting blocks.</p></article></div></div></section><div class="diagram-layer-transition" data-from="source" data-to="validation"><span class="diagram-directed-label">The validator checks every field and relation.</span></div><section class="diagram-layer diagram-role-boundary" data-layer-id="validation"><div class="diagram-role-rail"><span class="diagram-role-label">boundary</span></div><div class="diagram-layer-content"><h5 class="diagram-layer-title">Validation</h5><p>Dependency-free checks reject contract drift.</p><div class="diagram-layer-nodes"><article class="diagram-node-card" data-node-id="stenc-validator"><strong class="diagram-node-label">Stenc Validator</strong><p class="diagram-node-detail">Accepts only validator-known structures.</p></article></div></div></section></div></div><ol id="diagram-1-fallback" class="diagram-fallback diagram-layer-fallback visually-hidden"><li data-layer-id="source"><strong>Source</strong> <code>(source)</code> <span class="diagram-role-label">— Role: consumer.</span> <p>Canonical JSON carries the complete document contract.</p>
+<ol class="diagram-fallback-node-list"><li data-node-id="catalog-json"><strong>Catalog JSON</strong> <code>(catalog-json)</code>: <span>Contains native fields and bounded supporting blocks.</span></li></ol>
+<p class="diagram-fallback-transition"><strong>Transition:</strong> The validator checks every field and relation.</p></li>
+<li data-layer-id="validation"><strong>Validation</strong> <code>(validation)</code> <span class="diagram-role-label">— Role: boundary.</span> <p>Dependency-free checks reject contract drift.</p>
+<ol class="diagram-fallback-node-list"><li data-node-id="stenc-validator"><strong>Stenc Validator</strong> <code>(stenc-validator)</code>: <span>Accepts only validator-known structures.</span></li></ol>
+</li></ol></figure><figure class="rich-block rich-structured-diagram flow-diagram" aria-labelledby="diagram-2-caption" aria-describedby="diagram-2-summary" aria-details="diagram-2-fallback"><figcaption id="diagram-2-caption"><span class="badge">Flow diagram</span> <strong>Catalog projection flow</strong></figcaption>
+<p id="diagram-2-summary" class="diagram-summary" hidden>Validated catalog data flows into deterministic generated output.</p><div class="diagram-visual diagram-flow-grid" aria-hidden="true"><div class="diagram-mobile-linear"><div class="diagram-node-grid"><article class="diagram-node-card diagram-role-boundary" data-node-id="validate"><span class="diagram-role-label">boundary</span><strong class="diagram-node-label">Validate</strong><p class="diagram-node-detail">Checks the canonical source contract.</p></article><article class="diagram-node-card diagram-role-surface" data-node-id="render"><span class="diagram-role-label">surface</span><strong class="diagram-node-label">Render</strong><p class="diagram-node-detail">Projects escaped values into fixed components.</p></article></div><div class="diagram-connection-sequence"><div class="diagram-directed-connection diagram-edge" data-from="validate" data-to="render"><span class="diagram-endpoint diagram-from">Validate</span><span class="diagram-directed-label">provides approved document</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">Render</span></div></div></div></div><details id="diagram-2-fallback" class="diagram-fallback diagram-relation-fallback"><summary>View Catalog projection flow text and relation table.</summary>
+<p class="diagram-fallback-label"><strong>Nodes</strong>.</p>
+<ol class="diagram-fallback-node-list"><li data-node-id="validate"><strong>Validate</strong> <code>(validate)</code> <span class="diagram-role-label">— Role: boundary.</span> <span class="diagram-node-detail">Checks the canonical source contract.</span></li>
+<li data-node-id="render"><strong>Render</strong> <code>(render)</code> <span class="diagram-role-label">— Role: surface.</span> <span class="diagram-node-detail">Projects escaped values into fixed components.</span></li></ol>
+<div class="table-scroll-region" data-table-label="Catalog projection flow directed relations table"><table class="table diagram-fallback-table"><caption>Catalog projection flow directed relations.</caption>
+<thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
+<tbody><tr data-from="validate" data-to="render"><td><strong>Validate</strong> <code>(validate)</code></td> <td>provides approved document</td> <td><strong>Render</strong> <code>(render)</code></td></tr></tbody></table></div></details></figure><figure class="rich-block rich-structured-diagram relation-diagram" aria-labelledby="diagram-3-caption" aria-describedby="diagram-3-summary" aria-details="diagram-3-fallback"><figcaption id="diagram-3-caption"><span class="badge">Relation diagram</span> <strong>Catalog ownership relations</strong></figcaption>
+<p id="diagram-3-summary" class="diagram-summary" hidden>The source contract and validator jointly constrain the renderer.</p><div class="diagram-visual diagram-relation-spine" aria-hidden="true"><div class="diagram-mobile-linear"><div class="diagram-node-grid"><article class="diagram-node-card diagram-role-value" data-node-id="contract"><span class="diagram-role-label">value</span><strong class="diagram-node-label">Field Contract</strong><p class="diagram-node-detail">Defines the supported semantic vocabulary.</p></article><article class="diagram-node-card diagram-role-boundary" data-node-id="validator"><span class="diagram-role-label">boundary</span><strong class="diagram-node-label">Validator</strong><p class="diagram-node-detail">Enforces the field contract before generation.</p></article><article class="diagram-node-card diagram-role-engine" data-node-id="renderer"><span class="diagram-role-label">engine</span><strong class="diagram-node-label">Renderer</strong><p class="diagram-node-detail">Produces fixed escaped output from valid data.</p></article></div><div class="diagram-connection-sequence"><div class="diagram-directed-connection diagram-relation" data-from="contract" data-to="validator"><span class="diagram-endpoint diagram-from">Field Contract</span><span class="diagram-directed-label">defines rules for</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">Validator</span></div><div class="diagram-directed-connection diagram-relation" data-from="validator" data-to="renderer"><span class="diagram-endpoint diagram-from">Validator</span><span class="diagram-directed-label">supplies validated input to</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">Renderer</span></div></div></div></div><details id="diagram-3-fallback" class="diagram-fallback diagram-relation-fallback"><summary>View Catalog ownership relations text and relation table.</summary>
+<p class="diagram-fallback-label"><strong>Nodes</strong>.</p>
+<ol class="diagram-fallback-node-list"><li data-node-id="contract"><strong>Field Contract</strong> <code>(contract)</code> <span class="diagram-role-label">— Role: value.</span> <span class="diagram-node-detail">Defines the supported semantic vocabulary.</span></li>
+<li data-node-id="validator"><strong>Validator</strong> <code>(validator)</code> <span class="diagram-role-label">— Role: boundary.</span> <span class="diagram-node-detail">Enforces the field contract before generation.</span></li>
+<li data-node-id="renderer"><strong>Renderer</strong> <code>(renderer)</code> <span class="diagram-role-label">— Role: engine.</span> <span class="diagram-node-detail">Produces fixed escaped output from valid data.</span></li></ol>
+<div class="table-scroll-region" data-table-label="Catalog ownership relations directed relations table"><table class="table diagram-fallback-table"><caption>Catalog ownership relations directed relations.</caption>
+<thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
+<tbody><tr data-from="contract" data-to="validator"><td><strong>Field Contract</strong> <code>(contract)</code></td> <td>defines rules for</td> <td><strong>Validator</strong> <code>(validator)</code></td></tr>
+<tr data-from="validator" data-to="renderer"><td><strong>Validator</strong> <code>(validator)</code></td> <td>supplies validated input to</td> <td><strong>Renderer</strong> <code>(renderer)</code></td></tr></tbody></table></div></details></figure></div><div class="stack nested-sections"><section class="panel supporting-section depth-1"><h4 class="supporting-section-title">Evidence Reporting</h4><p>Report each command with its exit status and distinguish fixture validity from renderer completion.</p><ul class="list"><li>Parity checks are binary evidence.</li><li>Validator success proves source shape only.</li><li>The focused RED identifies pending renderer semantics.</li></ul><h5 class="supporting-label">Facts</h5><div class="facts"><div class="table-scroll-region" data-table-label="Label, Value table"><table class="table"><caption>Label, Value table</caption><thead><tr><th scope="col">Label</th><th scope="col">Value</th></tr></thead><tbody><tr><td>Expected Fixture Result</td><td>Valid</td></tr></tbody></table></div></div><h5 class="supporting-label">Links</h5><div class="table-scroll-region" data-table-label="Label, Target, Purpose table"><table class="table"><caption>Label, Target, Purpose table</caption><thead><tr><th scope="col">Label</th><th scope="col">Target</th><th scope="col">Purpose</th></tr></thead><tbody><tr><td>Validation script</td><td><code>skill/stenc/scripts/validate-stenc-doc.js</code></td><td>Provides schema evidence.</td></tr></tbody></table></div><h5 class="supporting-label">Steps</h5><div class="step-list"><section class="step"><div class="meta"><span class="badge">evidence-step-1</span><span class="badge">todo</span></div><h6 class="step-title">Separate evidence categories</h6><p>List source validation, mirror parity, and semantic renderer inventory as separate results.</p></section></div><div class="code-stack"><pre><code class="language-text">fixture validation: PASS
+renderer inventory: intentional RED</code></pre></div><div class="rich-blocks"><div class="rich-block rich-callout tone-success" role="note" aria-label="Success callout: Valid source evidence"><span class="callout-tone-label">Success</span><h5 class="rich-block-title">Valid source evidence</h5><p>A green validator run confirms both catalogs conform to the current schema.</p></div></div></section></div></section></section>
+<section id="open-questions" class="open-questions"><h2>Open Questions</h2><div class="empty-state" role="status"><p>No open questions.</p></div></section>
+</article></main>
+    </div>
+    <script>
+      const skipLink = document.querySelector('.skip-link');
+      const mainContent = document.getElementById('main-content');
+      if (skipLink && mainContent) {
+        skipLink.addEventListener('click', () => {
+          requestAnimationFrame(() => mainContent.focus());
+        });
+      }
 
-    <main class="console-page">
-      <section class="console-hero">
-        <div>
-          <p class="eyebrow">Style 2 / Operator Console</p>
-          <h1>Install Flow Verification</h1>
-          <p>
-            A Superpowers-plan view for owners who need status, files, task
-            slices, risks, and commands in one screen before shipping a docs
-            installer change.
-          </p>
-        </div>
-        <div class="status-stack" aria-label="Document status">
-          <span>Active</span>
-          <span>4 slices</span>
-          <span>2 risks</span>
-        </div>
-      </section>
+      const updateTableScrollRegions = () => {
+        const states = Array.from(document.querySelectorAll('.table-scroll-region'))
+          .map((region) => ({
+            region,
+            overflowing: region.scrollWidth > region.clientWidth,
+          }));
 
-      <section class="metric-grid" aria-label="Quick status">
-        <div><span>Source files</span><strong>7</strong></div>
-        <div><span>Generated routes</span><strong>8</strong></div>
-        <div><span>Required commands</span><strong>3</strong></div>
-        <div><span>Open questions</span><strong>0</strong></div>
-      </section>
-
-      <section class="api-strip" aria-label="API reference summary">
-        <div class="endpoint-line">
-          <span class="method get">GET</span>
-          <code>/docs/{collection}/{slug}</code>
-        </div>
-        <div><span>Version</span><strong>schema v1</strong></div>
-        <div><span>Access</span><strong>local docs app</strong></div>
-        <div><span>Output</span><strong>fixed HTML</strong></div>
-      </section>
-
-      <section class="console-grid">
-        <article class="panel full">
-          <h2>Plan header</h2>
-          <div class="plan-header-grid">
-            <div><span>Goal</span><p>Ship a fixed Stenc documentation style without framework dependency.</p></div>
-            <div><span>Architecture</span><p>Generate predictable pages from JSON source sections.</p></div>
-            <div><span>Tech Stack</span><p>Plain HTML/CSS sample, Stenc JSON contract, validation scripts.</p></div>
-          </div>
-        </article>
-
-        <article class="panel">
-          <h2>Execution order</h2>
-          <ol class="timeline">
-            <li><strong>01</strong><span>Validate JSON source contracts.</span></li>
-            <li><strong>02</strong><span>Generate the static docs workspace.</span></li>
-            <li><strong>03</strong><span>Build and inspect rendered routes.</span></li>
-            <li><strong>04</strong><span>Publish only after examples match templates.</span></li>
-          </ol>
-        </article>
-
-        <article class="panel">
-          <h2>Surface map</h2>
-          <table>
-            <thead><tr><th>Path</th><th>Role</th><th>Owner</th></tr></thead>
-            <tbody>
-              <tr><td><code>templates/spec.json</code></td><td>Source shape</td><td>Skill</td></tr>
-              <tr><td><code>setup-project.js</code></td><td>Generated app</td><td>Installer</td></tr>
-              <tr><td><code>validate-stenc-doc.js</code></td><td>Schema guardrail</td><td>Scripts</td></tr>
-            </tbody>
-          </table>
-        </article>
-
-        <article class="panel">
-          <h2>Decision status</h2>
-          <div class="decision-list">
-            <div>
-              <span class="pill ok">accepted</span>
-              <p>Document source remains structured JSON.</p>
-            </div>
-            <div>
-              <span class="pill">pending</span>
-              <p>Final visual density for default renderer.</p>
-            </div>
-            <div>
-              <span class="pill warn">watch</span>
-              <p>Any new dependency in the install path.</p>
-            </div>
-          </div>
-        </article>
-
-        <article class="panel">
-          <h2>Validation commands</h2>
-          <pre><code>./scripts/validate.sh</code></pre>
-          <pre><code>node skill/stenc/scripts/validate-stenc-doc.js docs/stenc/content</code></pre>
-        </article>
-
-        <article class="panel">
-          <h2>Response contract</h2>
-          <div class="response-card">
-            <div><span>200</span><p>Document is valid and route can render.</p></div>
-            <div><span>422</span><p>Document shape does not match its collection contract.</p></div>
-            <div><span>500</span><p>Generated renderer and source contract are out of sync.</p></div>
-          </div>
-        </article>
-
-        <article class="panel full">
-          <h2>Task slices</h2>
-          <div class="task-slice-grid">
-            <article>
-              <span class="pill ok">task 1</span>
-              <h3>Lock source contract</h3>
-              <p>Confirm templates, references, examples, and validator name the same required fields.</p>
-              <ul class="task-list compact">
-                <li><span></span> Read JSON field contract.</li>
-                <li><span></span> Update examples with exact fields.</li>
-              </ul>
-            </article>
-            <article>
-              <span class="pill">task 2</span>
-              <h3>Render fixed sections</h3>
-              <p>Render Superpowers-style sections in the same order for every document type.</p>
-              <ul class="task-list compact">
-                <li><span></span> Implement section layout.</li>
-                <li><span></span> Verify mobile order.</li>
-              </ul>
-            </article>
-          </div>
-        </article>
-
-        <article class="panel">
-          <h2>Risks</h2>
-          <table class="compact-table">
-            <tbody>
-              <tr><th>Drift</th><td>Renderer diverges from validator.</td></tr>
-              <tr><th>Install</th><td>Flow adds avoidable dependencies.</td></tr>
-              <tr><th>Review</th><td>Agent instructions are hidden in prose.</td></tr>
-            </tbody>
-          </table>
-        </article>
-
-        <article class="panel full">
-          <h2>Agent execution packet</h2>
-          <div class="packet-grid">
-            <div><span>Read first</span><code>skill/stenc/SKILL.md</code></div>
-            <div><span>Change with</span><code>templates/*</code> and <code>validator</code></div>
-            <div><span>Do not add</span><code>mdx</code>, <code>frontmatter</code>, or per-doc UI</div>
-            <div><span>Proof</span><code>./scripts/validate.sh</code></div>
-          </div>
-        </article>
-      </section>
-    </main>
+        states.forEach(({ region, overflowing }) => {
+          if (overflowing) {
+            region.setAttribute('role', 'region');
+            region.setAttribute('aria-label', region.dataset.tableLabel);
+            region.setAttribute('tabindex', '0');
+            return;
+          }
+          region.removeAttribute('role');
+          region.removeAttribute('aria-label');
+          region.removeAttribute('tabindex');
+        });
+      };
+      let tableRegionFrame = null;
+      const scheduleTableRegionUpdate = () => {
+        if (tableRegionFrame !== null) cancelAnimationFrame(tableRegionFrame);
+        tableRegionFrame = requestAnimationFrame(() => {
+          tableRegionFrame = null;
+          updateTableScrollRegions();
+        });
+      };
+      scheduleTableRegionUpdate();
+      window.addEventListener('resize', scheduleTableRegionUpdate);
+      document.addEventListener('toggle', scheduleTableRegionUpdate, true);
+    </script>
   </body>
 </html>

@@ -9,7 +9,9 @@ const test = require("node:test");
 
 const CHECKER = path.join(__dirname, "check-rendered-pages.js");
 const SETUP_PROJECT = path.join(__dirname, "setup-project.js");
+const VALIDATOR = path.join(__dirname, "validate-stenc-doc.js");
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+const { renderDocument } = require("./setup-project");
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -92,6 +94,40 @@ test("fails when a JSON document has no rendered styled web page", () => {
   assert.match(result.stderr, /specs\/artifact-identity\/index\.html/);
 });
 
+test("fails malformed JSON sources even when the collection suffix is wrong", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-render-check-wrong-suffix-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+
+  let result = spawnSync(
+    process.execPath,
+    [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const sourcePath = path.join(docsRoot, "content", "specs", "broken.json");
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.writeFileSync(sourcePath, '{"title": "Broken source",');
+
+  result = spawnSync(process.execPath, [VALIDATOR, docsRoot], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /broken\.json[\s\S]*invalid JSON:/u);
+
+  result = spawnSync(
+    process.execPath,
+    [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const collectionHtml = fs.readFileSync(path.join(docsRoot, "specs", "index.html"), "utf8");
+  assert.match(collectionHtml, /content\/specs\/broken\.json/u);
+  assert.match(collectionHtml, /No valid documents could be rendered\./u);
+
+  result = spawnSync(process.execPath, [CHECKER, docsRoot], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content\/specs\/broken\.json: invalid JSON:/u);
+});
+
 test("passes after the docs app is regenerated from JSON documents", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-render-check-present-"));
   const docsRoot = path.join(projectRoot, "docs", "stenc");
@@ -144,6 +180,15 @@ test("fails when a rendered document references a missing media asset", () => {
     { encoding: "utf8" },
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const renderedHtml = fs.readFileSync(
+    path.join(docsRoot, "specs", "media-check", "index.html"),
+    "utf8",
+  );
+  assert.match(
+    renderedHtml,
+    /<figure class="rich-block rich-media missing-media" role="alert">[\s\S]*Missing media asset[\s\S]*content\/assets\/nested-flow\.svg[\s\S]*Nested Stenc flow/u,
+  );
 
   result = spawnSync(process.execPath, [CHECKER, docsRoot], {
     encoding: "utf8",
@@ -225,4 +270,94 @@ test("passes when rendered documents reference present media assets", () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Stenc rendered page check passed/);
+});
+
+test("renderer and rendered checker reject non-regular media source files", async (t) => {
+  for (const kind of ["directory", "symlink"]) {
+    await t.test(kind, () => {
+      const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), `stenc-media-${kind}-`));
+      const docsRoot = path.join(projectRoot, "docs", "stenc");
+      const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-media-outside-"));
+      t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+      t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+      const source = mediaSpec();
+      source.body.supportingSections[0].subSections = [];
+      writeJson(path.join(docsRoot, "content", "specs", "media-check.spec.json"), source);
+      const sourceAsset = path.join(docsRoot, "content", "assets", "stenc-flow.svg");
+      fs.mkdirSync(path.dirname(sourceAsset), { recursive: true });
+      if (kind === "directory") {
+        fs.mkdirSync(sourceAsset);
+      } else {
+        const outsideFile = path.join(outsideRoot, "outside.svg");
+        fs.writeFileSync(outsideFile, "<svg></svg>\n");
+        fs.symlinkSync(outsideFile, sourceAsset);
+      }
+
+      const setup = spawnSync(
+        process.execPath,
+        [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+        { encoding: "utf8" },
+      );
+      if (kind === "symlink") {
+        assert.notEqual(setup.status, 0);
+        assert.match(setup.stderr, /content asset[\s\S]*symlink/iu);
+      } else {
+        assert.equal(setup.status, 0, setup.stderr || setup.stdout);
+      }
+      const html = kind === "symlink"
+        ? renderDocument(source, { docsDir: docsRoot }).html
+        : fs.readFileSync(
+          path.join(docsRoot, "specs", "media-check", "index.html"),
+          "utf8",
+        );
+      assert.match(html, /class="rich-block rich-media missing-media"/u);
+
+      if (kind === "symlink") {
+        const pagePath = path.join(docsRoot, "specs", "media-check", "index.html");
+        fs.mkdirSync(path.dirname(pagePath), { recursive: true });
+        fs.writeFileSync(
+          pagePath,
+          '<link rel="stylesheet" href="/styles.css"><article class="document">Media Check</article>',
+        );
+        fs.writeFileSync(path.join(docsRoot, "styles.css"), "");
+      }
+      const check = spawnSync(process.execPath, [CHECKER, docsRoot], {
+        encoding: "utf8",
+      });
+      assert.notEqual(check.status, 0);
+      assert.match(check.stderr, /media asset[\s\S]*regular file/iu);
+    });
+  }
+});
+
+test("rendered checker rejects a generated media symlink", (t) => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-generated-media-symlink-"));
+  const docsRoot = path.join(projectRoot, "docs", "stenc");
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stenc-generated-outside-"));
+  t.after(() => fs.rmSync(projectRoot, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outsideRoot, { recursive: true, force: true }));
+
+  const source = mediaSpec();
+  source.body.supportingSections[0].subSections = [];
+  writeJson(path.join(docsRoot, "content", "specs", "media-check.spec.json"), source);
+  const sourceAsset = path.join(docsRoot, "content", "assets", "stenc-flow.svg");
+  fs.mkdirSync(path.dirname(sourceAsset), { recursive: true });
+  fs.writeFileSync(sourceAsset, "<svg></svg>\n");
+  let result = spawnSync(
+    process.execPath,
+    [SETUP_PROJECT, "--project-root", projectRoot, "--skip-open-docs-script"],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+
+  const generatedAsset = path.join(docsRoot, "assets", "stenc-flow.svg");
+  const outsideFile = path.join(outsideRoot, "outside.svg");
+  fs.writeFileSync(outsideFile, "<svg></svg>\n");
+  fs.rmSync(generatedAsset);
+  fs.symlinkSync(outsideFile, generatedAsset);
+
+  result = spawnSync(process.execPath, [CHECKER, docsRoot], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /generated media asset[\s\S]*regular file/iu);
 });

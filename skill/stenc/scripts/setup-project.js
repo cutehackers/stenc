@@ -6,6 +6,19 @@ const {
   generatedArtifactPaths,
   generatedGitignoreText,
 } = require("./generated-artifacts");
+const { renderStructuredDiagram } = require("./render-structured-diagram");
+const { buildUnifiedStyles } = require("./unified-styles");
+const {
+  formatValidationFailures,
+  validationFailures,
+} = require("./validate-stenc-doc");
+const {
+  ensureDirectoryWithin,
+  inspectDirectoryWithin,
+  inspectRegularFileWithin,
+  isContainedPath,
+  prepareContainedDirectory,
+} = require("./file-boundary");
 
 const COLLECTIONS = [
   { dir: "specs", label: "Specs", docType: "spec", suffix: ".spec.json" },
@@ -20,6 +33,7 @@ const COLLECTIONS = [
 ];
 const STYLE_TEMPLATES = new Set(["task-first", "operator-console", "evidence-led"]);
 const DEFAULT_SITE_DESCRIPTION = "Fixed-format Stenc documentation app.";
+const BUNDLED_TEMPLATE_ASSETS_DIR = path.resolve(__dirname, "..", "templates", "assets");
 
 function usage() {
   console.log(`Usage: setup-project.js [options]
@@ -33,6 +47,8 @@ Options:
   --skip-install         Deprecated no-op kept for installer compatibility.
   --skip-open-docs-script
                         Do not write ./open-docs.sh in the target project root.
+  --seed-template-assets
+                        Seed bundled template media assets during installation.
   --render-only         Regenerate generated static pages without rewriting source data.
   -h, --help             Show this help.
 `);
@@ -45,6 +61,7 @@ function parseArgs(argv) {
     title: null,
     hasTitle: false,
     renderOnly: false,
+    seedTemplateAssets: false,
     skipOpenDocsScript: false,
   };
 
@@ -57,6 +74,10 @@ function parseArgs(argv) {
     if (arg === "--skip-install") continue;
     if (arg === "--render-only") {
       options.renderOnly = true;
+      continue;
+    }
+    if (arg === "--seed-template-assets") {
+      options.seedTemplateAssets = true;
       continue;
     }
     if (arg === "--skip-open-docs-script") {
@@ -83,7 +104,6 @@ function parseArgs(argv) {
   }
 
   options.projectRoot = path.resolve(options.projectRoot);
-  options.docsDir = path.resolve(options.projectRoot, options.docsDir);
   return options;
 }
 
@@ -191,23 +211,152 @@ function removeGeneratedArtifacts(docsDir) {
   }
 }
 
-function copyDirectoryContents(sourceDir, targetDir) {
-  if (!fs.existsSync(sourceDir)) return;
-  ensureDirectory(targetDir);
+function validateAssetSourceTree(docsDir, sourceDir = path.join(docsDir, "content", "assets")) {
+  const rootInspection = inspectDirectoryWithin(docsDir, sourceDir);
+  if (!rootInspection.exists) return;
+  if (!rootInspection.ok) {
+    throw new Error(
+      `content asset root ${sourceDir} must be a real directory without symlinks: ${rootInspection.reason}`,
+    );
+  }
   for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
     const sourcePath = path.join(sourceDir, entry.name);
-    const targetPath = path.join(targetDir, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`content asset ${sourcePath} must not be a symlink`);
+    }
     if (entry.isDirectory()) {
-      copyDirectoryContents(sourcePath, targetPath);
-    } else if (entry.isFile()) {
-      ensureDirectory(path.dirname(targetPath));
-      fs.copyFileSync(sourcePath, targetPath);
+      const directoryInspection = inspectDirectoryWithin(docsDir, sourcePath);
+      if (!directoryInspection.ok) {
+        throw new Error(
+          `content asset directory ${sourcePath} is unsafe: ${directoryInspection.reason}`,
+        );
+      }
+      validateAssetSourceTree(docsDir, sourcePath);
+      continue;
+    }
+    const fileInspection = inspectRegularFileWithin(docsDir, sourcePath);
+    if (!entry.isFile() || !fileInspection.ok) {
+      throw new Error(
+        `content asset ${sourcePath} must be a regular file without symlinks: ${fileInspection.reason}`,
+      );
     }
   }
 }
 
+function copyDirectoryContents(docsDir, sourceDir, targetDir) {
+  const sourceInspection = inspectDirectoryWithin(docsDir, sourceDir);
+  if (!sourceInspection.exists) return;
+  if (!sourceInspection.ok) {
+    throw new Error(`unsafe content asset source ${sourceDir}: ${sourceInspection.reason}`);
+  }
+  ensureDirectoryWithin(docsDir, targetDir);
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    if (!isContainedPath(docsDir, targetPath)) {
+      throw new Error(`generated asset target escapes docs root: ${targetPath}`);
+    }
+    if (entry.isDirectory()) {
+      const sourceDirectoryInspection = inspectDirectoryWithin(docsDir, sourcePath);
+      if (!sourceDirectoryInspection.ok) {
+        throw new Error(
+          `unsafe content asset directory ${sourcePath}: ${sourceDirectoryInspection.reason}`,
+        );
+      }
+      ensureDirectoryWithin(docsDir, targetPath);
+      copyDirectoryContents(docsDir, sourcePath, targetPath);
+      continue;
+    }
+    const sourceFileInspection = inspectRegularFileWithin(docsDir, sourcePath);
+    if (!entry.isFile() || !sourceFileInspection.ok) {
+      throw new Error(
+        `content asset ${sourcePath} must be a regular file without symlinks: ${sourceFileInspection.reason}`,
+      );
+    }
+    const targetInspection = inspectRegularFileWithin(docsDir, targetPath);
+    if (targetInspection.exists || targetInspection.reason !== "missing") {
+      throw new Error(
+        `generated asset target ${targetPath} must be a new regular file inside docs root`,
+      );
+    }
+    ensureDirectoryWithin(docsDir, path.dirname(targetPath));
+    fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+  }
+}
+
 function copyContentAssets(docsDir) {
-  copyDirectoryContents(path.join(docsDir, "content", "assets"), path.join(docsDir, "assets"));
+  copyDirectoryContents(
+    docsDir,
+    path.join(docsDir, "content", "assets"),
+    path.join(docsDir, "assets"),
+  );
+}
+
+function collectMediaSourcesFromSections(sections, sources = new Set()) {
+  for (const section of toList(sections)) {
+    for (const block of toList(section?.blocks)) {
+      if (block?.type === "media" && typeof block.src === "string") {
+        sources.add(block.src);
+      }
+    }
+    collectMediaSourcesFromSections(section?.subSections, sources);
+  }
+  return sources;
+}
+
+function referencedMediaSources(docsDir) {
+  const sources = new Set();
+  for (const collection of COLLECTIONS) {
+    const contentDir = path.join(docsDir, "content", collection.dir);
+    if (!fs.existsSync(contentDir)) continue;
+    for (const fileName of fs.readdirSync(contentDir).filter((name) => name.endsWith(".json"))) {
+      const document = readJsonIfPresent(path.join(contentDir, fileName));
+      collectMediaSourcesFromSections(document?.body?.supportingSections, sources);
+    }
+  }
+  return sources;
+}
+
+function seedBundledTemplateAssets(docsDir, { seedAll = false } = {}) {
+  const bundledRootInspection = inspectDirectoryWithin(
+    path.dirname(BUNDLED_TEMPLATE_ASSETS_DIR),
+    BUNDLED_TEMPLATE_ASSETS_DIR,
+  );
+  if (!bundledRootInspection.ok) {
+    throw new Error(
+      `bundled template asset root ${BUNDLED_TEMPLATE_ASSETS_DIR} must be a real directory without symlinks: ${bundledRootInspection.reason}`,
+    );
+  }
+  const contentAssetsDir = path.join(docsDir, "content", "assets");
+  const referencedSources = referencedMediaSources(docsDir);
+  for (const entry of fs.readdirSync(BUNDLED_TEMPLATE_ASSETS_DIR, { withFileTypes: true })) {
+    if (!seedAll && !referencedSources.has(`assets/${entry.name}`)) continue;
+    const sourcePath = path.join(BUNDLED_TEMPLATE_ASSETS_DIR, entry.name);
+    const sourceInspection = inspectRegularFileWithin(
+      BUNDLED_TEMPLATE_ASSETS_DIR,
+      sourcePath,
+    );
+    if (!sourceInspection.ok) {
+      throw new Error(
+        `bundled template asset ${sourcePath} must be a regular file without symlinks: ${sourceInspection.reason}`,
+      );
+    }
+    const targetPath = path.join(contentAssetsDir, entry.name);
+    const targetInspection = inspectRegularFileWithin(docsDir, targetPath);
+    if (targetInspection.exists) {
+      if (!targetInspection.ok) {
+        throw new Error(
+          `template asset target ${targetPath} must be a regular file without symlinks: ${targetInspection.reason}`,
+        );
+      }
+      continue;
+    }
+    if (targetInspection.reason !== "missing") {
+      throw new Error(`unsafe template asset target ${targetPath}: ${targetInspection.reason}`);
+    }
+    ensureDirectoryWithin(docsDir, contentAssetsDir);
+    fs.copyFileSync(sourcePath, targetPath, fs.constants.COPYFILE_EXCL);
+  }
 }
 
 function writeOpenDocsScript(projectRoot, docsDir) {
@@ -346,12 +495,13 @@ fi
 URL="http://127.0.0.1:\${PORT}/"
 (
   cd "\${DOCS_PATH}"
-  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=process.cwd();const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let pathname;try{pathname=decodeURIComponent(url.pathname);}catch(_error){res.writeHead(400);res.end('Bad request');return;}let file=path.resolve(root,'.'+pathname);const relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}"
+  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=fs.realpathSync(process.cwd());const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let pathname;try{pathname=decodeURIComponent(url.pathname);}catch(_error){res.writeHead(400);res.end('Bad request');return;}let file=path.resolve(root,'.'+pathname);let relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}try{file=fs.realpathSync(file);}catch(error){res.writeHead(error.code==='ENOENT'?404:403);res.end(error.code==='ENOENT'?'Not found':'Forbidden');return;}relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}"
 ) &
 SERVER_PID=$!
 
 cleanup() {
   if kill -0 "\${SERVER_PID}" >/dev/null 2>&1; then
+    pkill -TERM -P "\${SERVER_PID}" >/dev/null 2>&1 || true
     kill "\${SERVER_PID}" >/dev/null 2>&1 || true
     wait "\${SERVER_PID}" >/dev/null 2>&1 || true
   fi
@@ -369,7 +519,7 @@ for _ in $(seq 1 80); do
   sleep 0.25
 done
 
-if command -v open >/dev/null 2>&1; then
+if [[ "\${STENC_OPEN_BROWSER:-1}" -eq 1 ]] && command -v open >/dev/null 2>&1; then
   open "\${URL}"
 fi
 
@@ -413,27 +563,104 @@ function readCollection(docsDir, collection) {
     });
 }
 
-function renderLayout(site, title, body) {
+function readCollectionValidationErrors(docsDir, collection) {
+  const dir = path.join(docsDir, "content", collection.dir);
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .sort()
+    .flatMap((name) => {
+      try {
+        JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
+        return [];
+      } catch (_error) {
+        return [{
+          path: `content/${collection.dir}/${name}`,
+        }];
+      }
+    });
+}
+
+function renderLayout(site, title, body, options = {}) {
   const pageTitle = title ? `${title} · ${site.title}` : site.title;
-  const nav = COLLECTIONS.map(
-    (collection) => `<a class="nav-link" href="/${collection.dir}/">${collection.label}</a>`,
-  ).join("");
+  const navigationItems = toList(options.navigation).length > 0
+    ? options.navigation
+    : COLLECTIONS.map((collection) => ({
+      href: `/${collection.dir}/`,
+      label: collection.label,
+      ariaCurrent: options.collectionDir === collection.dir
+        ? options.collectionAriaCurrent
+        : null,
+    }));
+  const nav = navigationItems
+    .map((item) => `<a class="nav-link" href="${escapeHtml(item.href)}"${item.ariaCurrent ? ` aria-current="${escapeHtml(item.ariaCurrent)}"` : ""}>${escapeHtml(item.label)}</a>`)
+    .join("");
+  const documentNavigation = toList(options.sections).length > 0
+    ? `<nav class="document-navigation" aria-label="On this page" tabindex="0">
+          <p class="eyebrow">On this page</p>
+          ${options.sections
+            .map((section) => `<a class="nav-link" href="#${escapeHtml(section.id)}">${escapeHtml(section.label)}</a>`)
+            .join("")}
+        </nav>`
+    : "";
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(options.language || "en")}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(pageTitle)}</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="${escapeHtml(options.stylesheetHref || "/styles.css")}" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="shell">
       <aside class="sidebar">
-        <a class="brand" href="/">${escapeHtml(site.title)}</a>
-        <nav aria-label="Document collections">${nav}</nav>
-      </aside>
-      <main>${body}</main>
+        <a class="brand" href="${escapeHtml(options.brandHref || "/")}">${escapeHtml(options.brandLabel || site.title)}</a>
+        <nav class="collection-navigation" aria-label="${escapeHtml(options.navigationLabel || "Document collections")}">${nav}</nav>
+${documentNavigation ? `        ${documentNavigation}\n` : ""}      </aside>
+      <main id="main-content" tabindex="-1">${body}</main>
     </div>
+    <script>
+      const skipLink = document.querySelector('.skip-link');
+      const mainContent = document.getElementById('main-content');
+      if (skipLink && mainContent) {
+        skipLink.addEventListener('click', () => {
+          requestAnimationFrame(() => mainContent.focus());
+        });
+      }
+
+      const updateTableScrollRegions = () => {
+        const states = Array.from(document.querySelectorAll('.table-scroll-region'))
+          .map((region) => ({
+            region,
+            overflowing: region.scrollWidth > region.clientWidth,
+          }));
+
+        states.forEach(({ region, overflowing }) => {
+          if (overflowing) {
+            region.setAttribute('role', 'region');
+            region.setAttribute('aria-label', region.dataset.tableLabel);
+            region.setAttribute('tabindex', '0');
+            return;
+          }
+          region.removeAttribute('role');
+          region.removeAttribute('aria-label');
+          region.removeAttribute('tabindex');
+        });
+      };
+      let tableRegionFrame = null;
+      const scheduleTableRegionUpdate = () => {
+        if (tableRegionFrame !== null) cancelAnimationFrame(tableRegionFrame);
+        tableRegionFrame = requestAnimationFrame(() => {
+          tableRegionFrame = null;
+          updateTableScrollRegions();
+        });
+      };
+      scheduleTableRegionUpdate();
+      window.addEventListener('resize', scheduleTableRegionUpdate);
+      document.addEventListener('toggle', scheduleTableRegionUpdate, true);
+    </script>
   </body>
 </html>
 `;
@@ -455,11 +682,12 @@ function codeBlocks(blocks) {
     .join("")}</div>`;
 }
 
-function renderTable(headers, rows) {
+function renderTable(headers, rows, caption = `${headers.join(", ")} table`) {
   if (rows.length === 0) return "";
-  return `<table class="table"><thead><tr>${headers
-    .map((header) => `<th>${escapeHtml(header)}</th>`)
-    .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+  const accessibleCaption = escapeHtml(caption);
+  return `<div class="table-scroll-region" data-table-label="${accessibleCaption}"><table class="table"><caption>${accessibleCaption}</caption><thead><tr>${headers
+    .map((header) => `<th scope="col">${escapeHtml(header)}</th>`)
+    .join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
 
 function renderInlineSpans(spans) {
@@ -486,28 +714,32 @@ function renderRichTable(block) {
     toList(block.rows).map((row) =>
       `<tr>${toList(row).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
     ),
+    `${toList(block.columns).join(" and ")} table`,
   );
 }
 
-function mediaGeneratedSrc(src) {
-  return `../../${escapeHtml(src)}`;
+function mediaGeneratedSrc(src, context = {}) {
+  return `${context.mediaSrcPrefix || "../../"}${escapeHtml(src)}`;
 }
 
 function mediaSourceExists(block, context) {
   if (!context?.docsDir) return false;
-  return fs.existsSync(path.join(context.docsDir, "content", block.src));
+  return inspectRegularFileWithin(
+    context.docsDir,
+    path.join(context.docsDir, "content", block.src),
+  ).ok;
 }
 
 function renderMediaBlock(block, context) {
   if (!mediaSourceExists(block, context)) {
-    return `<figure class="rich-block rich-media missing-media"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+    return `<figure class="rich-block rich-media missing-media" role="alert"><strong>Missing media asset</strong><code>content/${escapeHtml(block.src)}</code><p><strong>Context:</strong> ${escapeHtml(block.alt)}</p>${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
   }
-  return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
+  return `<figure class="rich-block rich-media"><img src="${mediaGeneratedSrc(block.src, context)}" alt="${escapeHtml(block.alt)}" loading="lazy" />${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`;
 }
 
 function renderTaskListBlock(block) {
   return `<ul class="rich-block rich-task-list">${toList(block.items)
-    .map((item) => `<li><span class="task-check" aria-hidden="true">${item.checked ? "x" : ""}</span><span>${escapeHtml(item.label)}</span></li>`)
+    .map((item) => `<li><input class="task-check" type="checkbox" disabled aria-label="${escapeHtml(item.label)}"${item.checked ? " checked" : ""} /><span><span class="task-state">${item.checked ? "Complete:" : "Not complete:"}</span> ${escapeHtml(item.label)}</span></li>`)
     .join("")}</ul>`;
 }
 
@@ -516,11 +748,13 @@ function renderDiagramBlock(block) {
 }
 
 function renderSupportingBlock(block, context = {}) {
+  const richHeadingLevel = (context.headingLevel || 3) + 1;
   if (block.type === "paragraph") {
     return `<p class="rich-block rich-paragraph">${renderInlineSpans(block.spans)}</p>`;
   }
   if (block.type === "callout") {
-    return `<aside class="rich-block rich-callout tone-${escapeHtml(block.tone)}"><h4>${escapeHtml(block.title)}</h4><p>${escapeHtml(block.body)}</p></aside>`;
+    const toneLabel = `${block.tone.charAt(0).toUpperCase()}${block.tone.slice(1)}`;
+    return `<div class="rich-block rich-callout tone-${escapeHtml(block.tone)}" role="note" aria-label="${escapeHtml(`${toneLabel} callout: ${block.title}`)}"><span class="callout-tone-label">${escapeHtml(toneLabel)}</span>${renderHeadingOrLabel(block.title, richHeadingLevel, "rich-block-title")}<p>${escapeHtml(block.body)}</p></div>`;
   }
   if (block.type === "quote") {
     return `<figure class="rich-block rich-quote"><blockquote>${escapeHtml(block.text)}</blockquote>${block.source ? `<figcaption>${escapeHtml(block.source)}</figcaption>` : ""}</figure>`;
@@ -529,6 +763,18 @@ function renderSupportingBlock(block, context = {}) {
   if (block.type === "media") return renderMediaBlock(block, context);
   if (block.type === "taskList") return renderTaskListBlock(block);
   if (block.type === "diagram") return renderDiagramBlock(block);
+  if (
+    block.type === "layerDiagram"
+    || block.type === "flowDiagram"
+    || block.type === "relationDiagram"
+  ) {
+    const renderState = context.renderState || { diagramIndex: 0 };
+    renderState.diagramIndex += 1;
+    return renderStructuredDiagram(block, escapeHtml, {
+      headingLevel: richHeadingLevel + 1,
+      idPrefix: `diagram-${renderState.diagramIndex}`,
+    });
+  }
   return "";
 }
 
@@ -540,18 +786,21 @@ function renderSupportingBlocks(blocks, context = {}) {
 
 function renderPlanStep(step, index) {
   if (typeof step === "string") {
-    return `<section class="step"><div class="meta"><span class="badge">step-${index + 1}</span></div><p>${escapeHtml(step)}</p></section>`;
+    return `<section class="plan-step step"><div class="meta"><span class="badge">step-${index + 1}</span></div><div class="step-instruction"><p>${escapeHtml(step)}</p></div></section>`;
   }
-  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
+  return `<section class="plan-step step"><div class="meta"><span class="badge">${escapeHtml(step.id)}</span><span class="badge">${escapeHtml(step.status)}</span></div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<div class="step-instruction"><p>${escapeHtml(step.instruction)}</p></div>` : ""}${toList(step.codeBlocks).length > 0 ? `<div class="step-code-blocks">${codeBlocks(step.codeBlocks)}</div>` : ""}${step.command ? `<div class="step-command"><h6>Run</h6><code class="command">${escapeHtml(step.command)}</code></div>` : ""}${step.expected ? `<div class="step-expected"><h6>Expected</h6><p>${escapeHtml(step.expected)}</p></div>` : ""}</section>`;
 }
 
-function renderFacts(facts) {
+function renderFacts(facts, context = {}) {
   const values = toList(facts);
   if (values.length === 0) return "";
-  return renderTable(
+  const emphasisClass = context.template === "evidence-led"
+    ? " template-emphasis emphasis-evidence"
+    : "";
+  return `<div class="facts${emphasisClass}">${renderTable(
     ["Label", "Value"],
     values.map((fact) => `<tr><td>${escapeHtml(fact.label)}</td><td>${escapeHtml(fact.value)}</td></tr>`),
-  );
+  )}</div>`;
 }
 
 function renderSupportingLinks(links) {
@@ -566,258 +815,209 @@ function renderSupportingLinks(links) {
   );
 }
 
-function renderSupportingStep(step, index) {
-  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div><h5>${escapeHtml(step.title)}</h5>${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `<h6>Run</h6><code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `<h6>Expected</h6><p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
+function renderHeadingOrLabel(text, level, className) {
+  const escapedText = escapeHtml(text);
+  if (level <= 6) {
+    return `<h${level} class="${className}">${escapedText}</h${level}>`;
+  }
+  return `<p class="${className} semantic-label"><strong>${escapedText}</strong></p>`;
+}
+
+function renderSupportingStep(step, index, headingLevel) {
+  const detailLevel = headingLevel + 1;
+  return `<section class="step"><div class="meta"><span class="badge">${escapeHtml(step.id || `step-${index + 1}`)}</span>${step.status ? `<span class="badge">${escapeHtml(step.status)}</span>` : ""}</div>${renderHeadingOrLabel(step.title, headingLevel, "step-title")}${step.instruction ? `<p>${escapeHtml(step.instruction)}</p>` : ""}${step.command ? `${renderHeadingOrLabel("Run", detailLevel, "step-detail-label")}<code class="command">${escapeHtml(step.command)}</code>` : ""}${step.expected ? `${renderHeadingOrLabel("Expected", detailLevel, "step-detail-label")}<p>${escapeHtml(step.expected)}</p>` : ""}${codeBlocks(step.codeBlocks)}</section>`;
 }
 
 function renderSupportingSection(section, depth = 0, context = {}) {
-  const headingLevel = Math.min(3 + depth, 6);
+  const headingLevel = 3 + depth;
+  const groupHeadingLevel = headingLevel + 1;
+  const stepHeadingLevel = groupHeadingLevel + 1;
   const childSections = toList(section.subSections)
     .map((subSection) => renderSupportingSection(subSection, depth + 1, context))
     .join("");
-  return `<section class="panel supporting-section depth-${depth}"><h${headingLevel}>${escapeHtml(section.heading)}</h${headingLevel}><p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `<h4>Facts</h4>${renderFacts(section.facts)}` : ""}${toList(section.links).length > 0 ? `<h4>Links</h4>${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `<h4>Steps</h4><div class="step-list">${toList(section.steps).map(renderSupportingStep).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, context)}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
+  return `<section class="panel supporting-section depth-${depth}">${renderHeadingOrLabel(section.heading, headingLevel, "supporting-section-title")}<p>${escapeHtml(section.content)}</p>${listItems(section.items)}${toList(section.facts).length > 0 ? `${renderHeadingOrLabel("Facts", groupHeadingLevel, "supporting-label")}${renderFacts(section.facts, context)}` : ""}${toList(section.links).length > 0 ? `${renderHeadingOrLabel("Links", groupHeadingLevel, "supporting-label")}${renderSupportingLinks(section.links)}` : ""}${toList(section.steps).length > 0 ? `${renderHeadingOrLabel("Steps", groupHeadingLevel, "supporting-label")}<div class="step-list">${toList(section.steps).map((step, index) => renderSupportingStep(step, index, stepHeadingLevel)).join("")}</div>` : ""}${codeBlocks(section.codeBlocks)}${renderSupportingBlocks(section.blocks, { ...context, headingLevel })}${childSections ? `<div class="stack nested-sections">${childSections}</div>` : ""}</section>`;
 }
 
-function renderDocument(doc, collection, context = {}) {
+function sectionClass(baseClass, template, emphasis) {
+  const emphasized =
+    (template === "task-first" && emphasis === "task")
+    || (template === "operator-console" && emphasis === "operator")
+    || (template === "evidence-led" && emphasis === "evidence");
+  return [baseClass, emphasized ? `template-emphasis emphasis-${emphasis}` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function renderSection(id, label, className, content) {
+  return {
+    id,
+    label,
+    html: `<section id="${id}" class="${className}"><h2>${label}</h2>${content}</section>`,
+  };
+}
+
+function renderDocument(doc, context = {}) {
   const links = doc.links || {};
   const page = doc.page || {};
   const body = doc.body || {};
   const scope = body.scope || {};
   const architecture = body.architecture || {};
   const template = STYLE_TEMPLATES.has(page.styleTemplate) ? page.styleTemplate : "task-first";
+  const renderState = { diagramIndex: 0 };
   const parts = [];
+  const sections = [];
+  const addSection = (section) => {
+    sections.push({ id: section.id, label: section.label });
+    parts.push(section.html);
+  };
 
   parts.push(`<article class="document ${template}">
     <header class="document-header">
-      <div class="kicker">${escapeHtml(collection.label)} · ${escapeHtml(template)}</div>
+      <p class="kicker">${escapeHtml(doc.docType === "agent-context" ? "Agent Context" : `${doc.docType.charAt(0).toUpperCase()}${doc.docType.slice(1)}`)}</p>
       <h1>${escapeHtml(doc.title)}</h1>
       <p class="description">${escapeHtml(doc.description)}</p>
-      <div class="meta">
-        <span class="badge">Status: ${escapeHtml(doc.status)}</span>
-        <span class="badge">Owner: ${escapeHtml(doc.owner)}</span>
-        <span class="badge">Updated: ${escapeHtml(doc.updatedAt)}</span>
-      </div>
+      <dl class="document-metadata">
+        <div><dt>Status</dt><dd><span class="badge status-${escapeHtml(doc.status)}${template === "operator-console" ? " template-emphasis emphasis-status" : ""}">${escapeHtml(doc.status)}</span></dd></div>
+        <div><dt>Owner</dt><dd>${escapeHtml(doc.owner)}</dd></div>
+        <div><dt>Updated</dt><dd>${escapeHtml(doc.updatedAt)}</dd></div>
+        <div><dt>Schema</dt><dd>${escapeHtml(doc.schemaVersion)}</dd></div>
+        <div><dt>Template</dt><dd>${escapeHtml(template)}</dd></div>
+      </dl>
     </header>
-    <section class="grid">
-      <div class="panel"><h3>Human Summary</h3><p>${escapeHtml(page.humanSummary)}</p></div>
-      <div class="panel"><h3>Agent Summary</h3><p>${escapeHtml(page.agentSummary)}</p></div>
-    </section>`);
+    <div class="summary-grid">
+      <section class="document-summary human-summary" aria-labelledby="human-summary-title"><h2 id="human-summary-title">Human Summary</h2><p>${escapeHtml(page.humanSummary)}</p></section>
+      <section class="document-summary agent-summary" aria-labelledby="agent-summary-title"><h2 id="agent-summary-title">Agent Summary</h2><p>${escapeHtml(page.agentSummary)}</p></section>
+    </div>`);
 
-  parts.push(`<h2>Source Of Truth</h2>${listItems(links.sourceOfTruth, true)}`);
-  if (links.relatedSpec) parts.push(`<h2>Related Spec</h2><p><code>${escapeHtml(links.relatedSpec)}</code></p>`);
-  if (toList(links.relatedPlans).length > 0) parts.push(`<h2>Related Plans</h2>${listItems(links.relatedPlans, true)}`);
-  if (body.goal) parts.push(`<h2>Goal</h2><p>${escapeHtml(body.goal)}</p>`);
+  if (toList(links.sourceOfTruth).length > 0) {
+    addSection(renderSection("source-of-truth", "Source Of Truth", "source-of-truth", listItems(links.sourceOfTruth, true)));
+  }
+  if (links.relatedSpec) {
+    addSection(renderSection("related-spec", "Related Spec", "related-spec", `<p><code>${escapeHtml(links.relatedSpec)}</code></p>`));
+  }
+  if (toList(links.relatedPlans).length > 0) {
+    addSection(renderSection("related-plans", "Related Plans", "related-plans", listItems(links.relatedPlans, true)));
+  }
+  if (toList(links.relatedDecisions).length > 0) {
+    addSection(renderSection("related-decisions", "Related Decisions", "related-decisions", listItems(links.relatedDecisions, true)));
+  }
+  if (body.goal) addSection(renderSection("goal", "Goal", "goal", `<p>${escapeHtml(body.goal)}</p>`));
+
+  if (doc.docType === "plan" && body.workerInstructions) {
+    addSection(renderSection("worker-instructions", "Worker Instructions", "worker-instructions", `<p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h3>Required Sub-Skills</h3>${listItems(body.workerInstructions.requiredSubSkills, true)}`));
+  }
+  if (doc.docType === "plan" && body.scopeCheck) {
+    addSection(renderSection("scope-check", "Scope Check", "scope-check", `<div class="grid"><section class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></section><section class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></section></div>`));
+  }
+
+  if (body.problem) addSection(renderSection("problem", "Problem", "problem", `<p>${escapeHtml(body.problem)}</p>`));
+  if (doc.docType !== "plan" && (scope.in || scope.out)) {
+    addSection(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
+  }
   if (typeof body.architecture === "string" && body.architecture) {
-    parts.push(`<h2>Architecture</h2><p>${escapeHtml(body.architecture)}</p>`);
+    addSection(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(body.architecture)}</p>`));
+  } else if (architecture.summary) {
+    addSection(renderSection("architecture", "Architecture", "architecture", `<p>${escapeHtml(architecture.summary)}</p>${toList(architecture.flow).length > 0 ? `<div class="architecture-flow"><h3>Flow</h3>${listItems(architecture.flow)}</div>` : ""}`));
   }
-  if (architecture.summary) {
-    parts.push(`<h2>Architecture</h2><p>${escapeHtml(architecture.summary)}</p>${listItems(architecture.flow)}`);
+  if (toList(body.techStack).length > 0) {
+    addSection(renderSection("tech-stack", "Tech Stack", "tech-stack", listItems(body.techStack, true)));
   }
-  if (toList(body.techStack).length > 0) parts.push(`<h2>Tech Stack</h2>${listItems(body.techStack, true)}`);
-  if (body.workerInstructions) {
-    parts.push(`<h2>Worker Instructions</h2><div class="panel"><p>${escapeHtml(body.workerInstructions.note)}</p><p><strong>Tracking syntax:</strong> <code>${escapeHtml(body.workerInstructions.trackingSyntax)}</code></p><h4>Required Sub-Skills</h4>${listItems(body.workerInstructions.requiredSubSkills, true)}</div>`);
-  }
-  if (body.scopeCheck) {
-    parts.push(`<h2>Scope Check</h2><div class="grid"><div class="panel"><h3>Assessment</h3><p>${escapeHtml(body.scopeCheck.assessment)}</p></div><div class="panel"><h3>Decomposition</h3><p>${escapeHtml(body.scopeCheck.decomposition)}</p></div></div>`);
-  }
-  if (scope.in) {
-    parts.push(`<h2>Scope</h2><div class="grid"><div class="panel"><h3>In</h3>${listItems(scope.in)}</div><div class="panel"><h3>Out</h3>${listItems(scope.out)}</div></div>`);
-  }
-  for (const [label, value] of [
-    ["Problem", body.problem],
-    ["Current State", body.currentState],
-    ["Target State", body.targetState],
-    ["Context", body.context],
-    ["Decision", body.decision],
-  ]) {
-    if (value) parts.push(`<h2>${label}</h2><p>${escapeHtml(value)}</p>`);
+  if (body.currentState) addSection(renderSection("current-state", "Current State", "current-state", `<p>${escapeHtml(body.currentState)}</p>`));
+  if (body.targetState) addSection(renderSection("target-state", "Target State", "target-state", `<p>${escapeHtml(body.targetState)}</p>`));
+  if (doc.docType === "plan" && (scope.in || scope.out)) {
+    addSection(renderSection("scope", "Scope", "scope", `<div class="scope-grid"><section class="scope-in"><h3>In</h3>${listItems(scope.in)}</section><section class="scope-out"><h3>Out</h3>${listItems(scope.out)}</section></div>`));
   }
   if (toList(body.requirements).length > 0) {
-    parts.push(`<h2>Requirements</h2><div class="stack">${body.requirements
-      .map((requirement) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
-      .join("")}</div>`);
+    addSection(renderSection("requirements", "Requirements", sectionClass("requirements", template, "task"), body.requirements
+      .map((requirement) => `<section class="requirement"><div class="meta"><span class="badge">${escapeHtml(requirement.id)}</span></div><h3>${escapeHtml(requirement.title)}</h3><p>${escapeHtml(requirement.detail)}</p><h4>Acceptance Criteria</h4>${listItems(requirement.acceptanceCriteria)}</section>`)
+      .join("")));
   }
   if (toList(body.approaches).length > 0) {
-    parts.push(`<h2>Approaches</h2><div class="stack">${body.approaches
-      .map((approach) => `<section class="panel"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
-      .join("")}</div>`);
+    addSection(renderSection("approaches", "Approaches", "approaches", body.approaches
+      .map((approach) => `<section class="approach"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
+      .join("")));
   }
   if (toList(body.components).length > 0) {
-    parts.push(`<h2>Components</h2><div class="stack">${body.components
-      .map((component) => `<section class="panel"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
-      .join("")}</div>`);
+    addSection(renderSection("components", "Components", "components", body.components
+      .map((component) => `<section class="component"><h3>${escapeHtml(component.name)}</h3><p>${escapeHtml(component.responsibility)}</p><h4>Interfaces</h4>${listItems(component.interfaces, true)}<h4>Dependencies</h4>${listItems(component.dependencies)}</section>`)
+      .join("")));
   }
-  if (toList(body.dataFlow).length > 0) parts.push(`<h2>Data Flow</h2>${listItems(body.dataFlow)}`);
+  if (toList(body.dataFlow).length > 0) addSection(renderSection("data-flow", "Data Flow", "data-flow", listItems(body.dataFlow)));
   if (toList(body.errorHandling).length > 0) {
-    parts.push(`<h2>Error Handling</h2>${renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))}`);
+    addSection(renderSection("error-handling", "Error Handling", "error-handling", renderTable(["Case", "Behavior"], body.errorHandling.map((row) => `<tr><td>${escapeHtml(row.case)}</td><td>${escapeHtml(row.behavior)}</td></tr>`))));
   }
   if (toList(body.contracts).length > 0) {
-    parts.push(`<h2>Contracts</h2><div class="stack">${body.contracts
-      .map((contract) => `<section class="panel"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
-      .join("")}</div>`);
+    addSection(renderSection("contracts", "Contracts", "contracts", body.contracts
+      .map((contract) => `<section class="contract"><h3>${escapeHtml(contract.name)}</h3>${listItems(contract.rules)}</section>`)
+      .join("")));
   }
   if (toList(body.fileStructure).length > 0) {
-    parts.push(`<h2>File Structure</h2>${renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))}`);
+    addSection(renderSection("file-structure", "File Structure", "file-structure", renderTable(["Action", "Path", "Responsibility"], body.fileStructure.map((row) => `<tr class="file-structure-entry"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.responsibility)}</td></tr>`))));
   }
   if (toList(body.slices).length > 0) {
-    parts.push(`<h2>Implementation Slices</h2><div class="stack">${body.slices
-      .map((slice) => `<section class="panel"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><h4>Surfaces</h4>${listItems(slice.surfaces, true)}${toList(slice.files).length > 0 ? `<h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}` : ""}<h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div><h4>Done When</h4>${listItems(slice.doneWhen)}</section>`)
-      .join("")}</div>`);
+    addSection(renderSection("plan-slices", "Implementation Slices", sectionClass("plan-slices", template, "operator"), body.slices
+      .map((slice) => `<section class="plan-slice"><div class="meta"><span class="badge">${escapeHtml(slice.id)}</span><span class="badge">${escapeHtml(slice.status)}</span></div><h3>${escapeHtml(slice.title)}</h3><div class="slice-surfaces"><h4>Surfaces</h4>${listItems(slice.surfaces, true)}</div>${toList(slice.files).length > 0 ? `<div class="slice-files"><h4>Files</h4>${renderTable(["Action", "Path", "Role"], slice.files.map((row) => `<tr class="plan-file"><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.path)}${row.lines ? `:${escapeHtml(row.lines)}` : ""}</code></td><td>${escapeHtml(row.role)}</td></tr>`))}</div>` : ""}<div class="slice-steps"><h4>Steps</h4><div class="step-list">${toList(slice.steps).map(renderPlanStep).join("")}</div></div><div class="done-when"><h4>Done When</h4>${listItems(slice.doneWhen)}</div></section>`)
+      .join("")));
   }
-  if (toList(body.executionOrder).length > 0) parts.push(`<h2>Execution Order</h2>${listItems(body.executionOrder)}`);
+  if (toList(body.executionOrder).length > 0) addSection(renderSection("execution-order", "Execution Order", "execution-order", listItems(body.executionOrder)));
   if (toList(body.risks).length > 0) {
-    parts.push(`<h2>Risks</h2>${renderTable(["Risk", "Mitigation"], body.risks.map((row) => `<tr><td>${escapeHtml(row.risk)}</td><td>${escapeHtml(row.mitigation)}</td></tr>`))}`);
+    addSection(renderSection("risks", "Risks", "risks", body.risks.map((row) => `<article class="risk"><h3>Risk</h3><p>${escapeHtml(row.risk)}</p><h4>Mitigation</h4><p>${escapeHtml(row.mitigation)}</p></article>`).join("")));
   }
+  if (body.context) addSection(renderSection("context", "Context", "context", `<p>${escapeHtml(body.context)}</p>`));
+  if (body.decision) addSection(renderSection("decision", "Decision", "decision", `<p>${escapeHtml(body.decision)}</p>`));
   if (toList(body.optionsConsidered).length > 0) {
-    parts.push(`<h2>Options Considered</h2>${renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))}`);
+    addSection(renderSection("options-considered", "Options Considered", "options-considered", renderTable(["Option", "Outcome"], body.optionsConsidered.map((row) => `<tr><td>${escapeHtml(row.option)}</td><td>${escapeHtml(row.outcome)}</td></tr>`))));
   }
-  if (toList(body.consequences).length > 0) parts.push(`<h2>Consequences</h2>${listItems(body.consequences)}`);
-  if (toList(body.whenToUse).length > 0) parts.push(`<h2>When To Use</h2>${listItems(body.whenToUse)}`);
-  if (toList(body.requiredReading).length > 0) parts.push(`<h2>Required Reading</h2>${listItems(body.requiredReading, true)}`);
-  if (toList(body.workingRules).length > 0) parts.push(`<h2>Working Rules</h2>${listItems(body.workingRules)}`);
+  if (toList(body.consequences).length > 0) addSection(renderSection("consequences", "Consequences", "consequences", listItems(body.consequences)));
+  if (toList(body.whenToUse).length > 0) addSection(renderSection("when-to-use", "When To Use", "when-to-use", listItems(body.whenToUse)));
+  if (toList(body.requiredReading).length > 0) addSection(renderSection("required-reading", "Required Reading", "required-reading", listItems(body.requiredReading, true)));
+  if (toList(body.workingRules).length > 0) addSection(renderSection("working-rules", "Working Rules", "working-rules", listItems(body.workingRules)));
   if (toList(body.surfaces).length > 0) {
-    parts.push(`<h2>File Or Surface Map</h2>${renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))}`);
+    addSection(renderSection("surfaces", "File Or Surface Map", "surfaces", renderTable(["Path", "Role", "Owner"], body.surfaces.map((row) => `<tr class="surface"><td><code>${escapeHtml(row.path)}</code></td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(row.owner)}</td></tr>`))));
   }
   if (toList(body.testingStrategy).length > 0) {
-    parts.push(`<h2>Testing Strategy</h2>${renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))}`);
+    addSection(renderSection("testing-strategy", "Testing Strategy", "testing-strategy", renderTable(["Command", "Expected"], body.testingStrategy.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.expected)}</td></tr>`))));
   }
   if (toList(body.validation).length > 0) {
-    parts.push(`<h2>Validation</h2>${renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
+    addSection(renderSection("validation", "Validation", sectionClass("validation", template, template === "evidence-led" ? "evidence" : "task"), renderTable(["Command", "Purpose"], body.validation.map((row) => `<tr><td><code class="command">${escapeHtml(row.command)}</code></td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
-  parts.push(`<h2>Agent Instructions</h2>${listItems(body.agentInstructions)}`);
-  if (toList(body.reviewChecklist).length > 0) parts.push(`<h2>Review Checklist</h2>${listItems(body.reviewChecklist)}`);
+  if (toList(body.agentInstructions).length > 0) addSection(renderSection("agent-instructions", "Agent Instructions", "agent-instructions", listItems(body.agentInstructions)));
+  if (toList(body.reviewChecklist).length > 0) addSection(renderSection("review-checklist", "Review Checklist", "review-checklist", listItems(body.reviewChecklist)));
   if (toList(body.selfReviewChecks).length > 0) {
-    parts.push(`<h2>Self Review Checks</h2>${renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))}`);
+    addSection(renderSection("self-review-checks", "Self Review Checks", "self-review-checks", renderTable(["Name", "Purpose"], body.selfReviewChecks.map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.purpose)}</td></tr>`))));
   }
   if (body.implementationHandoff) {
-    parts.push(`<h2>Implementation Handoff</h2><div class="panel"><p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}</div>`);
+    addSection(renderSection("implementation-handoff", "Implementation Handoff", "implementation-handoff", `<p><strong>Plan location:</strong> <code>${escapeHtml(body.implementationHandoff.planLocation)}</code></p><p><strong>Required skill:</strong> <code>${escapeHtml(body.implementationHandoff.requiredSkill)}</code></p>${listItems(body.implementationHandoff.notes)}`));
   }
   if (body.executionHandoff) {
-    parts.push(`<h2>Execution Handoff</h2><div class="panel"><p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}</div>`);
+    addSection(renderSection("execution-handoff", "Execution Handoff", "execution-handoff", `<p><strong>Default path:</strong> <code>${escapeHtml(body.executionHandoff.defaultPath)}</code></p>${renderTable(["Option", "Description", "Required Skill"], toList(body.executionHandoff.options).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.description)}</td><td><code>${escapeHtml(row.requiredSkill)}</code></td></tr>`))}`));
   }
   if (toList(body.supportingSections).length > 0) {
-    parts.push(`<h2>Supporting Sections</h2><div class="stack">${body.supportingSections
-      .map((section) => renderSupportingSection(section, 0, context))
-      .join("")}</div>`);
+    addSection(renderSection("supporting-sections", "Supporting Sections", "supporting-sections", body.supportingSections
+      .map((section) => renderSupportingSection(section, 0, {
+        ...context,
+        template,
+        renderState,
+      }))
+      .join("")));
   }
-  parts.push(`<h2>Open Questions</h2>${toList(body.openQuestions).length > 0 ? listItems(body.openQuestions) : "<p>No open questions.</p>"}</article>`);
-  return parts.join("\n");
+  addSection(renderSection(
+    "open-questions",
+    "Open Questions",
+    "open-questions",
+    toList(body.openQuestions).length > 0
+      ? listItems(body.openQuestions)
+      : '<div class="empty-state" role="status"><p>No open questions.</p></div>',
+  ));
+  parts.push("</article>");
+  return {
+    html: parts.join("\n"),
+    sections,
+  };
 }
 
 function writeStyles(docsDir) {
-  writeFile(
-    path.join(docsDir, "styles.css"),
-    `:root {
-  color-scheme: light;
-  --bg: #f3f5f7;
-  --panel: #ffffff;
-  --text: #172033;
-  --muted: #647084;
-  --line: #dfe4ec;
-  --accent: #11645d;
-  --accent-2: #314a8a;
-  --radius: 8px;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; }
-a { color: var(--accent); text-underline-offset: 3px; }
-code { border: 1px solid var(--line); border-radius: 6px; background: #f5f7fa; overflow-wrap: anywhere; padding: 0.08rem 0.25rem; }
-.shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
-.sidebar { border-right: 1px solid var(--line); background: #fff; height: 100vh; padding: 28px 20px; position: sticky; top: 0; }
-.brand { color: var(--text); display: block; font-weight: 800; margin-bottom: 28px; text-decoration: none; }
-.nav-link { border-radius: 6px; color: var(--text); display: block; padding: 7px 8px; text-decoration: none; }
-.nav-link:hover { background: #e6f3f0; }
-main { width: min(1120px, 100%); padding: 40px 36px 64px; }
-.document-header { border-bottom: 1px solid var(--line); margin-bottom: 28px; padding-bottom: 24px; }
-.kicker { color: var(--accent); font-size: 0.78rem; font-weight: 850; letter-spacing: 0; text-transform: uppercase; }
-h1 { font-size: clamp(2rem, 3vw, 3rem); letter-spacing: 0; line-height: 1.08; margin: 8px 0 12px; }
-h2 { border-bottom: 1px solid var(--line); font-size: 1.15rem; letter-spacing: 0; margin: 32px 0 14px; padding-bottom: 8px; }
-h3 { font-size: 1rem; margin: 0 0 10px; }
-h4 { color: var(--muted); font-size: 0.82rem; letter-spacing: 0; margin: 16px 0 6px; text-transform: uppercase; }
-h5 { font-size: 0.98rem; margin: 8px 0; }
-h6 { color: var(--muted); font-size: 0.78rem; letter-spacing: 0; margin: 12px 0 4px; text-transform: uppercase; }
-.description { color: var(--muted); max-width: 760px; }
-.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.badge { border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); font-size: 0.8rem; padding: 4px 9px; }
-.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 18px; }
-.stack { display: grid; gap: 14px; }
-.step-list { display: grid; gap: 12px; }
-.nested-sections { margin-top: 14px; }
-.supporting-section .supporting-section { background: #fbfcfd; }
-.step { border: 1px solid var(--line); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
-.list { margin: 0; padding-left: 1.15rem; }
-.table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; width: 100%; }
-.table th, .table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
-.table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
-.rich-blocks { display: grid; gap: 12px; margin-top: 14px; }
-.rich-block { margin: 0; }
-.rich-paragraph { line-height: 1.7; }
-kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: #fff; color: var(--text); font: 0.85em ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 0.08rem 0.32rem; }
-mark { border-radius: 4px; background: #fff1a8; color: inherit; padding: 0.05rem 0.2rem; }
-.rich-callout { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: #fbfcfd; padding: 14px; }
-.rich-callout h4 { color: var(--text); margin-top: 0; text-transform: none; }
-.tone-info { border-left-color: #2b6cb0; }
-.tone-success { border-left-color: #137333; }
-.tone-warning { border-left-color: #b06000; }
-.tone-danger { border-left-color: #b42318; }
-.rich-quote { border-left: 4px solid var(--line); color: var(--muted); padding-left: 14px; }
-.rich-quote blockquote { margin: 0; }
-.rich-quote figcaption { margin-top: 8px; font-size: 0.85rem; }
-.rich-media { display: grid; gap: 8px; }
-.rich-media img { border: 1px solid var(--line); border-radius: var(--radius); display: block; height: auto; max-width: 100%; }
-.rich-media figcaption { color: var(--muted); font-size: 0.86rem; }
-.missing-media { border: 1px dashed #b42318; border-radius: var(--radius); background: #fff7f7; padding: 12px; }
-.missing-media strong { color: #b42318; display: block; margin-bottom: 6px; }
-.rich-task-list { display: grid; gap: 8px; list-style: none; padding-left: 0; }
-.rich-task-list li { align-items: center; display: grid; gap: 8px; grid-template-columns: 18px minmax(0, 1fr); }
-.task-check { align-items: center; border: 1px solid var(--line); border-radius: 4px; display: inline-flex; height: 18px; justify-content: center; width: 18px; }
-.rich-diagram { display: grid; gap: 8px; }
-.rich-diagram figcaption { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
-.rich-diagram strong { font-size: 0.95rem; }
-.command { display: block; border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 8px 0; overflow-x: auto; padding: 10px 12px; }
-.code-stack { display: grid; gap: 10px; margin-top: 10px; }
-pre { border: 1px solid #222d3f; border-radius: 6px; background: #111827; color: #f9fafb; margin: 0; overflow-x: auto; padding: 12px; }
-pre code { border: 0; background: transparent; color: inherit; padding: 0; white-space: pre; }
-.operator-console .document-header { background: #202938; border-radius: var(--radius); color: #fff; padding: 24px; }
-.operator-console .description, .operator-console .badge { color: #d7dee9; }
-.operator-console .badge { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.25); }
-.evidence-led .panel { border-left: 4px solid var(--accent-2); }
-.status-approved, .status-canonical { background: #e6f4ea; color: #137333; border-color: #ceead6; }
-.status-draft, .status-proposed { background: #fef7e0; color: #b06000; border-color: #feebc8; }
-.status-superseded { background: #f1f3f4; color: #5f6368; border-color: #dadce0; }
-.sorting-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 0.85rem; }
-.sorting-label { color: var(--muted); font-weight: 600; }
-.sort-btn { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--text); font-family: inherit; font-size: inherit; transition: all 0.2s ease; }
-.sort-btn:hover { background: #f5f7fa; border-color: var(--muted); }
-.sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.timeline-section { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 36px; }
-.timeline { position: relative; padding-left: 24px; margin-top: 20px; }
-.timeline::before { content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
-.timeline-item { position: relative; margin-bottom: 24px; }
-.timeline-item:last-child { margin-bottom: 0; }
-.timeline-marker { position: absolute; left: -24px; top: 6px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; background: var(--line); box-shadow: 0 0 0 2px var(--line); transition: background-color 0.2s ease; }
-.timeline-item:hover .timeline-marker { background: var(--accent); }
-.timeline-content { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
-.timeline-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.timeline-meta { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
-.timeline-date { color: var(--muted); font-family: monospace; }
-.timeline-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #fff; }
-.timeline-badge.spec { background: var(--accent); }
-.timeline-badge.plan { background: var(--accent-2); }
-.timeline-badge.decision { background: #8f3985; }
-.timeline-badge.agent-context { background: #e07a5f; }
-.timeline-title { font-size: 1.05rem; margin: 0; font-weight: 700; }
-.timeline-title a { text-decoration: none; color: var(--text); }
-.timeline-title a:hover { color: var(--accent); text-decoration: underline; }
-.timeline-desc { color: var(--muted); font-size: 0.88rem; margin: 0; }
-@media (max-width: 780px) {
-  .shell { display: block; }
-  .sidebar { height: auto; position: static; }
-  main { padding: 28px 18px 48px; }
-}
-`,
-  );
+  writeFile(path.join(docsDir, "styles.css"), buildUnifiedStyles());
 }
 
 function writeStaticPages(docsDir, title) {
@@ -830,6 +1030,12 @@ function writeStaticPages(docsDir, title) {
 
   const collectionDocs = new Map(
     COLLECTIONS.map((collection) => [collection.dir, readCollection(docsDir, collection)]),
+  );
+  const collectionValidationErrors = new Map(
+    COLLECTIONS.map((collection) => [
+      collection.dir,
+      readCollectionValidationErrors(docsDir, collection),
+    ]),
   );
 
   const allDocs = [];
@@ -898,15 +1104,26 @@ function writeStaticPages(docsDir, title) {
 
   for (const collection of COLLECTIONS) {
     const docs = collectionDocs.get(collection.dir) || [];
+    const validationErrors = collectionValidationErrors.get(collection.dir) || [];
     const cards = docs
       .map((doc) => `<a class="panel" href="${documentHref(collection.dir, doc.slug)}" data-title="${escapeHtml(doc.title)}" data-updated="${escapeHtml(doc.updatedAt)}" data-created="${escapeHtml(doc.createdAt || doc.updatedAt)}"><h3>${escapeHtml(doc.title)}</h3><p>${escapeHtml(doc.description)}</p><div class="meta"><span class="badge status-${escapeHtml(doc.status)}">${escapeHtml(doc.status)}</span><span class="badge">Owner: ${escapeHtml(doc.owner)}</span><span class="badge date-badge">Updated: ${escapeHtml(doc.updatedAt)}</span></div></a>`)
       .join("");
+    const validationErrorHtml = validationErrors
+      .map(
+        (error) =>
+          `<section class="validation-error" role="alert"><p><strong>Validation error:</strong> Could not render <code>${escapeHtml(error.path)}</code>.</p><p>Invalid JSON. Run the Stenc validator for exact source diagnostics.</p></section>`,
+      )
+      .join("");
+    const collectionContent = cards
+      || (validationErrors.length > 0
+        ? '<div class="empty-state" role="status"><p>No valid documents could be rendered.</p></div>'
+        : `<div class="empty-state" role="status"><p>No ${escapeHtml(collection.docType)} documents yet.</p></div>`);
 
     const sortingControls = `<div class="sorting-controls">
       <span class="sorting-label">Sort by:</span>
-      <button class="sort-btn active" data-sort="updated" data-order="desc">Last Updated</button>
-      <button class="sort-btn" data-sort="created" data-order="desc">Date Created</button>
-      <button class="sort-btn" data-sort="title" data-order="asc">Title</button>
+      <button class="sort-btn active" type="button" data-sort="updated" data-order="desc" aria-pressed="true">Last Updated</button>
+      <button class="sort-btn" type="button" data-sort="created" data-order="desc" aria-pressed="false">Date Created</button>
+      <button class="sort-btn" type="button" data-sort="title" data-order="asc" aria-pressed="false">Title</button>
     </div>`;
 
     const sortingScript = `<script>
@@ -918,8 +1135,12 @@ function writeStaticPages(docsDir, title) {
         
         buttons.forEach(btn => {
           btn.addEventListener('click', () => {
-            buttons.forEach(b => b.classList.remove('active'));
+            buttons.forEach(b => {
+              b.classList.remove('active');
+              b.setAttribute('aria-pressed', 'false');
+            });
             btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
             
             const sortBy = btn.getAttribute('data-sort');
             const order = btn.getAttribute('data-order');
@@ -943,21 +1164,54 @@ function writeStaticPages(docsDir, title) {
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${sortingControls}<section class="grid">${cards || "<p>No documents yet.</p>"}</section>${sortingScript}`,
+        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${validationErrorHtml}${docs.length > 0 ? sortingControls : ""}<section class="grid">${collectionContent}</section>${docs.length > 0 ? sortingScript : ""}`,
+        {
+          collectionDir: collection.dir,
+          collectionAriaCurrent: "page",
+        },
       ),
     );
     for (const doc of docs) {
+      const renderedDocument = renderDocument(doc, { docsDir });
       writeFile(
         documentPagePath(docsDir, collection.dir, doc.slug),
-        renderLayout(site, doc.title, renderDocument(doc, collection, { docsDir })),
+        renderLayout(
+          site,
+          doc.title,
+          renderedDocument.html,
+          {
+            collectionDir: collection.dir,
+            collectionAriaCurrent: "location",
+            language: doc.language || "en",
+            sections: renderedDocument.sections,
+          },
+        ),
       );
     }
   }
 }
 
+function validateDocumentSources(docsDir) {
+  const targets = COLLECTIONS
+    .map((collection) => path.join(docsDir, "content", collection.dir))
+    .filter((target) => fs.existsSync(target));
+  const failures = validationFailures(targets).filter(
+    ({ errors }) => !(errors.length === 1 && errors[0].startsWith("invalid JSON:")),
+  );
+  if (failures.length > 0) {
+    throw new Error(formatValidationFailures(failures));
+  }
+}
+
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  ensureDirectory(options.docsDir);
+  options.docsDir = prepareContainedDirectory(
+    options.projectRoot,
+    options.docsDir,
+    "Stenc docs directory",
+  );
+  validateAssetSourceTree(options.docsDir);
+  validateDocumentSources(options.docsDir);
   const siteTitle = resolveSiteTitle(options.docsDir, options);
   if (!options.renderOnly) {
     removeFrameworkArtifacts(options.docsDir);
@@ -965,6 +1219,9 @@ function main() {
       writeOpenDocsScript(options.projectRoot, options.docsDir);
     }
     writeAppData(options.docsDir, siteTitle);
+    seedBundledTemplateAssets(options.docsDir, {
+      seedAll: options.seedTemplateAssets,
+    });
     writeGitignore(options.docsDir);
   }
   removeGeneratedArtifacts(options.docsDir);
@@ -974,9 +1231,17 @@ function main() {
   console.log(`Run: cd ${options.projectRoot} && ./open-docs.sh`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exit(1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 }
+
+module.exports = {
+  renderDocument,
+  renderLayout,
+  validateDocumentSources,
+};

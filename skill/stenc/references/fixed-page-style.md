@@ -1,92 +1,179 @@
 # Stenc Fixed Page Style
 
-Stenc pages are fixed-format web pages rendered from JSON. Authors do not
-choose per-document components or ad hoc styles.
+Stenc pages use the unified B visual language generated from canonical JSON.
+Authors choose an information emphasis with `page.styleTemplate`; they do not
+choose per-document components, styles, colors, or layout hooks.
 
-## Canonical Styles
+## One Shared Visual System
 
-All Stenc documentation created in this repository uses one of three fixed
-style families:
+The three fixed templates are:
 
-- `task-first`
-- `operator-console`
-- `evidence-led`
+- `task-first`: contract and requirement emphasis for specs.
+- `operator-console`: execution, plan-slice, and status emphasis for plans.
+- `evidence-led`: fact and validation emphasis for evidence-heavy documents.
 
-`spec` and `plan` documents must choose one style family when they are authored.
-`decision` and `agent-context` documents can also use one of these styles for
-consistency.
+All three use the same stylesheet, tokens, shell, semantic markup, cards,
+tables, code panels, badges, states, rich blocks, and diagrams. Template
+selection does not change document meaning or field coverage. The current
+visual boundary is deliberately small: `task-first` keeps the neutral document
+header, `operator-console` adds the shared warning accent to the header, and
+`evidence-led` adds the shared relation accent. The renderer also emits stable
+template-emphasis classes on the matching semantic sections; these are not
+document-authored style controls.
 
-Use these as follows:
+## B Typography and Tokens
 
-- `task-first`: contract-first specs with explicit scope, architecture, and
-  validation.
-- `operator-console`: execution-centric pages with status, slices, risks, and
-  checklists.
-- `evidence-led`: records that are centered on evidence, facts, and
-  agent-driven proof.
+The generated stylesheet owns these exact typography tokens:
 
-## Rendering Rules
+- Body: `17px`, line height `1.6`.
+- Lead and description: `18px`.
+- `h1`: `clamp(34px, 5vw, 48px)`.
+- `h2`: `24px`.
+- `h3` through `h6`: `17px`.
+- Tables and diagram detail/connection labels: `15px`.
+- Collection and document navigation: `15px`.
+- Code: `14px`.
+- Metadata, badges, captions, callout labels, and transition text: `13px`.
 
-- Render `page.humanSummary` and `page.agentSummary` as first-viewport panels.
-- Render status, owner, and `updatedAt` metadata in stable badges.
-- Render `links.sourceOfTruth`, `body.validation`, and
-  `body.agentInstructions` as
-  explicit operational sections.
-- Render Superpowers-derived spec sections such as `body.requirements`,
-  `body.approaches`, `body.components`, `body.dataFlow`,
-  `body.errorHandling`, and `body.testingStrategy` as first-class sections.
-- Render Superpowers-derived plan sections such as `body.fileStructure`,
-  `body.workerInstructions`, `body.scopeCheck`, `body.slices[].files`,
-  structured `body.slices[].steps[]`, `body.selfReviewChecks`,
-  `body.executionHandoff`, and plan `body.supportingSections` without
-  collapsing code blocks, commands, expected output, or no-placeholder guidance
-  into plain text.
-- Render extended supporting section fields with fixed primitives: `facts` as
-  a two-column table, `links` as a label/target/purpose table, `steps` as step
-  panels, `blocks` as validator-known rich primitives, and `subSections` as
-  nested supporting-section panels. Do not let source JSON choose custom
-  components or layout variants.
-- Rendered pages should make converted legacy outline sections visible, but
-  the renderer must not infer core Stenc semantics from arbitrary supporting
-  sections. Authors are responsible for putting requirements, validation,
-  surfaces, slices, and agent instructions in their native core fields before
-  using supporting sections.
-- Render `body.scope.in` and `body.scope.out` side by side on wide screens and
-  stacked on mobile.
-- Render `body.surfaces` as a table with `path`, `role`, and `owner` columns.
-- Render collection indexes by scanning document files. Do not require a
-  document to contain other documents.
-- Render pages using the selected `page.styleTemplate` value.
-- Every JSON document in `content/<collection>/` must have a matching generated
-  styled page at the predictable route before Stenc authoring is considered
-  complete.
-- Keep all routes predictable:
-  - `/specs/<slug>/`
-  - `/plans/<slug>/`
-  - `/decisions/<slug>/`
-  - `/agent-context/<slug>/`
+Required information does not use a token below `13px`. The same stylesheet
+also owns the 4–48px spacing scale, 14px component radius, 8px control radius,
+pill radius, component/raised shadows, a `76ch` reading measure, a `1120px`
+content width, and a `260px` desktop sidebar.
 
-## Rich Supporting Blocks
+Shared semantic components use neutral surfaces by default. Status, callout,
+template, and diagram role accents come from the common information, success,
+warning, danger, and relation tokens. Status and role meaning is also printed
+as text, so color is not the only signal. Completed execution documents use
+the printed `done` status with the shared success treatment.
 
-The renderer owns all visual treatment for `supportingSections[].blocks`.
-Authors provide only typed data. The renderer may use badges, callout borders,
-inline code, keyboard tokens, marks, quote panels, fixed tables, media figures,
-read-only checklist rows, and diagram source panels, but source JSON must not
-choose custom layouts, components, icons, colors, or variants.
+## Header, First Content, and Navigation
 
-All block text, span text, link targets, quote sources, table headers, table
-cells, media alt text, captions, checklist labels, diagram titles, and diagram
-source text are escaped before rendering.
+Detail pages put content in this stable order:
 
-Media renders from local generated assets copied from
-`docs/stenc/content/assets/`. Missing media is visible in the rendered page and
-fails the rendered-page check. Diagram blocks show source text only; no Mermaid,
-DOT, CDN, or client runtime is executed by the fixed renderer.
+1. document type, title, description, status, owner, updated date, schema, and
+   selected template;
+2. equally sized Human Summary and Agent Summary panels;
+3. source-of-truth and related-document links;
+4. native document sections;
+5. supporting sections and Open Questions.
 
-## Page Style
+This makes the header and summaries the first document content. The renderer
+does not move native fields into a summary or supporting section.
 
-- Lead with document type, title, description, status, owner, and update date.
-- Use restrained operational UI styling.
-- Keep panels and tables compact enough for repeated reading.
-- Do not use document-authored visual components.
-- Do not require Markdown or MDX to understand the contract.
+The desktop shell has a sticky collection sidebar. Detail pages add a separate
+`On this page` navigation generated from rendered section IDs. Active
+collection links use `aria-current`, background color, text color, and heavier
+weight. A skip link moves keyboard focus to the `main` landmark. Section
+targets have scroll margin so headings remain visible when focused or linked.
+
+Routes remain predictable:
+
+- `/specs/<slug>/`
+- `/plans/<slug>/`
+- `/decisions/<slug>/`
+- `/agent-context/<slug>/`
+
+## Native and Supporting Components
+
+The renderer keeps spec requirements, approaches, components, data flow, error
+handling, contracts, surfaces, testing, validation, review, and implementation
+handoff as first-class sections. It keeps plan worker instructions, scope
+check, file structure, slices, files, structured steps, code, command/expected
+pairs, risks, validation, review, and execution handoff as first-class
+sections.
+
+`supportingSections` uses only fixed renderer primitives:
+
+- `facts`: two-column table;
+- `links`: label, target, and purpose table;
+- `steps`: fixed step panels;
+- `blocks`: validator-known paragraph, callout, quote, table, media, task-list,
+  source-diagram, or structured-diagram rendering;
+- `subSections`: nested fixed panels.
+
+Source JSON cannot select per-document component implementations, layout
+variants, icons, colors, or CSS. All authored text and targets are escaped
+before rendering.
+
+## Diagram Rendering
+
+- Rendered structured diagram types: `flowDiagram`, `layerDiagram`, `relationDiagram`
+- Rendered diagram roles: `boundary`, `consumer`, `engine`, `neutral`, `session`, `surface`, `value`
+
+Choose the representation by meaning:
+
+- Use `diagram` when the exact Mermaid, DOT, or plain source notation is what
+  readers must inspect. It renders as an escaped source panel and is never
+  executed.
+- Use `layerDiagram` for ordered layers, ownership boundaries, and transitions
+  between adjacent layers.
+- Use `flowDiagram` for directed processing or data movement.
+- Use `relationDiagram` for directed ownership, adaptation, or lifecycle
+  relations.
+
+Every structured diagram renders a caption, a hidden accessible summary, and a
+visual whose decorative layout is hidden from assistive technology. A
+`layerDiagram` includes an always-available visually hidden ordered-text
+fallback. `flowDiagram` and `relationDiagram` include a visible disclosure
+containing the node list and directed relation table. Source order drives both
+the visual and fallback.
+
+The renderer assigns role colors from the registered role. Authors cannot set
+diagram colors or geometry. Structured diagrams execute no Mermaid, DOT, CDN,
+or diagram runtime.
+
+## Responsive Behavior
+
+At `780px` and below:
+
+- the two-column shell becomes a block layout;
+- the sticky sidebar becomes a static top region and its links wrap;
+- the `On this page` navigation becomes a labeled, focusable 15rem scroll
+  region with a visible lower boundary while preserving every link in source
+  order;
+- main padding tightens;
+- summary, scope, grid, guide, evidence, catalog, and API layouts become one
+  column;
+- sticky outline/fact/proof rails become static;
+- layer rails move above layer content;
+- diagram nodes and directed connections become one column and direction
+  arrows rotate to preserve reading direction;
+- the site header becomes a static vertical stack;
+- cards and record term/value pairs fit the viewport.
+
+Tables remain inside horizontally scrollable table regions instead of forcing
+page-level horizontal scrolling. A table region receives `role="region"`, an
+accessible label, and `tabindex="0"` only while it actually overflows.
+
+## Accessibility
+
+- Pages use an `aside`, labeled navigation landmarks, a focusable `main`, and
+  ordered section headings.
+- Links and controls receive a 3px `:focus-visible` outline with a 3px offset.
+- The skip link becomes visible on focus.
+- Hover is never required to reveal content or status.
+- Captions, role labels, status text, callout labels, task-state text, media
+  alternatives, and diagram fallbacks keep meaning independent of color.
+- `prefers-reduced-motion: reduce` disables smooth scrolling and reduces
+  transition/animation duration to `0.001ms` with one animation iteration.
+- `prefers-contrast: more` strengthens borders and promotes muted text.
+- `forced-colors: active` uses system focus and border colors and outlines the
+  active navigation link.
+- Long prose, list items, and descriptions wrap; code panels and overflowing
+  tables scroll within their own bounds.
+
+## Missing, Empty, and Error States
+
+- A missing local media asset renders a dashed danger-tinted `role="alert"`
+  panel with the expected content path and alt-text context. Rendered-page
+  validation also fails for the missing asset.
+- Empty Open Questions renders `No open questions.` in a `role="status"`
+  panel.
+- An empty collection renders `No <type> documents yet.` in a status panel.
+- Invalid collection JSON renders a visible `role="alert"` with the source
+  path and validator guidance. If no valid document remains, the collection
+  also reports `No valid documents could be rendered.`
+
+Generated HTML and CSS are reproducible output. Do not hand-edit generated
+pages or `styles.css`; regenerate them from canonical JSON and the shared
+renderer.
