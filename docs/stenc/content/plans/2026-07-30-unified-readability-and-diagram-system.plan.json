@@ -1260,6 +1260,264 @@
         ],
         "subSections": [],
         "codeBlocks": []
+      },
+      {
+        "heading": "Unified renderer execution map",
+        "content": "The approved B visual language is implemented as one deterministic path from canonical JSON authoring to accessible static evidence. These diagrams expose the real ownership boundaries, handoffs, and release gates used by this plan.",
+        "items": [
+          "Authors express meaning through validator-known JSON fields and bounded rich blocks.",
+          "The validator rejects unsupported structures before any page is generated.",
+          "The fixed renderer projects semantic components and structured diagrams without document-specific code.",
+          "Rendered-page checks verify navigation, responsive behavior, accessible fallback, and source parity."
+        ],
+        "facts": [
+          {
+            "label": "Canonical source",
+            "value": "One structured JSON document"
+          },
+          {
+            "label": "Diagram families",
+            "value": "Layer, flow, and relation"
+          },
+          {
+            "label": "Release gate",
+            "value": "./scripts/validate.sh"
+          }
+        ],
+        "links": [
+          {
+            "label": "Renderer implementation",
+            "target": "skill/stenc/scripts/setup-project.js",
+            "purpose": "Projects validated document meaning into fixed semantic HTML."
+          },
+          {
+            "label": "Canonical visual asset",
+            "target": "docs/stenc/content/assets/unified-readability-diagram.svg",
+            "purpose": "Shows the shared visual language as a tracked document asset."
+          }
+        ],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "callout",
+            "tone": "success",
+            "title": "Unified B system implemented",
+            "body": "Typography, status tags, semantic plan surfaces, rich blocks, and structured diagrams now share the same high-readability visual language."
+          },
+          {
+            "type": "quote",
+            "text": "Every visual distinction must preserve its meaning in text, structure, and accessible fallback.",
+            "source": "Unified readability design principle"
+          },
+          {
+            "type": "layerDiagram",
+            "title": "Stenc delivery layers",
+            "summary": "Four owned layers turn one canonical plan source into reviewable release evidence.",
+            "layers": [
+              {
+                "id": "authoring",
+                "label": "Authoring",
+                "role": "consumer",
+                "summary": "Document authors select semantic fields and bounded components.",
+                "nodes": [
+                  {
+                    "id": "plan-json",
+                    "label": "Canonical plan JSON",
+                    "detail": "Carries native plan fields, status tags, rich blocks, and structured diagrams."
+                  },
+                  {
+                    "id": "shared-assets",
+                    "label": "Tracked document assets",
+                    "detail": "Keeps media references local, portable, and deterministic."
+                  }
+                ],
+                "transition": "The complete source contract enters strict validation."
+              },
+              {
+                "id": "contract",
+                "label": "Contract",
+                "role": "boundary",
+                "summary": "Validation protects the shared vocabulary and graph integrity.",
+                "nodes": [
+                  {
+                    "id": "schema-validator",
+                    "label": "Stenc validator",
+                    "detail": "Rejects unknown fields, invalid roles, duplicate IDs, and unresolved edges."
+                  }
+                ],
+                "transition": "Only approved document meaning reaches generation."
+              },
+              {
+                "id": "presentation",
+                "label": "Presentation",
+                "role": "surface",
+                "summary": "One fixed renderer applies the unified B visual system.",
+                "nodes": [
+                  {
+                    "id": "semantic-renderer",
+                    "label": "Semantic renderer",
+                    "detail": "Builds plan slices, tags, callouts, tables, and diagrams with accessible markup."
+                  },
+                  {
+                    "id": "canonical-styles",
+                    "label": "Canonical stylesheet",
+                    "detail": "Applies shared typography, spacing, color, state, and responsive tokens."
+                  }
+                ],
+                "transition": "Generated pages become inspectable release evidence."
+              },
+              {
+                "id": "verification",
+                "label": "Verification",
+                "role": "value",
+                "summary": "Deterministic checks confirm that generated output matches the contract.",
+                "nodes": [
+                  {
+                    "id": "rendered-checks",
+                    "label": "Rendered-page checks",
+                    "detail": "Verify routes, navigation, fallback text, responsive states, and source parity."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "flowDiagram",
+            "title": "Plan generation and release flow",
+            "summary": "The release pipeline makes every transformation explicit and testable.",
+            "nodes": [
+              {
+                "id": "source",
+                "label": "Author plan JSON",
+                "detail": "Express the full plan with semantic fields and approved component blocks.",
+                "role": "consumer"
+              },
+              {
+                "id": "validate",
+                "label": "Validate contract",
+                "detail": "Fail fast on unsupported values, broken relations, or unsafe paths.",
+                "role": "boundary"
+              },
+              {
+                "id": "render",
+                "label": "Generate static pages",
+                "detail": "Render escaped semantic HTML and the canonical B stylesheet.",
+                "role": "engine"
+              },
+              {
+                "id": "inspect",
+                "label": "Inspect experience",
+                "detail": "Review desktop and mobile hierarchy, navigation, tags, and diagrams.",
+                "role": "surface"
+              },
+              {
+                "id": "release",
+                "label": "Record evidence",
+                "detail": "Pass repository validation and preserve reproducible source-only artifacts.",
+                "role": "value"
+              }
+            ],
+            "edges": [
+              {
+                "from": "source",
+                "to": "validate",
+                "label": "submits canonical contract"
+              },
+              {
+                "from": "validate",
+                "to": "render",
+                "label": "approves deterministic input"
+              },
+              {
+                "from": "render",
+                "to": "inspect",
+                "label": "produces reviewable pages"
+              },
+              {
+                "from": "inspect",
+                "to": "release",
+                "label": "supplies visual and automated evidence"
+              }
+            ]
+          },
+          {
+            "type": "relationDiagram",
+            "title": "Unified component ownership",
+            "summary": "The contract, renderer, styles, and verification suite constrain one another without per-document presentation code.",
+            "nodes": [
+              {
+                "id": "document-contract",
+                "label": "Document contract",
+                "detail": "Defines semantic fields, rich blocks, diagram roles, and safe references.",
+                "role": "value"
+              },
+              {
+                "id": "validator",
+                "label": "Validator",
+                "detail": "Enforces the complete source vocabulary and graph rules.",
+                "role": "boundary"
+              },
+              {
+                "id": "renderer",
+                "label": "Fixed renderer",
+                "detail": "Maps valid meaning to reusable semantic web components.",
+                "role": "engine"
+              },
+              {
+                "id": "visual-language",
+                "label": "Unified B styles",
+                "detail": "Provides readable type, tags, cards, diagrams, states, and responsive behavior.",
+                "role": "surface"
+              },
+              {
+                "id": "verification-suite",
+                "label": "Verification suite",
+                "detail": "Prevents drift across fixtures, schemas, output, documentation, and archives.",
+                "role": "session"
+              }
+            ],
+            "relations": [
+              {
+                "from": "document-contract",
+                "to": "validator",
+                "label": "defines accepted input for"
+              },
+              {
+                "from": "validator",
+                "to": "renderer",
+                "label": "supplies approved meaning to"
+              },
+              {
+                "from": "renderer",
+                "to": "visual-language",
+                "label": "exposes semantic hooks to"
+              },
+              {
+                "from": "verification-suite",
+                "to": "document-contract",
+                "label": "checks source examples against"
+              },
+              {
+                "from": "verification-suite",
+                "to": "renderer",
+                "label": "checks generated markup from"
+              },
+              {
+                "from": "verification-suite",
+                "to": "visual-language",
+                "label": "checks accessibility and responsive states in"
+              }
+            ]
+          },
+          {
+            "type": "media",
+            "src": "assets/unified-readability-diagram.svg",
+            "alt": "Unified B readability system connecting canonical document structure, semantic components, and structured diagrams",
+            "caption": "The tracked source asset summarizes the same visual and architectural contract shown by the live components above."
+          }
+        ],
+        "subSections": [],
+        "codeBlocks": []
       }
     ],
     "openQuestions": []
