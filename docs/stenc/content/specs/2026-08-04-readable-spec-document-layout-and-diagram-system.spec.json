@@ -1,0 +1,614 @@
+{
+  "schemaVersion": 2,
+  "docType": "spec",
+  "id": "spec:2026-08-04-readable-spec-document-layout-and-diagram-system",
+  "slug": "2026-08-04-readable-spec-document-layout-and-diagram-system",
+  "status": "proposed",
+  "language": "ko",
+  "title": "가독성 중심 Spec 문서 레이아웃 및 Diagram 시스템",
+  "description": "Specifier의 schemaVersion 2 계약을 유지하면서 긴 기술 문서의 줄바꿈, 정보 위계, 표, 명령, 구조화 diagram 표현을 개선한다.",
+  "owner": "stenc",
+  "createdAt": "2026-08-04",
+  "updatedAt": "2026-08-04",
+  "links": {
+    "sourceOfTruth": [
+      "skill/stenc/SKILL.md",
+      "skill/stenc/templates/spec.json",
+      "skill/stenc/references/fixed-page-style.md",
+      "skill/stenc/references/json-field-contract.md",
+      "skill/stenc/scripts/setup-project.js",
+      "skill/stenc/scripts/structured-diagram-contract.js",
+      "skill/stenc/scripts/unified-styles.js",
+      "skill/stenc/scripts/render-structured-diagram.js",
+      "skill/stenc/scripts/setup-project.test.js",
+      "sgp-981-app/docs/html/assets/docs-system.css",
+      "sgp-981-app/docs/html/assets/diagram.css"
+    ],
+    "relatedPlans": [],
+    "relatedDecisions": [
+      "docs/DECISIONS.md"
+    ]
+  },
+  "page": {
+    "humanSummary": "새 Spec은 명시적 JSON 구조를 사용하고, 생성 페이지는 자연스러운 제목 줄바꿈, 읽기 폭, 표 스크롤, 역할 중심 card와 접근 가능한 diagram fallback을 제공한다.",
+    "agentSummary": "새 문서는 schemaVersion 2와 language를 설정하고 native body 배열을 우선 사용한다. 렌더러는 긴 prose와 경로만 필요한 위치에서 분리해 줄바꿈하며, JSON 의미를 추론하거나 custom layout field를 허용하지 않는다.",
+    "styleTemplate": "task-first"
+  },
+  "body": {
+    "goal": "Specifier가 정의한 schemaVersion 2 Spec 계약을 문서 원본의 기준으로 삼고, 생성 페이지에서는 Toss design system에서 참고한 명확한 정보 위계와 sgp-981-app의 다이어그램·컴포넌트 표현 원칙을 Stenc의 고정 renderer로 재현한다. 긴 제목, 한국어 prose, 영어 식별자, 파일 경로, 명령, 표, 구조화 diagram이 서로의 읽기 흐름을 방해하지 않아야 한다.",
+    "problem": "현재 페이지는 긴 제목을 22ch로 제한하고 prose와 목록에 overflow-wrap: anywhere를 넓게 적용한다. 그 결과 정상적인 단어와 식별자까지 한 글자 단위로 끊어지고, 표와 명령이 좁은 셀 안에서 불필요하게 여러 줄로 쌓인다. 모든 native section이 비슷한 card로 반복되어 긴 Spec의 정보 위계가 약하며, 구조화 diagram도 node 목록과 관계 행을 단순히 나열해 layer, ownership, lifecycle의 의미가 약하게 전달된다. 일부 JSON 문서는 표와 단계 정보를 긴 문자열에 보관해 agent가 읽을 수는 있지만 페이지 renderer가 비교 가능한 구조로 표현하기 어렵다.",
+    "scope": {
+      "in": [
+        "schemaVersion 2 Spec authoring profile과 native body field 사용 규칙",
+        "문서 shell, header, title, summary, metadata, section, card, table, command, code 표현",
+        "긴 prose, 한국어 문장, 영어 식별자, 파일 경로, URL, 명령의 분리된 줄바꿈 규칙",
+        "layerDiagram, flowDiagram, relationDiagram의 역할 rail, node card, directed relation, text/table fallback",
+        "desktop, narrow viewport, 200 percent zoom, keyboard, reduced motion, forced colors 환경",
+        "validator, renderer, style sample, fixture, rendered-page regression test의 동시 갱신"
+      ],
+      "out": [
+        "Markdown, MDX, raw HTML, document-authored CSS, document-authored JavaScript",
+        "문서별 custom layout, component, variant, color, geometry field",
+        "Mermaid, DOT, CDN 또는 client-side diagram runtime 실행",
+        "Vault, 등록 repository, State Home 또는 다른 외부 authority의 데이터 변경",
+        "실시간 편집, 댓글, 검색, 인증, theme builder",
+        "기존 schemaVersion 1 문서의 강제 마이그레이션"
+      ]
+    },
+    "architecture": {
+      "summary": "JSON source는 schemaVersion 2의 명시적 metadata, page, native body 배열, bounded supporting block만 소유한다. Validator는 필드와 rich primitive를 검사하고, fixed renderer는 공통 token과 semantic component로 HTML/CSS를 생성한다. 렌더러는 document prose에서 의미를 추론하지 않고 source order와 JSON 관계를 그대로 보존한다.",
+      "flow": [
+        "Specifier template 복사 -> schemaVersion 2 JSON 작성 -> language와 native body field 설정",
+        "Stenc validator -> top-level, body, rich block, structured diagram, link와 asset 검사",
+        "Fixed renderer -> header, section, table, command, card, diagram visual과 fallback 생성",
+        "Generated page -> responsive layout, keyboard state, readable wrapping과 generated-page check 검증"
+      ]
+    },
+    "requirements": [
+      {
+        "id": "DOC-01",
+        "title": "새 Spec은 Specifier schemaVersion 2 계약을 사용한다",
+        "detail": "새 Spec JSON은 schemaVersion 2, docType, id, slug, status, language, title, description, owner, createdAt, updatedAt, links, page, body를 포함한다. goal, problem, scope, architecture, requirements, approaches, components, dataFlow, errorHandling, contracts, surfaces, testingStrategy, validation, agentInstructions, reviewChecklist, selfReviewChecks, implementationHandoff, supportingSections, openQuestions는 각각 전용 구조로 작성한다.",
+        "acceptanceCriteria": [
+          "새 Spec에 필수 top-level field와 Specifier가 요구한 body field가 모두 존재한다.",
+          "문서 언어가 사용자 언어와 일치하도록 language가 설정된다.",
+          "표, 강조, 링크, diagram source는 supportingSections의 validator-known block으로 표현하고 content 문자열에 Markdown 문법을 넣지 않는다.",
+          "문서 하나는 하나의 JSON artifact이며 collection index나 다른 문서의 본문을 포함하지 않는다."
+        ]
+      },
+      {
+        "id": "LAYOUT-01",
+        "title": "제목과 prose는 의미 단위로 줄바꿈한다",
+        "detail": "제목은 긴 문서명을 한 글자씩 쪼개지 않도록 읽기 가능한 최대 폭과 balance 힌트를 사용한다. 일반 prose와 목록은 단어 단위 줄바꿈을 우선하고, 공백이 없는 긴 식별자·경로·URL·명령만 별도 code 또는 path 규칙으로 안전하게 나눈다.",
+        "acceptanceCriteria": [
+          "문서 h1은 고정 22ch 제한으로 인해 불필요하게 세 줄 이상으로 나뉘지 않고 넓은 화면에서 균형 잡힌 두 줄까지 허용한다.",
+          "p, li, dd, 일반 table cell은 정상 단어 경계를 우선하며 overflow-wrap: anywhere를 일반 prose 전체에 적용하지 않는다.",
+          "inline code, 파일 경로, URL, command는 내용이 viewport를 밀어내지 않으면서 자체 영역에서만 break 또는 horizontal scroll을 사용한다.",
+          "한국어 문장과 영어 식별자가 섞인 제목·설명에서도 glyph 단위의 불필요한 파편화가 발생하지 않는다."
+        ]
+      },
+      {
+        "id": "LAYOUT-02",
+        "title": "긴 Spec의 정보 위계를 native component로 보여준다",
+        "detail": "header와 summary는 첫 화면의 orientation surface로 유지하고, requirements, approaches, components, contracts, error handling, validation은 의미에 맞는 card 또는 table로 구분한다. 모든 내용을 같은 시각적 무게의 panel로 만들지 않고 ID, status, recommendation, evidence와 recovery 정보를 먼저 스캔할 수 있게 한다.",
+        "acceptanceCriteria": [
+          "document type, title, description, status, owner, updated date, schema와 style template이 하나의 header에서 읽힌다.",
+          "Human Summary와 Agent Summary는 동일한 읽기 우선순위를 가지며 agent summary에만 제한된 information tint를 사용한다.",
+          "requirements는 ID, title, detail, acceptance criteria를 하나의 bounded unit으로 유지한다.",
+          "requirements, approaches, components와 contracts는 wide viewport에서도 한 개의 읽기 열을 사용하고 card 텍스트 폭을 bounded measure 안에 둔다.",
+          "approaches는 name, tradeoffs, recommendation을 비교 가능한 구조로 유지하고 recommendation을 시각적으로 식별할 수 있다.",
+          "surface, testing, validation과 관계 fallback table은 필요한 경우 내부 scroll을 사용해 page-level horizontal overflow를 만들지 않는다."
+        ]
+      },
+      {
+        "id": "DATA-01",
+        "title": "구조화된 의미를 문자열보다 우선한다",
+        "detail": "새 Spec 작성자는 비교·검증·순서 보존이 필요한 정보를 native array/object 또는 supportingSections의 facts, links, steps, table, diagram block으로 표현한다. 긴 content 문자열은 한 단락의 설명에만 사용하고 pseudo-table, pseudo-heading, pipe syntax, Markdown list를 renderer가 해석하도록 의존하지 않는다.",
+        "acceptanceCriteria": [
+          "필수 동작과 acceptance criteria가 하나의 unstructured summary에만 숨겨지지 않는다.",
+          "표 비교가 필요한 정보는 columns와 rows 배열로 표현되어 HTML table과 fallback에서 동일한 순서를 유지한다.",
+          "작업 순서가 필요한 supporting material은 steps 배열로 표현하며 plan의 slices와 혼동하지 않는다.",
+          "기존 schemaVersion 1 또는 legacy prose는 호환 렌더링을 유지하되 새 문서 규칙은 schemaVersion 2 profile을 따른다."
+        ]
+      },
+      {
+        "id": "DIAGRAM-01",
+        "title": "diagram은 의미에 맞는 고정 primitive를 사용한다",
+        "detail": "layerDiagram은 ordered boundary와 ownership layer, flowDiagram은 directed processing과 data movement, relationDiagram은 ownership·adaptation·lifecycle relation에 사용한다. graph connection은 필요할 때 bounded kind와 plain-text cardinality로 관계 의미를 명시한다. role 색과 geometry는 renderer가 결정하고 source JSON은 title, summary, nodes, layers, edges 또는 relations만 소유한다.",
+        "acceptanceCriteria": [
+          "각 structured diagram은 title과 summary를 가지며 validator-known type과 role만 사용한다.",
+          "layerDiagram은 layer rail, layer summary, node card, adjacent transition을 source order로 렌더링한다.",
+          "flowDiagram과 relationDiagram은 endpoint, label, direction을 구분해 보여주고, kind와 cardinality가 있으면 시각 행과 fallback 표에도 같은 의미를 보존한다.",
+          "모든 diagram은 시각 표현 외에 source-order text 또는 relation table fallback을 제공한다.",
+          "기존 diagram source block은 escaped source panel로 계속 지원하며 실행하지 않는다."
+        ]
+      },
+      {
+        "id": "RESP-01",
+        "title": "좁은 화면에서도 읽기 순서를 보존한다",
+        "detail": "780px 이하에서 sidebar, summary, scope, grid, diagram, table과 metadata가 한 열 또는 의미 보존 순서로 재배치된다. 화면 전체의 horizontal scroll은 허용하지 않고, 정말 넓어야 하는 table과 command만 자체 scroll region을 가진다.",
+        "acceptanceCriteria": [
+          "summary, scope, component grid와 diagram layer가 viewport 안에서 한 열로 재배치된다.",
+          "좁은 화면의 collection navigation은 한 줄 가로 스크롤 영역으로, On this page navigation은 별도 세로 스크롤 영역으로 유지되어 메뉴 항목이 서로의 흐름을 깨뜨리지 않는다.",
+          "table scroll region과 code panel이 페이지 scroll을 대신해 자체적으로 overflow를 소유한다.",
+          "diagram relation row는 mobile에서 endpoint, relation label, direction, endpoint 순서를 유지한다.",
+          "200 percent zoom에서 필수 정보의 겹침과 viewport 밖으로 사라지는 interactive surface가 없다."
+        ]
+      },
+      {
+        "id": "A11Y-01",
+        "title": "색상에 의존하지 않는 정보 전달",
+        "detail": "Toss에서 참고한 높은 대비와 명확한 상태 표현을 사용하되 proprietary asset을 복제하지 않는다. status, callout tone, diagram role은 텍스트 label, heading, border 또는 shape를 함께 사용하고 keyboard focus와 reduced motion을 지원한다.",
+        "acceptanceCriteria": [
+          "status, callout tone, diagram role의 의미가 색상을 제거해도 text로 식별된다.",
+          "link, control, table region과 navigation은 focus-visible 상태를 가진다.",
+          "diagram summary와 fallback table이 assistive technology가 읽을 수 있는 DOM에 존재한다.",
+          "prefers-reduced-motion과 forced-colors 환경에서도 의미와 focus가 유지된다."
+        ]
+      },
+      {
+        "id": "COMPAT-01",
+        "title": "결정적 생성과 하위 호환성을 유지한다",
+        "detail": "동일한 JSON과 renderer version은 동일한 HTML, CSS, asset output을 만든다. 새 visual component는 기존 source contract를 대체하지 않고 validator-known extension으로만 추가한다.",
+        "acceptanceCriteria": [
+          "schemaVersion 1과 기존 schemaVersion 2 문서가 새 스타일에서 validate와 render된다.",
+          "알 수 없는 JSON field, unsafe link, unsafe media path, invalid diagram endpoint는 source validation에서 거부된다.",
+          "generated HTML/CSS를 직접 수정하지 않고 source JSON과 renderer source만 변경한다.",
+          "모든 source JSON에 matching generated page가 있고 asset drift가 없다."
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "name": "A. CSS만 조정하는 보수적 수정",
+        "tradeoffs": [
+          "현재 source shape와 renderer 변경이 작아 회귀 위험이 낮다.",
+          "h1과 table 줄바꿈은 개선할 수 있지만 문자열 안에 숨은 pseudo-table과 diagram hierarchy 문제는 남는다.",
+          "native field, rich block, structured diagram의 의미 위계가 여전히 비슷한 panel 반복에 의존한다."
+        ],
+        "recommendation": "부분적인 hotfix로만 사용하고 전체 방향으로 채택하지 않는다."
+      },
+      {
+        "name": "B. Schema profile과 fixed renderer를 함께 개선",
+        "tradeoffs": [
+          "작성 규칙, renderer markup, CSS, validator fixture와 generated output을 함께 갱신해야 한다.",
+          "구조화된 JSON이 agent extraction과 human scanning을 동시에 개선한다.",
+          "role 기반 diagram과 table fallback은 시각 표현과 접근성 표현을 같은 source order에서 유지한다.",
+          "기존 schemaVersion 1과 legacy block을 보존해야 하므로 renderer에 호환 경계가 남는다."
+        ],
+        "recommendation": "채택한다. 사용자가 제시한 Specifier 계약, Toss의 명확한 위계, sgp-981-app의 diagram·component 사례를 가장 작은 고정 확장으로 결합한다."
+      },
+      {
+        "name": "C. 문서별 HTML과 custom visual component 허용",
+        "tradeoffs": [
+          "각 문서의 시각적 자유도는 가장 크다.",
+          "JSON이 아니라 authored markup과 CSS가 의미의 source가 되어 deterministic generation과 안전한 escaping이 약해진다.",
+          "문서 수가 늘어날수록 layout drift, accessibility 누락, agent parsing 비용이 커진다."
+        ],
+        "recommendation": "채택하지 않는다. Stenc의 fixed-format, installable, agent-readable 경계를 위반한다."
+      }
+    ],
+    "components": [
+      {
+        "name": "Schema authoring profile",
+        "responsibility": "새 Spec이 schemaVersion 2와 language를 사용하고 native body 배열과 bounded supporting block으로 의미를 표현하도록 규칙과 예시를 제공한다.",
+        "interfaces": [
+          "skill/stenc/templates/spec.json",
+          "skill/stenc/references/authoring-protocol.md",
+          "skill/stenc/references/json-field-contract.md"
+        ],
+        "dependencies": [
+          "Specifier required shape",
+          "Stenc validator-known fields"
+        ]
+      },
+      {
+        "name": "Readable document shell",
+        "responsibility": "header, summary, metadata, sidebar, on-this-page navigation, content width와 responsive reading order를 소유한다.",
+        "interfaces": [
+          "skill/stenc/scripts/setup-project.js::renderLayout",
+          "skill/stenc/scripts/setup-project.js::renderDocument",
+          "skill/stenc/scripts/unified-styles.js::buildUnifiedStyles"
+        ],
+        "dependencies": [
+          "page.humanSummary",
+          "page.agentSummary",
+          "page.styleTemplate"
+        ]
+      },
+      {
+        "name": "Semantic Spec sections",
+        "responsibility": "goal, problem, scope, architecture, requirements, approaches, components, data flow, error handling, contracts, validation과 handoff를 서로 다른 scan unit으로 렌더링한다.",
+        "interfaces": [
+          "body native fields",
+          "setup-project.js::renderSection",
+          "setup-project.js::renderTable"
+        ],
+        "dependencies": [
+          "schemaVersion 2 Spec contract",
+          "shared typography and spacing tokens"
+        ]
+      },
+      {
+        "name": "Structured diagram renderer",
+        "responsibility": "layer rail, node card, directed relation, role tint, source-order fallback과 text/table representation을 결정적으로 생성한다.",
+        "interfaces": [
+          "skill/stenc/scripts/render-structured-diagram.js::renderStructuredDiagram",
+          "body.supportingSections[].blocks",
+          "skill/stenc/scripts/structured-diagram-contract.js"
+        ],
+        "dependencies": [
+          "validator-known diagram types and roles",
+          "escapeHtml",
+          "responsive diagram tokens"
+        ]
+      },
+      {
+        "name": "Readability regression fixtures",
+        "responsibility": "long Korean and English titles, path-heavy tables, command cells, all Spec native fields, rich blocks, and all diagram types를 한 fixture로 노출한다.",
+        "interfaces": [
+          "examples/component-catalog.spec.json",
+          "skill/stenc/scripts/setup-project.test.js",
+          "skill/stenc/scripts/check-rendered-pages.js"
+        ],
+        "dependencies": [
+          "deterministic renderer output",
+          "validator and generated-page checks"
+        ]
+      }
+    ],
+    "dataFlow": [
+      "Specifier template -> one schemaVersion 2 Spec JSON -> native arrays and bounded supporting blocks",
+      "source JSON -> validator -> safe and known document contract",
+      "validated JSON -> fixed renderer -> semantic HTML, shared CSS, diagram fallback and local assets",
+      "generated page -> narrow viewport, zoom, keyboard and accessibility checks",
+      "source JSON plus renderer version -> deterministic generated page and collection index"
+    ],
+    "errorHandling": [
+      {
+        "case": "긴 prose가 정상적인 단어 경계를 가진다",
+        "behavior": "일반 typography 규칙을 사용해 단어 단위로 감싸고 glyph 단위 파편화를 피한다. 공백 없는 path, URL, 식별자와 command만 code 또는 path 전용 규칙을 사용한다."
+      },
+      {
+        "case": "표 또는 command가 narrow viewport보다 넓다",
+        "behavior": "table-scroll-region 또는 code panel 내부에 overflow를 격리하고 document body에 page-level horizontal scroll을 만들지 않는다."
+      },
+      {
+        "case": "schemaVersion 2 필수 field 또는 validator-known block이 없다",
+        "behavior": "source validation을 실패시키고 누락 field와 허용된 shape를 표시한다. generated page는 invalid source alert를 보여주며 의미를 추론해 보정하지 않는다."
+      },
+      {
+        "case": "structured diagram endpoint가 존재하지 않거나 role이 지원되지 않는다",
+        "behavior": "validator가 생성 전에 실패시키고 renderer는 부분적으로 끊긴 시각 diagram을 생성하지 않는다."
+      },
+      {
+        "case": "local media asset이 없다",
+        "behavior": "danger-tinted missing-media alert와 예상 content 경로, alt context를 표시하고 rendered-page check도 실패시킨다."
+      },
+      {
+        "case": "기존 schemaVersion 1 문서가 새 profile field를 가지지 않는다",
+        "behavior": "기존 compatibility contract로 계속 render하고 새 field를 소급해 요구하지 않는다. 새 문서만 schemaVersion 2 profile을 따른다."
+      }
+    ],
+    "contracts": [
+      {
+        "name": "JSON source contract",
+        "rules": [
+          "JSON source가 문서의 유일한 canonical artifact이고 generated HTML과 CSS는 파생물이다.",
+          "새 Spec은 schemaVersion 2, language, Specifier required body field를 사용한다.",
+          "custom layout, component, variant, kind field를 추가하지 않고 validator-known shape만 사용한다."
+        ]
+      },
+      {
+        "name": "Wrapping contract",
+        "rules": [
+          "일반 prose는 의미 단위로 줄바꿈하고 overflow-wrap: anywhere는 long token 전용 surface에 한정한다.",
+          "제목은 읽기 가능한 최대 폭과 balance 힌트를 사용하며 고정 22ch로 문서를 과도하게 압축하지 않는다.",
+          "command, path, URL은 code surface 안에서만 wrap 또는 scroll한다."
+        ]
+      },
+      {
+        "name": "Diagram contract",
+        "rules": [
+          "layerDiagram, flowDiagram, relationDiagram은 의미에 따라 선택하고 role 색과 geometry는 renderer가 소유한다.",
+          "graph connection의 kind는 validator가 등록 vocabulary로 제한하고 cardinality는 layout을 제어하지 않는 plain text로 취급한다.",
+          "source order는 visual order와 text/table fallback order에 동일하게 적용한다.",
+          "diagram source는 실행하지 않고 모든 authored text는 HTML escaping 후 표시한다."
+        ]
+      },
+      {
+        "name": "Publication contract",
+        "rules": [
+          "source JSON validate, setup-project regeneration, check-rendered-pages 검사를 통과해야 문서 변경을 완료로 본다.",
+          "generated docs/stenc/specs, docs/stenc/plans, docs/stenc/styles.css는 source로 직접 편집하지 않는다.",
+          "동일한 input과 renderer version은 동일한 output byte와 route inventory를 만든다."
+        ]
+      }
+    ],
+    "surfaces": [
+      {
+        "path": "skill/stenc/scripts/unified-styles.js",
+        "role": "Modify",
+        "owner": "Shared typography, wrapping, spacing, tables, cards and responsive tokens"
+      },
+      {
+        "path": "skill/stenc/scripts/setup-project.js",
+        "role": "Modify",
+        "owner": "Semantic document and table/command markup"
+      },
+      {
+        "path": "skill/stenc/scripts/render-structured-diagram.js",
+        "role": "Modify",
+        "owner": "Layer, flow, relation visuals and fallbacks"
+      },
+      {
+        "path": "skill/stenc/references/fixed-page-style.md and skill/stenc/references/authoring-protocol.md",
+        "role": "Align",
+        "owner": "Authoring and visual contract"
+      },
+      {
+        "path": "skill/stenc/scripts/setup-project.test.js and examples/component-catalog.spec.json",
+        "role": "Verify",
+        "owner": "Renderer regression and representative JSON source"
+      }
+    ],
+    "testingStrategy": [
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.test.js",
+        "expected": "schemaVersion 1 compatibility, schemaVersion 2 required fields, rich blocks, safe targets and structured diagram validation tests pass."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.test.js",
+        "expected": "semantic class inventory, native section order, responsive hooks, deterministic CSS, tables, commands and diagram fallback tests pass."
+      },
+      {
+        "command": "./scripts/validate.sh",
+        "expected": "all repository validation and examples-app rendered-page checks pass."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.js --project-root \"$(pwd)\" --docs-dir docs/stenc",
+        "expected": "the source JSON is regenerated into fixed detail, collection, navigation and stylesheet outputs without source drift."
+      }
+    ],
+    "validation": [
+      {
+        "command": "node skill/stenc/scripts/validate-stenc-doc.js docs/stenc/content/specs/2026-08-04-readable-spec-document-layout-and-diagram-system.spec.json",
+        "purpose": "Validate this new Specifier-shaped source JSON before renderer changes."
+      },
+      {
+        "command": "node skill/stenc/scripts/setup-project.js --project-root \"$(pwd)\" --docs-dir docs/stenc",
+        "purpose": "Regenerate the fixed human-facing pages and shared stylesheet from source JSON."
+      },
+      {
+        "command": "node skill/stenc/scripts/check-rendered-pages.js docs/stenc",
+        "purpose": "Verify that every source JSON has a matching generated route and every local asset resolves."
+      },
+      {
+        "command": "./scripts/open-docs.sh --project-root \"$(pwd)\" --docs-dir docs/stenc --port 4322",
+        "purpose": "Open the regenerated static docs for manual wide, narrow and diagram inspection when the local preview is available."
+      }
+    ],
+    "agentInstructions": [
+      "이 Spec JSON을 구현 전에 읽고 JSON source와 generated page의 소유권을 구분한다.",
+      "새 필드가 필요하면 먼저 validator, template, reference, renderer, fixture를 함께 갱신하고 custom visual-control field는 추가하지 않는다.",
+      "일반 prose에는 glyph 단위 강제 줄바꿈을 적용하지 않고 path와 command만 전용 overflow surface로 격리한다.",
+      "structured diagram은 의미에 맞는 type을 선택하고 fallback 정보가 사라지지 않는지 확인한다.",
+      "미해결 product choice는 docs/DECISIONS.md에 임의로 추가하지 않고 이 문서의 openQuestions에 남긴다."
+    ],
+    "reviewChecklist": [
+      "새 Spec이 Specifier의 schemaVersion 2 required shape와 language를 준수하는가",
+      "긴 제목, 한국어 prose, 영어 식별자, path와 command가 각자 적절한 줄바꿈 규칙을 사용하는가",
+      "native section의 meaning이 비슷한 panel 반복 속에서 사라지지 않는가",
+      "requirements, approaches, components가 넓은 화면에서도 한 열의 bounded card 리듬을 유지하는가",
+      "넓은 화면과 좁은 화면에서 collection menu와 On this page menu의 overflow 책임이 분리되는가",
+      "table, command와 diagram이 page-level horizontal overflow를 유발하지 않는가",
+      "layer, flow, relation visual과 text/table fallback의 source order가 같은가",
+      "관계 kind와 cardinality가 있는 경우 visual과 fallback table이 같은 의미를 표시하는가",
+      "색상 없이도 status, tone, role, direction을 이해할 수 있는가",
+      "source JSON validate, generated page check, examples regression이 모두 통과하는가"
+    ],
+    "selfReviewChecks": [
+      {
+        "name": "Specifier shape",
+        "purpose": "새 Spec이 지정된 top-level field, native body field, supporting extension registry만 사용하는지 확인한다."
+      },
+      {
+        "name": "Wrapping locality",
+        "purpose": "일반 prose와 long token surface의 CSS 규칙이 분리되어 문장 자체가 조각나지 않는지 확인한다."
+      },
+      {
+        "name": "Diagram meaning",
+        "purpose": "diagram type이 표현하려는 layer, flow, relation 의미와 일치하고 fallback이 동일한 정보를 보존하는지 확인한다."
+      },
+      {
+        "name": "Compatibility and determinism",
+        "purpose": "schemaVersion 1과 기존 schemaVersion 2 문서의 route, escaping, generated output이 유지되는지 확인한다."
+      }
+    ],
+    "implementationHandoff": {
+      "planLocation": "docs/superpowers/plans/2026-08-04-readable-spec-document-layout-and-diagram-system.md",
+      "requiredSkill": "superpowers:writing-plans",
+      "notes": [
+        "이 문서의 review gate가 끝난 후에만 구현 계획을 별도로 작성한다.",
+        "구현은 shared renderer, validator-known shape, fixture와 generated-page 검증을 하나의 변경 단위로 다룬다.",
+        "Vault Graph 문서는 renderer consumer로 검증하되 Vault 또는 등록 repository의 source authority는 변경하지 않는다."
+      ]
+    },
+    "supportingSections": [
+      {
+        "heading": "Renderer pipeline",
+        "content": "문서의 canonical meaning은 JSON에 남고, 고정 renderer는 같은 source order를 사람과 agent가 읽을 수 있는 여러 표면으로 투영한다.",
+        "items": [],
+        "facts": [
+          {
+            "label": "Primary source",
+            "value": "docs/stenc/content/<collection>/*.json"
+          },
+          {
+            "label": "Derived output",
+            "value": "docs/stenc/<collection>/<slug>/index.html and docs/stenc/styles.css"
+          },
+          {
+            "label": "Reference visual language",
+            "value": "sgp-981-app docs-system.css and diagram.css, adapted into Stenc tokens"
+          }
+        ],
+        "links": [],
+        "steps": [],
+        "blocks": [
+          {
+            "type": "flowDiagram",
+            "title": "Spec rendering pipeline",
+            "summary": "One structured source produces deterministic human and agent-readable views without executing authored markup.",
+            "nodes": [
+              {
+                "id": "json-source",
+                "label": "JSON source",
+                "detail": "Owns schemaVersion 2 document meaning.",
+                "role": "consumer"
+              },
+              {
+                "id": "validator",
+                "label": "Validator",
+                "detail": "Checks fields, links, assets and diagram references.",
+                "role": "boundary"
+              },
+              {
+                "id": "fixed-renderer",
+                "label": "Fixed renderer",
+                "detail": "Applies shared tokens and semantic components.",
+                "role": "engine"
+              },
+              {
+                "id": "readable-page",
+                "label": "Readable page",
+                "detail": "Shows visual layout and accessible fallback order.",
+                "role": "value"
+              }
+            ],
+            "edges": [
+              {
+                "from": "json-source",
+                "to": "validator",
+                "label": "submits contract"
+              },
+              {
+                "from": "validator",
+                "to": "fixed-renderer",
+                "label": "permits render"
+              },
+              {
+                "from": "fixed-renderer",
+                "to": "readable-page",
+                "label": "derives view"
+              }
+            ]
+          },
+          {
+            "type": "relationDiagram",
+            "title": "Semantic relation grammar",
+            "summary": "Ownership and projection relations remain explicit in both the visual row and the text fallback.",
+            "nodes": [
+              {
+                "id": "source-json",
+                "label": "Source JSON",
+                "detail": "Owns durable document meaning.",
+                "role": "consumer"
+              },
+              {
+                "id": "fixed-renderer",
+                "label": "Fixed renderer",
+                "detail": "Projects meaning into fixed components.",
+                "role": "engine"
+              },
+              {
+                "id": "readable-page",
+                "label": "Readable page",
+                "detail": "Carries the human-facing projection.",
+                "role": "value"
+              },
+              {
+                "id": "fallback-reader",
+                "label": "Fallback reader",
+                "detail": "Consumes the ordered relation table.",
+                "role": "neutral"
+              }
+            ],
+            "relations": [
+              {
+                "from": "source-json",
+                "to": "fixed-renderer",
+                "label": "owns canonical meaning",
+                "kind": "owns",
+                "cardinality": "1:1"
+              },
+              {
+                "from": "fixed-renderer",
+                "to": "readable-page",
+                "label": "produces projection",
+                "kind": "produces",
+                "cardinality": "1:N"
+              },
+              {
+                "from": "readable-page",
+                "to": "fallback-reader",
+                "label": "reports accessible order",
+                "kind": "reports",
+                "cardinality": "1:1"
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "columns": [
+              "Information",
+              "Canonical JSON shape",
+              "Rendered surface"
+            ],
+            "rows": [
+              [
+                "Requirement",
+                "requirements[].acceptanceCriteria",
+                "ID card with acceptance list"
+              ],
+              [
+                "Comparison",
+                "supportingSections[].blocks[].table",
+                "Scrollable semantic table"
+              ],
+              [
+                "Architecture relation",
+                "structured diagram block",
+                "Role visual with text fallback"
+              ]
+            ]
+          }
+        ],
+        "subSections": [],
+        "codeBlocks": []
+      },
+      {
+        "heading": "Authoring migration rule",
+        "content": "기존 문서의 긴 prose를 한 번에 재작성하지 않고, 다음 변경부터 구조가 필요한 의미를 native field와 bounded block으로 옮긴다.",
+        "items": [
+          "요구사항과 수용 기준은 requirements 배열을 사용한다.",
+          "비교 대상은 approaches 배열 또는 table block을 사용한다.",
+          "순서가 있는 처리 단계는 architecture.flow, dataFlow 또는 supporting steps를 사용한다.",
+          "layer, directed flow, ownership relation은 의미에 맞는 structured diagram type을 사용한다.",
+          "기존 schemaVersion 1 문서는 호환 렌더링하고 별도 migration이 승인된 경우에만 변경한다."
+        ],
+        "facts": [],
+        "links": [],
+        "steps": [],
+        "blocks": [],
+        "subSections": [],
+        "codeBlocks": []
+      }
+    ],
+    "openQuestions": [
+      "기존 schemaVersion 2 문서의 긴 supportingSections.content를 table 또는 paragraph block으로 자동 변환할 것인가. 권장안은 의미 손실을 피하기 위해 자동 변환 대신 문서별 수동 검토를 사용하는 것이다.",
+      "desktop에서 flow와 relation diagram을 수평 spine으로 확장할 것인가. 권장안은 현재처럼 source-order connection row와 fallback을 기본으로 두고, geometry를 JSON에 노출하지 않는 것이다.",
+      "서로 다른 문서 유형에 더 많은 styleTemplate을 추가할 것인가. 권장안은 공통 token과 semantic component를 먼저 안정화하고 정보 위계가 실제로 달라질 때만 추가하는 것이다."
+    ]
+  }
+}

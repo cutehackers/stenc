@@ -59,7 +59,23 @@ function renderGraphNode(node, escapeHtml) {
 function renderDirectedConnection(connection, nodeById, connectionClass, escapeHtml) {
   const fromNode = nodeById.get(connection.from);
   const toNode = nodeById.get(connection.to);
-  return `<div class="diagram-directed-connection ${connectionClass}" data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><span class="diagram-endpoint diagram-from">${escapeHtml(fromNode.label)}</span><span class="diagram-directed-label">${escapeHtml(connection.label)}</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">${escapeHtml(toNode.label)}</span></div>`;
+  const hasSemantics = Boolean(connection.kind || connection.cardinality);
+  const relationKind = connection.kind
+    ? ` data-relation-kind="${escapeHtml(connection.kind)}"`
+    : "";
+  if (!hasSemantics) {
+    return `<div class="diagram-directed-connection ${connectionClass}" data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><span class="diagram-endpoint diagram-from">${escapeHtml(fromNode.label)}</span><span class="diagram-directed-label">${escapeHtml(connection.label)}</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">${escapeHtml(toNode.label)}</span></div>`;
+  }
+
+  const semanticLabels = [
+    connection.kind
+      ? `<span class="diagram-connection-kind">${escapeHtml(connection.kind)}</span>`
+      : "",
+    connection.cardinality
+      ? `<span class="diagram-cardinality">${escapeHtml(connection.cardinality)}</span>`
+      : "",
+  ].filter(Boolean).join(" ");
+  return `<div class="diagram-directed-connection ${connectionClass}" data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"${relationKind}><span class="diagram-endpoint diagram-from">${escapeHtml(fromNode.label)}</span><span class="diagram-directed-label">${semanticLabels} ${escapeHtml(connection.label)}</span><span class="diagram-direction" aria-hidden="true">→</span><span class="diagram-endpoint diagram-to">${escapeHtml(toNode.label)}</span></div>`;
 }
 
 function renderFallbackNodeList(nodes, escapeHtml) {
@@ -73,17 +89,26 @@ function renderFallbackNodeList(nodes, escapeHtml) {
 
 function renderRelationFallback(block, connections, escapeHtml, fallbackId) {
   const nodeById = new Map(block.nodes.map((node) => [node.id, node]));
+  const hasConnectionSemantics = connections.some(
+    (connection) => connection.kind || connection.cardinality,
+  );
+  const tableHead = hasConnectionSemantics
+    ? "<th scope=\"col\">From</th> <th scope=\"col\">Kind</th> <th scope=\"col\">Cardinality</th> <th scope=\"col\">Relation</th> <th scope=\"col\">To</th>"
+    : "<th scope=\"col\">From</th> <th scope=\"col\">Relation</th> <th scope=\"col\">To</th>";
   const rows = connections.map((connection) => {
-    const fromNode = nodeById.get(connection.from);
-    const toNode = nodeById.get(connection.to);
-    return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong> <code>(${escapeHtml(fromNode.id)})</code></td> <td>${escapeHtml(connection.label)}</td> <td><strong>${escapeHtml(toNode.label)}</strong> <code>(${escapeHtml(toNode.id)})</code></td></tr>`;
+      const fromNode = nodeById.get(connection.from);
+      const toNode = nodeById.get(connection.to);
+      if (!hasConnectionSemantics) {
+        return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong> <code>(${escapeHtml(fromNode.id)})</code></td> <td>${escapeHtml(connection.label)}</td> <td><strong>${escapeHtml(toNode.label)}</strong> <code>(${escapeHtml(toNode.id)})</code></td></tr>`;
+      }
+      return `<tr data-from="${escapeHtml(connection.from)}" data-to="${escapeHtml(connection.to)}"><td><strong>${escapeHtml(fromNode.label)}</strong> <code>(${escapeHtml(fromNode.id)})</code></td> <td>${connection.kind ? escapeHtml(connection.kind) : ""}</td> <td>${connection.cardinality ? escapeHtml(connection.cardinality) : ""}</td> <td>${escapeHtml(connection.label)}</td> <td><strong>${escapeHtml(toNode.label)}</strong> <code>(${escapeHtml(toNode.id)})</code></td></tr>`;
   }).join("\n");
 
   const tableLabel = escapeHtml(`${block.title} directed relations table`);
   return `<details id="${fallbackId}" class="diagram-fallback diagram-relation-fallback"><summary>View ${escapeHtml(block.title)} text and relation table.</summary>
 ${renderFallbackNodeList(block.nodes, escapeHtml)}
 <div class="table-scroll-region" data-table-label="${tableLabel}"><table class="table diagram-fallback-table"><caption>${escapeHtml(block.title)} directed relations.</caption>
-<thead><tr><th scope="col">From</th> <th scope="col">Relation</th> <th scope="col">To</th></tr></thead>
+<thead><tr>${tableHead}</tr></thead>
 <tbody>${rows}</tbody></table></div></details>`;
 }
 

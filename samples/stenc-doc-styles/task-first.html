@@ -19,16 +19,20 @@
       </aside>
       <main id="main-content" tabindex="-1"><article class="document task-first">
     <header class="document-header">
-      <p class="kicker">Spec</p>
-      <h1>Stenc Spec Component Catalog</h1>
-      <p class="description">Comprehensive schema-v2 fixture for every native spec field and supported rich block primitive.</p>
-      <dl class="document-metadata">
-        <div><dt>Status</dt><dd><span class="badge status-canonical">canonical</span></dd></div>
-        <div><dt>Owner</dt><dd>stenc-maintainers</dd></div>
-        <div><dt>Updated</dt><dd>2026-07-30</dd></div>
-        <div><dt>Schema</dt><dd>2</dd></div>
-        <div><dt>Template</dt><dd>task-first</dd></div>
-      </dl>
+      <div class="document-header-main">
+        <p class="kicker">Spec</p>
+        <h1>Stenc Spec Component Catalog</h1>
+        <p class="description">Comprehensive schema-v2 fixture for every native spec field and supported rich block primitive.</p>
+      </div>
+      <div class="document-header-meta">
+        <dl class="document-metadata">
+          <div><dt>Status</dt><dd><span class="badge status-canonical">canonical</span></dd></div>
+          <div><dt>Owner</dt><dd>stenc-maintainers</dd></div>
+          <div><dt>Updated</dt><dd>2026-07-30</dd></div>
+          <div><dt>Schema</dt><dd>2</dd></div>
+          <div><dt>Template</dt><dd>task-first</dd></div>
+        </dl>
+      </div>
     </header>
     <div class="summary-grid">
       <section class="document-summary human-summary" aria-labelledby="human-summary-title"><h2 id="human-summary-title">Human Summary</h2><p>One fixture exposes the complete spec vocabulary so maintainers can review renderer coverage on a single page.</p></section>
@@ -42,7 +46,7 @@
 <section id="scope" class="scope"><h2>Scope</h2><div class="scope-grid"><section class="scope-in"><h3>In</h3><ul class="list"><li>Every current schema-v2 spec body field</li><li>Every current supporting-section extension field</li><li>Every current rich block and inline span type</li></ul></section><section class="scope-out"><h3>Out</h3><ul class="list"><li>Production structured diagram rendering</li><li>Per-document style controls</li><li>Executable client-side diagram runtimes</li></ul></section></div></section>
 <section id="architecture" class="architecture"><h2>Architecture</h2><p>The catalog remains canonical JSON, passes through the shared validator, and renders through the fixed Stenc page generator.</p><div class="architecture-flow"><h3>Flow</h3><ul class="list"><li>Author structured fixture JSON</li><li>Validate the complete schema inventory</li><li>Render fixed semantic sections</li><li>Inspect stable component classes</li></ul></div></section>
 <section id="requirements" class="requirements template-emphasis emphasis-task"><h2>Requirements</h2><section class="requirement"><div class="meta"><span class="badge">REQ-SPEC-1</span></div><h3>Complete native field coverage</h3><p>The fixture must populate every current schema-v2 spec field with concrete content.</p><h4>Acceptance Criteria</h4><ul class="list"><li>The validator accepts the catalog without compatibility fallbacks.</li><li>The generated page exposes all primary spec sections.</li></ul></section><section class="requirement"><div class="meta"><span class="badge">REQ-SPEC-2</span></div><h3>Complete rich primitive coverage</h3><p>The fixture must include every supported inline span, callout tone, rich block type, and structured diagram type.</p><h4>Acceptance Criteria</h4><ul class="list"><li>All seven inline span types appear in one paragraph block.</li><li>Neutral, info, success, warning, and danger callouts are present.</li><li>Quote, table, media, task list, and source diagram blocks are present.</li><li>Layer, flow, and relation diagram blocks are present.</li></ul></section></section>
-<section id="approaches" class="approaches"><h2>Approaches</h2><section class="approach"><h3>Single comprehensive catalog</h3><h4>Tradeoffs</h4><ul class="list"><li>Makes the fixture intentionally dense</li><li>Provides one stable renderer inventory surface</li></ul><h4>Recommendation</h4><p>Use one comprehensive fixture as the semantic coverage contract.</p></section><section class="approach"><h3>Many isolated fixtures</h3><h4>Tradeoffs</h4><ul class="list"><li>Keeps individual documents smaller</li><li>Makes omissions across the full document harder to spot</li></ul><h4>Recommendation</h4><p>Retain focused behavior tests, but use this catalog for complete inventory coverage.</p></section></section>
+<section id="approaches" class="approaches"><h2>Approaches</h2><section class="approach"><h3>Single comprehensive catalog</h3><h4>Tradeoffs</h4><ul class="list"><li>Makes the fixture intentionally dense</li><li>Provides one stable renderer inventory surface</li></ul><h4>Recommendation</h4><p class="recommendation-note">Use one comprehensive fixture as the semantic coverage contract.</p></section><section class="approach"><h3>Many isolated fixtures</h3><h4>Tradeoffs</h4><ul class="list"><li>Keeps individual documents smaller</li><li>Makes omissions across the full document harder to spot</li></ul><h4>Recommendation</h4><p class="recommendation-note">Retain focused behavior tests, but use this catalog for complete inventory coverage.</p></section></section>
 <section id="components" class="components"><h2>Components</h2><section class="component"><h3>Structured source fixture</h3><p>Represent every current spec contract field without renderer-only meaning.</p><h4>Interfaces</h4><ul class="list"><li><code>examples-app/content/specs/component-catalog.spec.json</code></li><li><code>examples/component-catalog.spec.json</code></li></ul><h4>Dependencies</h4><ul class="list"><li>Schema-v2 field contract</li><li>Rich block validator contract</li></ul></section><section class="component"><h3>Fixed renderer</h3><p>Project the canonical fixture into consistent human-readable sections.</p><h4>Interfaces</h4><ul class="list"><li><code>skill/stenc/scripts/setup-project.js</code></li></ul><h4>Dependencies</h4><ul class="list"><li>Validated source JSON</li><li>Local media assets</li></ul></section></section>
 <section id="data-flow" class="data-flow"><h2>Data Flow</h2><ul class="list"><li>Read component catalog JSON</li><li>Validate native fields and bounded rich blocks</li><li>Copy local media assets</li><li>Generate deterministic HTML</li><li>Assert semantic class tokens</li></ul></section>
 <section id="error-handling" class="error-handling"><h2>Error Handling</h2><div class="table-scroll-region" data-table-label="Case, Behavior table"><table class="table"><caption>Case, Behavior table</caption><thead><tr><th scope="col">Case</th><th scope="col">Behavior</th></tr></thead><tbody><tr><td>Fixture contains an unsupported field</td><td>Validation fails with the exact unsupported path before rendering.</td></tr><tr><td>Local media is unavailable</td><td>The renderer shows a fixed missing-media panel without changing the JSON source contract.</td></tr></tbody></table></div></section>

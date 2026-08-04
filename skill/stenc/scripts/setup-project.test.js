@@ -79,6 +79,7 @@ const SPEC_COMPONENT_CLASS_TOKENS = [
   "requirement",
   "approaches",
   "approach",
+  "recommendation-note",
   "components",
   "component",
   "data-flow",
@@ -478,6 +479,116 @@ test("summary cards keep one readable content column inside the two-card grid", 
   assert.doesNotMatch(css, /(?:^|\n)\.document-summary > \*/gu);
 });
 
+test("semantic spec sections use one readable card column", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.deepEqual(
+    cssDeclarations(css, ".requirements,\n.approaches,\n.components,\n.contracts"),
+    {
+      gap: "var(--space-5)",
+      "grid-template-columns": "minmax(0, 1fr)",
+    },
+  );
+  assert.match(
+    css,
+    /\.requirements > \*,[\s\S]*?max-width: var\(--content-measure\);[\s\S]*?width: 100%;/u,
+  );
+  assert.match(css, /\.document > section > h2\s*\{[\s\S]*margin-top: 0;/u);
+});
+
+test("document navigation is visually separated from collection navigation", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.deepEqual(cssDeclarations(css, ".document-navigation"), {
+    "border-top": "1px solid var(--color-line)",
+    "margin-top": "var(--space-5)",
+    "min-width": "0",
+    "padding-top": "var(--space-4)",
+  });
+  assert.equal(
+    cssDeclarations(css, ".document-navigation .eyebrow")["margin-bottom"],
+    "var(--space-2)",
+  );
+});
+
+test("table captions have a readable inset from the table boundary", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.deepEqual(cssDeclarations(css, "caption"), {
+    color: "var(--color-muted)",
+    "font-size": "var(--font-metadata)",
+    padding: "var(--space-3) var(--space-4) var(--space-2)",
+    "text-align": "left",
+  });
+});
+
+test("requirement identifiers have breathing room before the title", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.equal(
+    cssDeclarations(css, ".requirement > .meta")["margin-top"],
+    "0",
+  );
+  assert.equal(
+    cssDeclarations(css, ".requirement > .meta")["margin-bottom"],
+    "var(--space-3)",
+  );
+});
+
+test("requirement and approach cards share the same inner padding", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+  const sharedCardRule = cssDeclarations(
+    css,
+    ".panel,\n.step,\n.recommendation,\n.sample-card,\n.fact-rail,\n.content-block,\n.proof-card,\n.notice,\n.record-card,\n.component-inventory,\n.scope-grid > div,\n.stenc-header,\n.agent-banner,\n.endpoint-card,\n.metric-grid > div,\n.api-strip,\n.task-slice-grid > article,\n.guide-main,\n.rich-structured-diagram,\n.requirement,\n.approach,\n.component,\n.contract,\n.risk,\n.plan-slice,\n.plan-step,\n.supporting-section,\n.worker-instructions,\n.scope-check,\n.execution-handoff,\n.implementation-handoff",
+  );
+
+  assert.equal(sharedCardRule.padding, "var(--space-5)");
+});
+
+test("long document content wraps at semantic boundaries and owns wide overflow", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.equal(cssDeclarations(css, ":root")["--table-min-width"], "44rem");
+  assert.equal(cssDeclarations(css, "h1")["max-width"], "34ch");
+  assert.equal(
+    cssDeclarations(css, "p,\nli,\ndd")["overflow-wrap"],
+    "break-word",
+  );
+  assert.equal(cssDeclarations(css, "p,\nli,\ndd")["word-break"], "keep-all");
+  assert.equal(cssDeclarations(css, ".table,\ntable")["min-width"], "var(--table-min-width)");
+  assert.match(
+    css,
+    /(?:^|\n)\.command\s*\{[\s\S]*overflow-y: hidden;[\s\S]*white-space: pre-wrap;[\s\S]*word-break: normal;/u,
+  );
+  assert.match(css, /grid-template-areas: "from label direction to"/u);
+  assert.match(css, /\.recommendation-note\s*\{[\s\S]*border-left:/u);
+});
+
+test("header metadata keeps each label and value in one compact cluster", () => {
+  const { buildUnifiedStyles } = require("./unified-styles");
+  const css = buildUnifiedStyles();
+
+  assert.match(
+    css,
+    /\.document-metadata\s*> div\s*\{[\s\S]*display: flex;[\s\S]*min-width: max-content;/u,
+  );
+  assert.match(
+    css,
+    /\.document-metadata dt\s*\{[\s\S]*white-space: nowrap;/u,
+  );
+  assert.match(
+    css,
+    /\.document-metadata dd\s*\{[\s\S]*margin: 0;[\s\S]*white-space: nowrap;/u,
+  );
+  assert.match(css, /\.document-metadata dt::after\s*\{[\s\S]*content: ":";/u);
+});
+
 test("canonical styles do not expose unused legacy aliases", () => {
   const { buildUnifiedStyles } = require("./unified-styles");
   const root = cssDeclarations(buildUnifiedStyles(), ":root");
@@ -666,8 +777,8 @@ test("unified B style tokens", () => {
       "--space-4": "16px",
       "--space-5": "24px",
       "--space-6": "32px",
-      "--radius-component": "14px",
-      "--shadow-component": "0 2px 8px rgba(0, 0, 0, 0.05)",
+      "--radius-component": "8px",
+      "--shadow-component": "0 4px 12px rgba(15, 23, 42, 0.06)",
     },
   );
 
@@ -814,6 +925,13 @@ test("sample pages use truthful titles and a deterministic style navigation cont
         (html.match(/<input class="task-check" type="checkbox"[^>]* checked/gu) || []).length,
         1,
       );
+    }
+
+    if (fileName === "index.html") {
+      assert.match(html, /<ul class="principle-list">/u);
+      assert.equal((html.match(/<li>/gu) || []).length >= 4, true);
+      assert.match(html, /<div class="inventory-grid">/u);
+      assert.equal((html.match(/<div class="inventory-grid">/gu) || []).length, 1);
     }
   }
 });
@@ -1623,6 +1741,7 @@ test("accessible responsive styles expose keyboard, contrast, and source-order h
     ".diagram-relation-spine",
     ".diagram-mobile-linear",
     ".table-scroll-region",
+    ".principle-list",
   ]) {
     assert.ok(mobile.includes(selector), `mobile source-order hook missing: ${selector}`);
   }
@@ -3056,9 +3175,9 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
                 },
               ],
               relations: [
-                { from: "stage", to: "layout", label: "creates <handle>" },
-                { from: "layout", to: "scene", label: "borrows" },
-                { from: "scene", to: "stage", label: "returns cycle" },
+                { from: "stage", to: "layout", label: "creates <handle>", kind: "creates", cardinality: "1:1" },
+                { from: "layout", to: "scene", label: "borrows", kind: "borrows", cardinality: "1:N" },
+                { from: "scene", to: "stage", label: "returns cycle", kind: "reports", cardinality: "N:1" },
               ],
             },
           ],
@@ -3271,6 +3390,9 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
     ['data-node-id="stage"', 'data-node-id="layout"', 'data-node-id="scene"', 'data-from="stage" data-to="layout"', 'data-from="layout" data-to="scene"', 'data-from="scene" data-to="stage"'],
     "relation visual",
   );
+  assert.match(relationVisual, /data-relation-kind="creates"/);
+  assert.match(relationVisual, /class="diagram-connection-kind">creates<\/span>/);
+  assert.match(relationVisual, /class="diagram-cardinality">1:1<\/span>/);
   assertAppearsInOrder(
     relationFallback,
     ["World&lt;Stage&gt;", "WorldLayout", "M3SpatialScene", "creates &lt;handle&gt;", "borrows", "returns cycle"],
@@ -3285,10 +3407,14 @@ test("renders structured diagrams with escaped deterministic visuals and fallbac
   assert.equal(
     relationTbody,
     [
-      '<tr data-from="stage" data-to="layout"><td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td> <td>creates &lt;handle&gt;</td> <td><strong>WorldLayout</strong> <code>(layout)</code></td></tr>',
-      '<tr data-from="layout" data-to="scene"><td><strong>WorldLayout</strong> <code>(layout)</code></td> <td>borrows</td> <td><strong>M3SpatialScene</strong> <code>(scene)</code></td></tr>',
-      '<tr data-from="scene" data-to="stage"><td><strong>M3SpatialScene</strong> <code>(scene)</code></td> <td>returns cycle</td> <td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td></tr>',
+      '<tr data-from="stage" data-to="layout"><td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td> <td>creates</td> <td>1:1</td> <td>creates &lt;handle&gt;</td> <td><strong>WorldLayout</strong> <code>(layout)</code></td></tr>',
+      '<tr data-from="layout" data-to="scene"><td><strong>WorldLayout</strong> <code>(layout)</code></td> <td>borrows</td> <td>1:N</td> <td>borrows</td> <td><strong>M3SpatialScene</strong> <code>(scene)</code></td></tr>',
+      '<tr data-from="scene" data-to="stage"><td><strong>M3SpatialScene</strong> <code>(scene)</code></td> <td>reports</td> <td>N:1</td> <td>returns cycle</td> <td><strong>World&lt;Stage&gt;</strong> <code>(stage)</code></td></tr>',
     ].join("\n"),
+  );
+  assert.match(
+    relationFallback,
+    /<th scope="col">From<\/th> <th scope="col">Kind<\/th> <th scope="col">Cardinality<\/th> <th scope="col">Relation<\/th> <th scope="col">To<\/th>/,
   );
   assert.match(
     stripTagsAndDecodeText(relationFallback),
@@ -3615,10 +3741,18 @@ test("mobile document navigation is bounded, focusable, and keeps every link", (
   const mobileCss = css.slice(mobileStart, mobileEnd);
   const navigation = cssDeclarations(mobileCss, "  .document-navigation");
   assert.equal(navigation["max-height"], "15rem");
-  assert.equal(navigation["overflow-y"], "scroll");
+  assert.equal(navigation.display, "block");
+  assert.equal(navigation["overflow-x"], "hidden");
+  assert.equal(navigation["overflow-y"], "auto");
   assert.equal(navigation["overscroll-behavior"], "contain");
   assert.equal(navigation["scrollbar-gutter"], "stable");
   assert.equal(navigation["border-bottom"], "3px solid var(--color-info-line)");
+
+  const collectionNavigation = cssDeclarations(mobileCss, "  .collection-navigation");
+  assert.equal(collectionNavigation.display, "flex");
+  assert.equal(collectionNavigation["flex-wrap"], "nowrap");
+  assert.equal(collectionNavigation["overflow-x"], "auto");
+  assert.equal(collectionNavigation["overscroll-behavior-inline"], "contain");
 
   const sections = Array.from({ length: 24 }, (_, index) => ({
     id: `section-${index + 1}`,

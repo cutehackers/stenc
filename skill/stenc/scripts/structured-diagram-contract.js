@@ -14,6 +14,23 @@ const DIAGRAM_ROLES = new Set([
   "value",
   "neutral",
 ]);
+const RELATION_KINDS = new Set([
+  "adapts",
+  "borrows",
+  "calls",
+  "contains",
+  "consumes",
+  "creates",
+  "lends",
+  "notifies",
+  "owns",
+  "produces",
+  "reads",
+  "reports",
+  "transforms",
+  "uses",
+  "writes",
+]);
 const DIAGRAM_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 const DISALLOWED_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 
@@ -25,7 +42,7 @@ const STRUCTURED_DIAGRAM_FIELDS = {
 const LAYER_FIELDS = new Set(["id", "label", "role", "summary", "nodes", "transition"]);
 const LAYER_NODE_FIELDS = new Set(["id", "label", "detail"]);
 const GRAPH_NODE_FIELDS = new Set(["id", "label", "detail", "role"]);
-const CONNECTION_FIELDS = new Set(["from", "to", "label"]);
+const CONNECTION_FIELDS = new Set(["from", "to", "label", "kind", "cardinality"]);
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -81,6 +98,18 @@ function requireDiagramId(object, field, errors, prefix) {
 function requireRole(object, errors, prefix) {
   if (!DIAGRAM_ROLES.has(object?.role)) {
     errors.push(`${prefix}role must be one of: ${Array.from(DIAGRAM_ROLES).join(", ")}`);
+  }
+}
+
+function requireRelationSemantics(connection, errors, prefix) {
+  if (Object.hasOwn(connection, "kind")) {
+    requireDiagramText(connection, "kind", errors, prefix);
+    if (hasSafeDiagramText(connection.kind) && !RELATION_KINDS.has(connection.kind)) {
+      errors.push(`${prefix}kind must be one of: ${Array.from(RELATION_KINDS).join(", ")}`);
+    }
+  }
+  if (Object.hasOwn(connection, "cardinality")) {
+    requireDiagramText(connection, "cardinality", errors, prefix);
   }
 }
 
@@ -180,6 +209,7 @@ function validateConnections(block, field, errors, prefix, nodeIds, nodes) {
     requireDiagramId(connection, "from", errors, connectionPrefix);
     requireDiagramId(connection, "to", errors, connectionPrefix);
     requireDiagramText(connection, "label", errors, connectionPrefix);
+    requireRelationSemantics(connection, errors, connectionPrefix);
 
     for (const endpoint of ["from", "to"]) {
       if (isDiagramId(connection[endpoint]) && !nodeIds.has(connection[endpoint])) {
@@ -202,7 +232,13 @@ function validateConnections(block, field, errors, prefix, nodeIds, nodes) {
       && isDiagramId(connection.to)
       && hasSafeDiagramText(connection.label)
     ) {
-      const tuple = JSON.stringify([connection.from, connection.to, connection.label]);
+      const tuple = JSON.stringify([
+        connection.from,
+        connection.to,
+        connection.label,
+        connection.kind || null,
+        connection.cardinality || null,
+      ]);
       if (seenConnections.has(tuple)) {
         errors.push(
           `${connectionPrefix.slice(0, -1)} duplicates an earlier from, to, label tuple`,
@@ -243,6 +279,7 @@ function validateStructuredDiagram(block, errors, prefix) {
 module.exports = {
   STRUCTURED_DIAGRAM_TYPES,
   DIAGRAM_ROLES,
+  RELATION_KINDS,
   DIAGRAM_ID_PATTERN,
   DISALLOWED_CONTROL,
   isDiagramId,

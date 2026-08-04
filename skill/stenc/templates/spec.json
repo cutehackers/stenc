@@ -243,10 +243,10 @@
               }
             ],
             "relations": [
-              { "from": "runtime-session", "to": "external-boundary", "label": "owns adapter" },
-              { "from": "external-boundary", "to": "result-value", "label": "produces" },
-              { "from": "result-value", "to": "observer", "label": "notifies" },
-              { "from": "observer", "to": "runtime-session", "label": "reports lifecycle" }
+              { "from": "runtime-session", "to": "external-boundary", "label": "owns adapter", "kind": "owns", "cardinality": "1:1" },
+              { "from": "external-boundary", "to": "result-value", "label": "produces", "kind": "produces", "cardinality": "1:N" },
+              { "from": "result-value", "to": "observer", "label": "notifies", "kind": "notifies", "cardinality": "1:N" },
+              { "from": "observer", "to": "runtime-session", "label": "reports lifecycle", "kind": "reports", "cardinality": "N:1" }
             ]
           }
         ],

@@ -306,11 +306,13 @@ Exact fields and rules:
 - A graph node has exactly `id`, `label`, `detail`, and `role`. IDs match the
   registered pattern and are unique in the block; `label` is single-line,
   `detail` is multiline-capable, and `role` is registered.
-- An edge has exactly `from`, `to`, and `label`. Both endpoints match the ID
-  pattern and reference nodes in the same block.
+- An edge has `from`, `to`, and `label`, with optional `kind` and
+  `cardinality`. Both endpoints match the ID pattern and reference nodes in
+  the same block.
 - Every node participates as `from` or `to` in at least one edge.
-- Self-edges are rejected. An exact duplicate `from`, `to`, `label` tuple is
-  rejected; a different label on the same ordered endpoints is allowed.
+- Self-edges are rejected. An exact duplicate `from`, `to`, `label`, `kind`,
+  `cardinality` tuple is rejected; a different label or semantic kind on the
+  same ordered endpoints is allowed.
 - Directed cycles and reverse-direction edges are allowed. Node and edge
   source order is preserved.
 
@@ -339,29 +341,37 @@ Exact fields and rules:
     {
       "from": "session",
       "to": "engine",
-      "label": "adapts to"
+      "label": "adapts to",
+      "kind": "adapts",
+      "cardinality": "1:1"
     }
   ]
 }
 ```
 
 `relationDiagram` uses the same graph-node, endpoint, participation, cycle,
-self-edge, exact-duplicate, free-label, and order rules as `flowDiagram`.
+self-edge, exact-duplicate, free-label, semantic-kind, and order rules as
+`flowDiagram`.
 Its block fields are exactly `type`, `title`, `summary`, `nodes`, and
 `relations`; `nodes` has at least two entries and `relations` has at least one
-entry. Each relation has exactly `from`, `to`, and `label`.
+entry. Each relation has `from`, `to`, and `label`, plus optional `kind` and
+`cardinality`.
 
 #### Text, controls, and escaping
 
 - IDs are ASCII identifiers and must match `^[a-z][a-z0-9-]*$`.
-- `title`, node and layer `label`, and edge/relation `label` are non-empty
+- `title`, node and layer `label`, edge/relation `label`, and optional
+  `kind`/`cardinality` are non-empty
   single-line strings. They reject tab, CR, LF, U+2028, and U+2029.
 - `summary`, `detail`, layer `summary`, and `transition` are non-empty
   multiline-capable strings. They may contain tab, CR, LF, U+2028, and U+2029.
 - All diagram strings reject NUL, U+0001–U+0008, U+000B, U+000C,
   U+000E–U+001F, and U+007F.
 - Edge and relation labels are free plain Unicode domain text; there is no
-  fixed label vocabulary.
+  fixed label vocabulary. When present, `kind` is one of `adapts`, `borrows`,
+  `calls`, `contains`, `consumes`, `creates`, `lends`, `notifies`, `owns`,
+  `produces`, `reads`, `reports`, `transforms`, `uses`, or `writes`.
+  `cardinality` is plain single-line domain text and does not control layout.
 - The fixed renderer escapes every title, summary, ID, label, detail, role,
   transition, and endpoint before inserting it into HTML. Strings never become
   markup, styles, script, or renderer configuration.
@@ -379,7 +389,8 @@ entry. Each relation has exactly `from`, `to`, and `label`.
 | Missing edge or relation endpoint | Reject the referencing `from` or `to` |
 | Node with no edge or relation participation | Reject that node ID |
 | Self-edge or self-relation | Reject `to` |
-| Exact duplicate `from`, `to`, `label` tuple | Reject the later connection |
+| Exact duplicate `from`, `to`, `label`, `kind`, `cardinality` tuple | Reject the later connection |
+| Unknown or empty semantic `kind` | Reject against the registered vocabulary |
 | Empty, unsafe-control, or disallowed multiline text | Reject the exact text field |
 
 These invalid cases fail before rendering. Structured diagram cycles are not

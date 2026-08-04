@@ -873,16 +873,20 @@ function renderDocument(doc, context = {}) {
 
   parts.push(`<article class="document ${template}">
     <header class="document-header">
-      <p class="kicker">${escapeHtml(doc.docType === "agent-context" ? "Agent Context" : `${doc.docType.charAt(0).toUpperCase()}${doc.docType.slice(1)}`)}</p>
-      <h1>${escapeHtml(doc.title)}</h1>
-      <p class="description">${escapeHtml(doc.description)}</p>
-      <dl class="document-metadata">
-        <div><dt>Status</dt><dd><span class="badge status-${escapeHtml(doc.status)}${template === "operator-console" ? " template-emphasis emphasis-status" : ""}">${escapeHtml(doc.status)}</span></dd></div>
-        <div><dt>Owner</dt><dd>${escapeHtml(doc.owner)}</dd></div>
-        <div><dt>Updated</dt><dd>${escapeHtml(doc.updatedAt)}</dd></div>
-        <div><dt>Schema</dt><dd>${escapeHtml(doc.schemaVersion)}</dd></div>
-        <div><dt>Template</dt><dd>${escapeHtml(template)}</dd></div>
-      </dl>
+      <div class="document-header-main">
+        <p class="kicker">${escapeHtml(doc.docType === "agent-context" ? "Agent Context" : `${doc.docType.charAt(0).toUpperCase()}${doc.docType.slice(1)}`)}</p>
+        <h1>${escapeHtml(doc.title)}</h1>
+        <p class="description">${escapeHtml(doc.description)}</p>
+      </div>
+      <div class="document-header-meta">
+        <dl class="document-metadata">
+          <div><dt>Status</dt><dd><span class="badge status-${escapeHtml(doc.status)}${template === "operator-console" ? " template-emphasis emphasis-status" : ""}">${escapeHtml(doc.status)}</span></dd></div>
+          <div><dt>Owner</dt><dd>${escapeHtml(doc.owner)}</dd></div>
+          <div><dt>Updated</dt><dd>${escapeHtml(doc.updatedAt)}</dd></div>
+          <div><dt>Schema</dt><dd>${escapeHtml(doc.schemaVersion)}</dd></div>
+          <div><dt>Template</dt><dd>${escapeHtml(template)}</dd></div>
+        </dl>
+      </div>
     </header>
     <div class="summary-grid">
       <section class="document-summary human-summary" aria-labelledby="human-summary-title"><h2 id="human-summary-title">Human Summary</h2><p>${escapeHtml(page.humanSummary)}</p></section>
@@ -934,7 +938,7 @@ function renderDocument(doc, context = {}) {
   }
   if (toList(body.approaches).length > 0) {
     addSection(renderSection("approaches", "Approaches", "approaches", body.approaches
-      .map((approach) => `<section class="approach"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p>${escapeHtml(approach.recommendation)}</p></section>`)
+      .map((approach) => `<section class="approach"><h3>${escapeHtml(approach.name)}</h3><h4>Tradeoffs</h4>${listItems(approach.tradeoffs)}<h4>Recommendation</h4><p class="recommendation-note">${escapeHtml(approach.recommendation)}</p></section>`)
       .join("")));
   }
   if (toList(body.components).length > 0) {
@@ -1098,7 +1102,7 @@ function writeStaticPages(docsDir, title) {
     renderLayout(
       site,
       null,
-      `<header class="document-header"><div class="kicker">Stenc</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></header><section class="grid">${indexCards}</section>${timelineHtml}`,
+      `<header class="document-header"><div class="document-header-main"><div class="kicker">Stenc</div><h1>${escapeHtml(site.title)}</h1><p class="description">${escapeHtml(site.description)}</p></div></header><section class="grid">${indexCards}</section>${timelineHtml}`,
     ),
   );
 
@@ -1164,7 +1168,7 @@ function writeStaticPages(docsDir, title) {
       renderLayout(
         site,
         collection.label,
-        `<header class="document-header"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></header>${validationErrorHtml}${docs.length > 0 ? sortingControls : ""}<section class="grid">${collectionContent}</section>${docs.length > 0 ? sortingScript : ""}`,
+        `<header class="document-header"><div class="document-header-main"><div class="kicker">Stenc</div><h1>${collection.label}</h1><p class="description">Fixed-format documents rendered from structured JSON.</p></div></header>${validationErrorHtml}${docs.length > 0 ? sortingControls : ""}<section class="grid">${collectionContent}</section>${docs.length > 0 ? sortingScript : ""}`,
         {
           collectionDir: collection.dir,
           collectionAriaCurrent: "page",
