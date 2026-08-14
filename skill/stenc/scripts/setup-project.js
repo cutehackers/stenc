@@ -369,19 +369,25 @@ function writeOpenDocsScript(projectRoot, docsDir) {
     `#!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="\${PWD}"
 DOCS_DIR=${shellSingleQuote(docsDirDefault)}
 PORT=""
 DRY_RUN=0
+
+if [[ -d "\${SCRIPT_DIR}/\${DOCS_DIR}" ]]; then
+  PROJECT_ROOT="\${SCRIPT_DIR}"
+fi
 
 usage() {
   cat <<'EOF'
 Usage: ./open-docs.sh [options]
 
-Open this project's Stenc static docs and stop it with Enter.
+Open a target project's Stenc static docs and stop it with Enter.
 
 Options:
-  --docs-dir <path>      Docs path inside this project. Defaults to the installed docs path.
+  --project-root <path>  Target repository root. Defaults to the current directory.
+  --docs-dir <path>      Docs app path inside --project-root. Defaults to the installed docs path.
   --port <number>        Preferred local port. Defaults to the first free port from 4321.
   --dry-run              Print resolved paths without starting the static server.
   -h, --help             Show this help.
@@ -393,6 +399,14 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       usage
       exit 0
+      ;;
+    --project-root)
+      PROJECT_ROOT="\${2:-}"
+      if [[ -z "\${PROJECT_ROOT}" ]]; then
+        echo "Missing value for --project-root" >&2
+        exit 2
+      fi
+      shift 2
       ;;
     --docs-dir)
       DOCS_DIR="\${2:-}"
@@ -421,6 +435,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+PROJECT_ROOT="$(cd "\${PROJECT_ROOT}" && pwd)"
 if [[ "\${DOCS_DIR}" = /* ]]; then
   DOCS_PATH="\${DOCS_DIR}"
 else
@@ -439,7 +454,11 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 STENC_SKILLS_ROOT="\${CODEX_SKILLS_DIR:-\${HOME}/.codex/skills}"
-STENC_SETUP_PROJECT_JS="\${STENC_SETUP_PROJECT_JS:-\${STENC_SKILLS_ROOT}/stenc/scripts/setup-project.js}"
+DEFAULT_STENC_SETUP_PROJECT_JS="\${STENC_SKILLS_ROOT}/stenc/scripts/setup-project.js"
+if [[ -f "\${SCRIPT_DIR}/skill/stenc/scripts/setup-project.js" ]]; then
+  DEFAULT_STENC_SETUP_PROJECT_JS="\${SCRIPT_DIR}/skill/stenc/scripts/setup-project.js"
+fi
+STENC_SETUP_PROJECT_JS="\${STENC_SETUP_PROJECT_JS:-\${DEFAULT_STENC_SETUP_PROJECT_JS}}"
 if [[ ! -f "\${STENC_SETUP_PROJECT_JS}" ]]; then
   echo "Stenc renderer not found: \${STENC_SETUP_PROJECT_JS}" >&2
   echo "Install Stenc first: stenc install --docs-dir \${DOCS_DIR}" >&2
@@ -493,9 +512,10 @@ NODE
 fi
 
 URL="http://127.0.0.1:\${PORT}/"
+LOG_FILE="\${TMPDIR:-/tmp}/stenc-open-docs-\${PORT}.log"
 (
   cd "\${DOCS_PATH}"
-  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=fs.realpathSync(process.cwd());const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let pathname;try{pathname=decodeURIComponent(url.pathname);}catch(_error){res.writeHead(400);res.end('Bad request');return;}let file=path.resolve(root,'.'+pathname);let relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}try{file=fs.realpathSync(file);}catch(error){res.writeHead(error.code==='ENOENT'?404:403);res.end(error.code==='ENOENT'?'Not found':'Forbidden');return;}relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}"
+  node -e "const http=require('node:http'),fs=require('node:fs'),path=require('node:path');const root=fs.realpathSync(process.cwd());const port=Number(process.argv[1]);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif','.webp':'image/webp'};http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1');let pathname;try{pathname=decodeURIComponent(url.pathname);}catch(_error){res.writeHead(400);res.end('Bad request');return;}let file=path.resolve(root,'.'+pathname);let relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');if(!fs.existsSync(file)){res.writeHead(404);res.end('Not found');return;}try{file=fs.realpathSync(file);}catch(error){res.writeHead(error.code==='ENOENT'?404:403);res.end(error.code==='ENOENT'?'Not found':'Forbidden');return;}relative=path.relative(root,file);if(relative.startsWith('..')||path.isAbsolute(relative)){res.writeHead(403);res.end('Forbidden');return;}if(!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);}).listen(port,'127.0.0.1');" "\${PORT}" >"\${LOG_FILE}" 2>&1
 ) &
 SERVER_PID=$!
 
@@ -510,7 +530,7 @@ trap cleanup EXIT INT TERM
 
 for _ in $(seq 1 80); do
   if ! kill -0 "\${SERVER_PID}" >/dev/null 2>&1; then
-    echo "Stenc static server failed to start." >&2
+    echo "Stenc static server failed to start. Log: \${LOG_FILE}" >&2
     exit 1
   fi
   if curl -fsS "\${URL}" >/dev/null 2>&1; then
@@ -518,6 +538,11 @@ for _ in $(seq 1 80); do
   fi
   sleep 0.25
 done
+
+if ! curl -fsS "\${URL}" >/dev/null 2>&1; then
+  echo "Stenc static server did not become ready. Log: \${LOG_FILE}" >&2
+  exit 1
+fi
 
 if [[ "\${STENC_OPEN_BROWSER:-1}" -eq 1 ]] && command -v open >/dev/null 2>&1; then
   open "\${URL}"

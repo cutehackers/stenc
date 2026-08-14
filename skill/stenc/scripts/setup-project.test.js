@@ -2110,6 +2110,9 @@ test("prepares a fixed Stenc web app backed by JSON documents", () => {
   const openDocsScript = fs.readFileSync(path.join(projectRoot, "open-docs.sh"), "utf8");
   assert.match(openDocsScript, /image\/svg\+xml/);
   assert.match(openDocsScript, /image\/png/);
+  assert.match(openDocsScript, /--project-root <path>/);
+  assert.match(openDocsScript, /LOG_FILE=/);
+  assert.match(openDocsScript, /did not become ready/);
   assert.match(openDocsScript, /path\.resolve\(root,'\.'\+pathname\)/);
   assert.match(openDocsScript, /path\.relative\(root,file\)/);
   assert.doesNotMatch(openDocsScript, /path\.join\(root,decodeURIComponent/);
@@ -2134,16 +2137,26 @@ test("generated open-docs uses CODEX_SKILLS_DIR to find the renderer", () => {
   fs.rmSync(path.join(docsRoot, "index.html"), { force: true });
   fs.rmSync(path.join(docsRoot, "styles.css"), { force: true });
 
-  const openDocsResult = spawnSync("bash", [path.join(projectRoot, "open-docs.sh")], {
-    cwd: os.tmpdir(),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      CODEX_SKILLS_DIR: skillsRoot,
-      HOME: homeRoot,
-      STENC_OPEN_DOCS_PRECHECK_ONLY: "1",
+  const openDocsResult = spawnSync(
+    "bash",
+    [
+      path.join(projectRoot, "open-docs.sh"),
+      "--project-root",
+      projectRoot,
+      "--docs-dir",
+      "docs/stenc",
+    ],
+    {
+      cwd: os.tmpdir(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CODEX_SKILLS_DIR: skillsRoot,
+        HOME: homeRoot,
+        STENC_OPEN_DOCS_PRECHECK_ONLY: "1",
+      },
     },
-  });
+  );
 
   assert.equal(openDocsResult.status, 0, openDocsResult.stderr || openDocsResult.stdout);
   assert.equal(fs.existsSync(path.join(docsRoot, "index.html")), true);
